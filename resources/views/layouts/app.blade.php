@@ -37,8 +37,15 @@
                     class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                     Dashboard
                 </a>
-                {{-- TODO Fase 1: menu Employees & Organization --}}
-                {{-- TODO Fase 2: menu Attendance --}}
+                <a href="{{ route('owner.employees.index') }}"
+                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                    Karyawan
+                </a>
+                <a href="{{ route('owner.organization') }}"
+                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                    Struktur Organisasi
+                </a>
+                {{-- TODO Fase 4: menu Attendance --}}
                 {{-- TODO Fase 5: menu Requests / Team Approval --}}
                 {{-- TODO Fase 6: menu MoM & Memos --}}
                 {{-- TODO Fase 7: menu Projects & Timeline --}}

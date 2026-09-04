@@ -2,7 +2,7 @@
     employee/home.blade.php
     ---------------------------------------------------------------------
     Shell/placeholder (Fase 0). Tombol clock-in/out belum fungsional —
-    logic-nya (foto + geolocation) masuk di Fase 2.
+    logic-nya (foto + geolocation) masuk di Fase 4.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.employee', ['title' => 'Home', 'navActive' => 'home'])
@@ -14,13 +14,13 @@
         <p class="mt-1 text-[15px] text-muted">{{ now()->translatedFormat('l, d F Y') }}</p>
     </div>
 
-    <div class="mb-3.5 rounded-[28px] bg-brand-blue p-6 text-white">
+    <div class="mb-3.5 rounded-wsm-lg bg-brand-blue p-6 text-white">
         <span class="text-[11px] font-black uppercase tracking-wide text-white/75">Status Kehadiran</span>
         <p class="mt-3 text-2xl font-black">Belum absen</p>
-        <p class="mt-1 text-xs text-white/70">Tombol absen aktif mulai Fase 2.</p>
+        <p class="mt-1 text-xs text-white/70">Tombol absen aktif mulai Fase 4.</p>
         <button disabled
-            class="mt-5 w-full rounded-[22px] bg-black/15 py-4 text-sm font-extrabold text-white/70 disabled:cursor-not-allowed">
-            Absen Masuk (aktif di Fase 2)
+            class="mt-5 w-full rounded-wsm bg-black/15 py-4 text-sm font-extrabold text-white/70 disabled:cursor-not-allowed">
+            Absen Masuk (aktif di Fase 4)
         </button>
     </div>
 

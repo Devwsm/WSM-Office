@@ -9,6 +9,8 @@
  */
 
 use App\Http\Controllers\Owner\DashboardController;
+use App\Http\Controllers\Owner\EmployeeController;
+use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Public\PageController;
 use Illuminate\Support\Facades\Route;
@@ -28,13 +30,13 @@ Route::name('public.')->group(function () {
 
 require __DIR__ . '/auth.php';
 
-// --- Karyawan & Manajer (Manajer tetap karyawan) ---
-Route::middleware(['auth', 'role:karyawan,manajer,owner'])
+// --- Karyawan & Manajer (Manajer tetap karyawan; HRD juga staf internal) ---
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])
     ->prefix('app')
     ->name('employee.')
     ->group(function () {
         Route::get('/home', [HomeController::class, 'index'])->name('home');
-        // TODO Fase 2: history, Fase 3: request, Fase 1: profile
+        // TODO Fase 4: history absensi, Fase 5: request izin/cuti
     });
 
 // --- Manajer only ---
@@ -51,6 +53,15 @@ Route::middleware(['auth', 'role:owner'])
     ->name('owner.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-        // TODO Fase 1-12: employees, attendance, requests, mom, memos,
+
+        // --- Fase 2: Manajemen Karyawan & Struktur Organisasi ---
+        Route::resource('employees', EmployeeController::class)
+            ->except(['show'])
+            ->parameters(['employees' => 'employee']);
+        Route::post('/employees/{employee}/restore', [EmployeeController::class, 'restore'])
+            ->name('employees.restore');
+        Route::get('/organisasi', [OrganizationController::class, 'index'])->name('organization');
+
+        // TODO Fase 3-12: rekrutmen, attendance, requests, mom, memos,
         // projects, kpi, contracts, payroll, budgeting, royalty, settings
     });

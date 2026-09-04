@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
  * HomeController (Employee)
  * ---------------------------------------------------------------------
  * Halaman utama sisi Karyawan/Manajer. Masih shell/placeholder (Fase 0).
- * Logic clock-in/out (foto + geolocation) masuk di Fase 2.
+ * Logic clock-in/out (foto + geolocation) masuk di Fase 4.
  * ---------------------------------------------------------------------
  */
 class HomeController extends Controller

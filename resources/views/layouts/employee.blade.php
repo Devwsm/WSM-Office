@@ -43,11 +43,11 @@
                 <span>⌂</span><em class="not-italic">Home</em>
             </a>
             <a href="#" class="bottom-nav-wsm-item">
-                {{-- TODO Fase 2 --}}
+                {{-- TODO Fase 4: riwayat absensi --}}
                 <span>◷</span><em class="not-italic">Riwayat</em>
             </a>
             <a href="#" class="bottom-nav-wsm-item center">
-                {{-- TODO Fase 2: tombol clock-in/out cepat --}}
+                {{-- TODO Fase 4: tombol clock-in/out cepat --}}
                 <span class="text-lg leading-none">+</span>
             </a>
             <a href="#" class="bottom-nav-wsm-item">

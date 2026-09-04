@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -16,8 +17,9 @@ use Illuminate\Notifications\Notifiable;
  * Model User
  * ---------------------------------------------------------------------
  * Satu tabel untuk SEMUA role (Owner, Manajer, Karyawan) — dibedakan
- * lewat kolom `role`. `manager_id` self-reference dipakai untuk alur
- * approval cuti (Karyawan -> Manajer -> fallback Owner) di Fase 3.
+ * lewat kolom `role`. `manager_id` self-reference dipakai untuk org-chart
+ * (Fase 2) dan alur approval cuti (Karyawan -> Manajer -> fallback Owner)
+ * di Fase 5.
  * ---------------------------------------------------------------------
  */
 #[Fillable([
@@ -36,7 +38,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected function casts(): array
     {
@@ -68,5 +70,21 @@ class User extends Authenticatable
     public function isManajer(): bool
     {
         return $this->role === 'manajer';
+    }
+
+    public function isHrd(): bool
+    {
+        return $this->role === 'hrd';
+    }
+
+    /** Label role yang enak dibaca (dipakai di badge tabel karyawan). */
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'owner' => 'Owner',
+            'manajer' => 'Manajer',
+            'hrd' => 'HRD',
+            default => 'Karyawan',
+        };
     }
 }

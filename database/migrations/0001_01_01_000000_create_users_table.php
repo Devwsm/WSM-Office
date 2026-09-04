@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['owner', 'manajer', 'karyawan'])->default('karyawan');
+            $table->enum('role', ['owner', 'manajer', 'karyawan', 'hrd'])->default('karyawan');
             $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('division')->nullable();
             $table->string('job_title')->nullable();
@@ -28,6 +28,7 @@ return new class extends Migration
             $table->date('birth_date')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes(); // "nonaktifkan" karyawan, bukan hard delete
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

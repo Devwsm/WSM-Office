@@ -7,11 +7,14 @@ Alpine.js, mengikuti konvensi stack yang sama dengan project lain (Mavnus,
 Map of Feelings).
 
 > Status saat ini: **Fase 0 (Fondasi) selesai**, **Fase 1 (Landing Page &
-> Company Profile) sudah jalan** — Beranda, Tentang Kami, Layanan, Karir,
+> Company Profile) selesai** — Beranda, Tentang Kami, Layanan, Karir,
 > Kontak sudah ada route + view (konten masih hardcode, form kontak belum
-> simpan ke DB). Fase 2 ke atas (Manajemen Karyawan, Rekrutmen, dst.) belum
-> mulai — internal masih shell login + dashboard placeholder untuk role
-> Owner & Karyawan/Manajer.
+> simpan ke DB). **Fase 2 (Manajemen Karyawan & Struktur Organisasi)
+> selesai** — CRUD karyawan/manajer/HRD lengkap dengan soft delete
+> ("nonaktifkan"/aktifkan lagi), assign atasan (`manager_id`), filter +
+> search, dan halaman org-chart. Role `hrd` sudah resmi masuk enum
+> `users.role` (dimajukan dari rencana awal Fase 3). Fase 3 ke atas
+> (Rekrutmen, Absensi, dst.) belum mulai.
 
 ## Tech Stack
 
@@ -70,11 +73,14 @@ Dua layout yang sudah disesuaikan:
   mobile app, hero besar + bottom nav pill melayang (meniru
   `.employee-shell` + `.bottom-nav` di prototype).
 
-Halaman `auth/login.blade.php`, `employee/home.blade.php`, dan
-`owner/dashboard.blade.php` sudah ikut disesuaikan (kartu, tombol, stat
-card warna). Halaman lain yang belum dibuat (Fase 1 ke atas) tinggal pakai
-class-class di atas supaya konsisten — jangan balik pakai `bg-white
-border rounded-xl` polos lagi.
+Halaman `auth/login.blade.php`, `employee/home.blade.php`,
+`owner/dashboard.blade.php`, serta halaman-halaman Fase 2
+(`owner/employees/*.blade.php`, `owner/organization/index.blade.php`,
+komponen `components/org-node.blade.php` untuk render node org-chart
+rekursif) sudah ikut disesuaikan (kartu, tombol, stat card warna).
+Halaman lain yang belum dibuat (Fase 3 ke atas) tinggal pakai class-class
+di atas supaya konsisten — jangan balik pakai `bg-white border
+rounded-xl` polos lagi.
 
 ## Roadmap Modul & Role
 
@@ -84,20 +90,18 @@ prototype `absensi_wsm`/W.O.S 2.0 cuma didesain untuk sistem internal;
 scope sekarang diperluas jadi web publik + rekrutmen, jadi HRD wajib jadi
 role beneran (bukan cuma wacana di dokumen breakdown).
 
-Role saat ini di kolom `users.role` baru 3: `owner`, `manajer`,
-`karyawan` — **`hrd` belum ditambahkan ke enum**, nyusul pas Fase 3
-(Rekrutmen) mulai digarap (nambah value di migration `users` yang masih
-satu file, plus grup route baru `role:hrd,owner` mengikuti pola
-`EnsureRole` yang sudah generic). Manajer sendiri adalah role eksplisit
-yang di-assign Owner (bukan status otomatis dari org-chart) — org-chart
-tetap dipakai untuk menentukan siapa manajer dari siapa (approval
-cuti/izin).
+Role di kolom `users.role` sudah 4 sejak Fase 2: `owner`, `manajer`,
+`karyawan`, `hrd` (dimajukan dari rencana awal "nyusul di Fase 3" karena
+ternyata langsung dibutuhkan begitu CRUD karyawan digarap). Manajer
+sendiri adalah role eksplisit yang di-assign Owner (bukan status otomatis
+dari org-chart) — org-chart tetap dipakai untuk menentukan siapa manajer
+dari siapa (approval cuti/izin nanti).
 
 Urutan fase development:
 
 0. **Fondasi** — Laravel, Tailwind, Vite, login multi-role, middleware akses. ✅
 1. **Landing Page & Company Profile** — Beranda, Tentang Kami, Layanan, Karir, Kontak (publik, tanpa login). ✅ _(route + view sudah ada; konten masih hardcode di Blade, bukan CMS — itu baru Fase 12. Form kontak baru flash message, belum simpan ke tabel/kirim email. Halaman Karir sengaja tampil "belum ada lowongan" karena data pipeline lowongan asli baru Fase 3.)_
-2. **Manajemen Karyawan & Struktur Organisasi** — CRUD karyawan, assign role, org-chart
+2. **Manajemen Karyawan & Struktur Organisasi** — CRUD karyawan, assign role, org-chart. ✅ _(`Owner\EmployeeController` — index dengan filter role/search/nonaktif + pagination, create/edit/update, soft-delete lewat `destroy` yang dilabeli "nonaktifkan" di UI + `restore` untuk aktifkan lagi; bawahan otomatis dioper ke atasan-di-atasnya kalau manager-nya dinonaktifkan. `Owner\OrganizationController` bangun tree org-chart dari `manager_id` di memori (belum perlu CTE, jumlah karyawan masih kecil), di-render rekursif lewat komponen `components/org-node.blade.php`. Validasi lewat `StoreEmployeeRequest`/`UpdateEmployeeRequest`. `DemoSeeder` isi 1 Owner + 1 Manajer + 1 HRD + 2 Karyawan buat coba langsung. Belum ada: foto profil karyawan, riwayat perubahan role/atasan, halaman detail per karyawan.)_
 3. **Rekrutmen (HRD)** — kelola lowongan (nyambung ke halaman Karir), form lamaran publik, pipeline pelamar, convert ke karyawan
 4. **Absensi** — clock in/out, riwayat, rekap
 5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner
@@ -128,9 +132,21 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate
+php artisan db:seed --class=DemoSeeder   # opsional: isi 1 Owner, 1 Manajer, 1 HRD, 2 Karyawan buat testing
 npm install
 npm run dev   # atau: npm run build
 ```
+
+Akun demo dari `DemoSeeder` (password semua `password`, **ganti sebelum
+pakai beneran**):
+
+| Role     | Email              | Nama           |
+| -------- | ------------------ | -------------- |
+| Owner    | `owner@wsm.local`  | Whisnu Santika |
+| Manajer  | `kanaya@wsm.local` | Kanaya         |
+| HRD      | `rania@wsm.local`  | Rania          |
+| Karyawan | `aldora@wsm.local` | Aldora         |
+| Karyawan | `gepeng@wsm.local` | Gepeng         |
 
 Local dev pakai Laragon (Windows) + SQLite. Sebelum deploy ke cPanel,
 jalankan `npm run build` lalu upload file yang berubah + folder
