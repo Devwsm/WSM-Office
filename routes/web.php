@@ -10,9 +10,22 @@
 
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Employee\HomeController;
+use App\Http\Controllers\Public\PageController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn() => redirect()->route('login'));
+// --- Publik (Fase 1) — tanpa login, siapa saja bisa akses ---
+Route::name('public.')->group(function () {
+    Route::get('/', [PageController::class, 'home'])->name('home');
+    Route::get('/tentang-kami', [PageController::class, 'about'])->name('about');
+    Route::get('/layanan', [PageController::class, 'services'])->name('services');
+    Route::get('/karir', [PageController::class, 'careers'])->name('careers');
+    // TODO Fase 3: GET /karir/{lowongan} detail + form lamaran publik
+    Route::get('/kontak', [PageController::class, 'contact'])->name('contact');
+    Route::post('/kontak', [PageController::class, 'storeContact'])
+        ->middleware('throttle:5,1')
+        ->name('contact.store');
+});
+
 require __DIR__ . '/auth.php';
 
 // --- Karyawan & Manajer (Manajer tetap karyawan) ---

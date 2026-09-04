@@ -142,4 +142,21 @@
     .bottom-nav-wsm-item.center.active {
         @apply bg-ink;
     }
+
+    /* Floating navbar tengah-bawah (halaman publik / marketing) */
+    .floating-nav-wsm {
+        @apply fixed inset-x-0 bottom-4 z-30 mx-auto flex w-[calc(100%-24px)] max-w-fit items-center gap-0.5 overflow-x-auto rounded-full border border-black/5 bg-white/95 p-1.5 shadow-[0_14px_40px_rgba(16,16,16,0.14)] backdrop-blur [-ms-overflow-style:none] scrollbar-none [&::-webkit-scrollbar]:hidden;
+    }
+    .floating-nav-wsm-item {
+        @apply flex-none whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-extrabold text-[#5e5951] transition hover:bg-cream;
+    }
+    .floating-nav-wsm-item.active {
+        @apply bg-ink text-white hover:bg-ink;
+    }
+    .floating-nav-wsm-divider {
+        @apply mx-1 h-5 w-px flex-none bg-line;
+    }
+    .floating-nav-wsm-cta {
+        @apply flex-none whitespace-nowrap rounded-full bg-brand-blue px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110;
+    }
 }
