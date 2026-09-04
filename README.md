@@ -79,15 +79,19 @@ border rounded-xl` polos lagi.
 ## Roadmap Modul & Role
 
 Sistem punya bagian **publik** (landing page + karir, tanpa login) dan
-**internal**. Role saat ini di kolom `users.role` baru 3: `owner`,
-`manajer`, `karyawan` — HRD **belum ada sebagai role terpisah** di
-database/middleware, meski disebut sebagai salah satu dari "4 role" di
-dokumen breakdown awal. Kemungkinan HRD nanti jadi salah satu hak akses
-Owner-assign (mirip Manajer) begitu Fase 3 (Rekrutmen) digarap — perlu
-diperjelas sebelum migration role ditambah. Manajer sendiri adalah role
-eksplisit yang di-assign Owner (bukan status otomatis dari org-chart) —
-org-chart tetap dipakai untuk menentukan siapa manajer dari siapa
-(approval cuti/izin).
+**internal** (4 role dengan akun: Karyawan, Manajer, HRD, Owner). Awalnya
+prototype `absensi_wsm`/W.O.S 2.0 cuma didesain untuk sistem internal;
+scope sekarang diperluas jadi web publik + rekrutmen, jadi HRD wajib jadi
+role beneran (bukan cuma wacana di dokumen breakdown).
+
+Role saat ini di kolom `users.role` baru 3: `owner`, `manajer`,
+`karyawan` — **`hrd` belum ditambahkan ke enum**, nyusul pas Fase 3
+(Rekrutmen) mulai digarap (nambah value di migration `users` yang masih
+satu file, plus grup route baru `role:hrd,owner` mengikuti pola
+`EnsureRole` yang sudah generic). Manajer sendiri adalah role eksplisit
+yang di-assign Owner (bukan status otomatis dari org-chart) — org-chart
+tetap dipakai untuk menentukan siapa manajer dari siapa (approval
+cuti/izin).
 
 Urutan fase development:
 
