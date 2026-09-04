@@ -8,6 +8,8 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * NOTE: kolom role/manager_id/dst ditambahkan di sini (bukan migration
+     * baru) karena project masih fresh & belum pernah di-migrate.
      */
     public function up(): void
     {
@@ -17,6 +19,13 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->enum('role', ['owner', 'manajer', 'karyawan'])->default('karyawan');
+            $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('division')->nullable();
+            $table->string('job_title')->nullable();
+            $table->date('join_date')->nullable();
+            $table->unsignedTinyInteger('annual_leave_entitlement')->default(12);
+            $table->date('birth_date')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
@@ -37,9 +46,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

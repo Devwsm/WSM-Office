@@ -1,9 +1,145 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Design tokens — diselaraskan dengan prototype W.O.S 2.0
+ * (absensi_wsm / WOS_2_0_App_v13). Palet "cream & paper" hangat,
+ * aksen warna solid (blue/yellow/green/lime/red), radius besar,
+ * dan tipografi tebal & rapat (Inter).
+ *
+ * Jangan ubah nilai hex di bawah tanpa update juga prototype-nya —
+ * ini sumber kebenaran tunggal untuk warna WSM Office System.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+    /* Netral */
+    --color-cream: #f2efe7;
+    --color-paper: #fbf9f4;
+    --color-ink: #101010;
+    --color-muted: #8b867e;
+    --color-line: #e5dfd5;
+
+    /* Aksen */
+    --color-brand-blue: #3558f4;
+    --color-brand-blue-light: #6e95f5;
+    --color-brand-yellow: #deb92e;
+    --color-brand-yellow-light: #f3e65c;
+    --color-brand-green: #27c84d;
+    --color-brand-lime: #b4ef4b;
+    --color-brand-red: #f16c61;
+
+    /* Radius besar khas WOS */
+    --radius-wsm-sm: 16px;
+    --radius-wsm: 22px;
+    --radius-wsm-lg: 28px;
+    --radius-wsm-xl: 36px;
+
+    --shadow-wsm: 0 18px 60px rgba(16, 16, 16, 0.08);
+}
+
+@layer base {
+    body {
+        @apply bg-cream text-ink antialiased;
+    }
+}
+
+/*
+ * PENTING (Tailwind v4): `@apply` cuma boleh dipakai untuk utility class
+ * bawaan Tailwind, BUKAN untuk custom class lain yang juga didefinisikan
+ * lewat @apply (itu bikin error "Cannot apply unknown utility class").
+ * Makanya di bawah ini tiap class ditulis lengkap sendiri-sendiri,
+ * jangan di-chain ke class lain (mis. `.btn-wsm-black { @apply btn-wsm ... }`).
+ */
+@layer components {
+    /* Tombol pill — meniru .btn di prototype */
+    .btn-wsm-black {
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-extrabold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-45;
+    }
+    .btn-wsm-white {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-3 text-sm font-extrabold text-ink transition hover:bg-cream disabled:cursor-not-allowed disabled:opacity-45;
+    }
+    .btn-wsm-blue {
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45;
+    }
+    .btn-wsm-red {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-[#f1c7c2] bg-[#fff0ee] px-5 py-3 text-sm font-extrabold text-[#a83d35] transition hover:bg-[#ffe6e2] disabled:cursor-not-allowed disabled:opacity-45;
+    }
+
+    /* Kartu */
+    .card-wsm {
+        @apply rounded-wsm-lg border border-line bg-paper p-5;
+    }
+    .card-wsm-white {
+        @apply rounded-wsm border border-line bg-white p-5;
+    }
+
+    /* Kartu statistik warna solid, dipakai di dashboard Owner */
+    .stat-wsm-blue {
+        @apply flex min-h-37.5 flex-col justify-between rounded-wsm-lg bg-brand-blue p-5 text-white;
+    }
+    .stat-wsm-yellow {
+        @apply flex min-h-37.5 flex-col justify-between rounded-wsm-lg bg-brand-yellow p-5 text-[#3a2e00];
+    }
+    .stat-wsm-green {
+        @apply flex min-h-37.5 flex-col justify-between rounded-wsm-lg bg-brand-green p-5 text-white;
+    }
+    .stat-wsm-lime {
+        @apply flex min-h-37.5 flex-col justify-between rounded-wsm-lg bg-brand-lime p-5 text-[#13220d];
+    }
+    .stat-wsm-label {
+        @apply text-[11px] font-black uppercase tracking-wide opacity-90;
+    }
+    .stat-wsm-value {
+        @apply text-4xl font-black tracking-tight;
+    }
+    .stat-wsm-note {
+        @apply text-xs opacity-80;
+    }
+
+    /* Badge status kecil */
+    .badge-wsm-green {
+        @apply inline-flex items-center rounded-full bg-[#e7f8ec] px-2.5 py-1 text-[10px] font-black text-[#14733b];
+    }
+    .badge-wsm-yellow {
+        @apply inline-flex items-center rounded-full bg-[#fff3c6] px-2.5 py-1 text-[10px] font-black text-[#8e6a00];
+    }
+    .badge-wsm-red {
+        @apply inline-flex items-center rounded-full bg-[#ffe3df] px-2.5 py-1 text-[10px] font-black text-[#a53b33];
+    }
+    .badge-wsm-blue {
+        @apply inline-flex items-center rounded-full bg-[#e8edff] px-2.5 py-1 text-[10px] font-black text-brand-blue;
+    }
+    .badge-wsm-gray {
+        @apply inline-flex items-center rounded-full bg-[#eeeae3] px-2.5 py-1 text-[10px] font-black text-[#68635c];
+    }
+
+    /* Input form */
+    .field-label-wsm {
+        @apply block text-[11px] font-extrabold uppercase tracking-wide text-[#5e5952];
+    }
+    .input-wsm {
+        @apply w-full rounded-2xl border border-[#dcd6cd] bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink;
+    }
+
+    /* Bottom nav (layout Karyawan) */
+    .bottom-nav-wsm {
+        @apply fixed inset-x-0 bottom-3.5 z-20 mx-auto grid w-[min(640px,calc(100%-28px))] grid-cols-5 gap-1.5 rounded-[26px] border border-black/5 bg-white/95 p-2 shadow-[0_14px_40px_rgba(16,16,16,0.14)] backdrop-blur;
+    }
+    .bottom-nav-wsm-item {
+        @apply flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[9px] font-extrabold text-[#7d786f];
+    }
+    .bottom-nav-wsm-item.active {
+        @apply bg-ink text-white;
+    }
+    .bottom-nav-wsm-item.center {
+        @apply -translate-y-3.5 bg-brand-green text-white;
+    }
+    .bottom-nav-wsm-item.center.active {
+        @apply bg-ink;
+    }
 }
