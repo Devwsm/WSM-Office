@@ -6,9 +6,12 @@ manajemen karyawan, project & KPI, kontrak kerja, payroll, hingga rekrutmen
 Alpine.js, mengikuti konvensi stack yang sama dengan project lain (Mavnus,
 Map of Feelings).
 
-> Status saat ini: **Fase 0 (Fondasi) selesai**, Fase 1 (Landing Page &
-> Company Profile) belum dimulai — baru shell login + dashboard placeholder
-> untuk role Owner & Karyawan.
+> Status saat ini: **Fase 0 (Fondasi) selesai**, **Fase 1 (Landing Page &
+> Company Profile) sudah jalan** — Beranda, Tentang Kami, Layanan, Karir,
+> Kontak sudah ada route + view (konten masih hardcode, form kontak belum
+> simpan ke DB). Fase 2 ke atas (Manajemen Karyawan, Rekrutmen, dst.) belum
+> mulai — internal masih shell login + dashboard placeholder untuk role
+> Owner & Karyawan/Manajer.
 
 ## Tech Stack
 
@@ -76,15 +79,20 @@ border rounded-xl` polos lagi.
 ## Roadmap Modul & Role
 
 Sistem punya bagian **publik** (landing page + karir, tanpa login) dan
-**internal** (4 role dengan akun: Karyawan, Manajer, HRD, Owner). Manajer
-adalah role eksplisit yang di-assign Owner (bukan status otomatis dari
-org-chart) — org-chart tetap dipakai untuk menentukan siapa manajer dari
-siapa (approval cuti/izin).
+**internal**. Role saat ini di kolom `users.role` baru 3: `owner`,
+`manajer`, `karyawan` — HRD **belum ada sebagai role terpisah** di
+database/middleware, meski disebut sebagai salah satu dari "4 role" di
+dokumen breakdown awal. Kemungkinan HRD nanti jadi salah satu hak akses
+Owner-assign (mirip Manajer) begitu Fase 3 (Rekrutmen) digarap — perlu
+diperjelas sebelum migration role ditambah. Manajer sendiri adalah role
+eksplisit yang di-assign Owner (bukan status otomatis dari org-chart) —
+org-chart tetap dipakai untuk menentukan siapa manajer dari siapa
+(approval cuti/izin).
 
 Urutan fase development:
 
 0. **Fondasi** — Laravel, Tailwind, Vite, login multi-role, middleware akses. ✅
-1. **Landing Page & Company Profile** — Beranda, Tentang Kami, Layanan, Kontak (publik, tanpa login)
+1. **Landing Page & Company Profile** — Beranda, Tentang Kami, Layanan, Karir, Kontak (publik, tanpa login). ✅ _(route + view sudah ada; konten masih hardcode di Blade, bukan CMS — itu baru Fase 12. Form kontak baru flash message, belum simpan ke tabel/kirim email. Halaman Karir sengaja tampil "belum ada lowongan" karena data pipeline lowongan asli baru Fase 3.)_
 2. **Manajemen Karyawan & Struktur Organisasi** — CRUD karyawan, assign role, org-chart
 3. **Rekrutmen (HRD)** — kelola lowongan (nyambung ke halaman Karir), form lamaran publik, pipeline pelamar, convert ke karyawan
 4. **Absensi** — clock in/out, riwayat, rekap
