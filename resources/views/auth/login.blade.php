@@ -16,8 +16,9 @@
 </head>
 
 <body class="flex min-h-screen items-center justify-center bg-cream p-4 antialiased">
-    <div
-        class="w-full max-w-107.5 rounded-4xl border border-line bg-paper p-7 shadow-[0_18px_60px_rgba(16,16,16,0.08)]">
+    @include('partials.flash-data')
+
+    <div class="w-full max-w-107.5 rounded-4xl border border-line bg-paper p-7 shadow-wsm">
         <div class="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-ink text-xs font-black text-white">
             WSM
         </div>

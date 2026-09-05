@@ -19,6 +19,8 @@
 </head>
 
 <body class="bg-cream text-ink antialiased">
+    @include('partials.flash-data')
+
     @php
         $navItems = [
             ['route' => 'public.home', 'label' => 'Beranda'],

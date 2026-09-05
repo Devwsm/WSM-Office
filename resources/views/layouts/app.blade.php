@@ -19,6 +19,8 @@
 </head>
 
 <body class="bg-cream text-ink antialiased">
+    @include('partials.flash-data')
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
             class="fixed inset-y-0 left-0 z-30 flex h-screen w-64 -translate-x-full flex-col border-r border-line bg-paper p-4 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0">
@@ -66,7 +68,8 @@
                         <span class="text-[10px] capitalize text-muted">{{ auth()->user()->role }}</span>
                     </div>
                 </div>
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" data-confirm="Kamu akan keluar dari akun ini."
+                    data-confirm-title="Keluar akun?" data-confirm-button="Ya, keluar">
                     @csrf
                     <button class="btn-wsm-white w-full py-2.5! text-xs">Keluar</button>
                 </form>

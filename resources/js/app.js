@@ -3,6 +3,7 @@
  * toggle, dsb) — mirip gaya versi native tapi lebih rapi.
  */
 import Alpine from "alpinejs";
+import "./alerts";
 
 window.Alpine = Alpine;
 Alpine.start();

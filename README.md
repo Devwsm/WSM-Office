@@ -15,6 +15,16 @@ Map of Feelings).
 > search, dan halaman org-chart. Role `hrd` sudah resmi masuk enum
 > `users.role` (dimajukan dari rencana awal Fase 3). Fase 3 ke atas
 > (Rekrutmen, Absensi, dst.) belum mulai.
+>
+> **Update tambahan (di luar nomor fase, cross-cutting):** semua alert,
+> validasi, dan konfirmasi aksi destruktif (keluar akun, nonaktifkan/
+> aktifkan karyawan) sudah pindah dari `alert()`/`confirm()` bawaan
+> browser ke SweetAlert2 lewat `resources/js/alerts.js` — lihat bagian
+> [Alert & Konfirmasi (SweetAlert)](#alert--konfirmasi-sweetalert).
+> Halaman error custom (`404`, `403`, `500`, `503`) juga sudah ada,
+> termasuk `503` yang otomatis beda tampilan saat `php artisan down`
+> (maintenance) vs gangguan layanan biasa — lihat
+> [Halaman Error Custom](#halaman-error-custom).
 
 ## Tech Stack
 
@@ -117,13 +127,88 @@ Urutan fase development:
 Detail lengkap tiap fase dan peta halaman per role ada di dokumen breakdown
 project (dibagikan terpisah oleh tim, bukan bagian repo ini).
 
-## Konvensi Kode
+## Alert & Konfirmasi (SweetAlert)
+
+Semua notifikasi (flash message sukses/gagal, ringkasan error validasi)
+dan semua konfirmasi sebelum aksi destruktif sekarang pakai
+**SweetAlert2**, dipusatkan di `resources/js/alerts.js` (di-_import_ dari
+`resources/js/app.js`, jalan otomatis di semua halaman yang me-load
+`@vite(['resources/js/app.js'])`).
+
+**Flash & validasi otomatis** — cukup taruh
+`@include('partials.flash-data')` sekali di layout (sudah ada di
+`layouts.app`, `layouts.employee`, `layouts.public`, dan
+`auth/login.blade.php`). Partial itu nulis `session('status')`,
+`session('error')`, `session('warning')`, dan `$errors->all()` jadi JSON;
+`alerts.js` yang baca lalu tampilkan:
+
+- `session('status')` → toast hijau
+- `session('error')` / `session('warning')` → toast merah/kuning
+- 1 pesan validasi → toast merah
+- 2+ pesan validasi → popup checklist "Ada isian yang belum sesuai"
+
+Kalau bikin controller/halaman baru yang pakai layout di atas, flash
+message otomatis kepakai — tidak perlu nulis blade banner manual lagi.
+
+**Konfirmasi sebelum submit** — tinggal tambah atribut `data-confirm` di
+`<form>`, tidak perlu JS tambahan:
+
+```blade
+<form method="POST" action="{{ route('owner.employees.destroy', $employee) }}"
+    data-confirm="{{ $employee->name }} tidak akan bisa login lagi, tapi riwayat datanya tetap tersimpan."
+    data-confirm-title="Nonaktifkan {{ $employee->name }}?"
+    data-confirm-button="Ya, nonaktifkan" data-confirm-danger="1">
+    @csrf
+    @method('DELETE')
+    <button type="submit">Nonaktifkan</button>
+</form>
+```
+
+Atribut yang tersedia: `data-confirm` (teks isi), `data-confirm-title`,
+`data-confirm-button`, `data-cancel-button`, `data-confirm-danger="1"`
+(tombol konfirmasi jadi merah, dipakai untuk aksi yang sifatnya
+menghapus/menonaktifkan). Sudah dipakai di: form keluar akun
+(`layouts.app`, `layouts.employee`) dan form nonaktifkan/aktifkan
+karyawan (`owner/employees/index.blade.php`).
+
+Untuk manggil dari JS langsung (mis. dalam Alpine `@click`), ada
+`window.WsmAlert` dengan method `success()`, `error()`, `warning()`,
+`validationSummary(messages)`, dan `confirm({ title, text, ... })`
+(return Promise, lihat isi `alerts.js` untuk detail).
+
+## Halaman Error Custom
+
+Ada di `resources/views/errors/` (`404`, `403`, `500`, `503`) + layout
+mandiri `resources/views/layouts/error.blade.php` (tidak `extends
+layouts.app`, karena error bisa kejadian sebelum ada user login). Gaya
+visualnya sudah disamakan ke brand WSM (lihat token desain di atas).
+
+Catatan penting soal kapan halaman ini benar-benar muncul:
+
+- `404`, `403`, `503` → langsung kepakai kapan saja, termasuk saat
+  `APP_DEBUG=true` (dev lokal). Untuk coba `403`, akses halaman yang
+  butuh role lain dari akun yang lagi login; untuk `404`, akses URL
+  ngasal; untuk `503`, jalankan `php artisan down`.
+- `500` (generic `Throwable`, bukan `abort(500)`) → **hanya** muncul
+  kalau `APP_DEBUG=false` di `.env`. Selama dev lokal (`APP_DEBUG=true`)
+  Laravel selalu nunjukin halaman Ignition/Whoops yang detail, itu
+  perilaku bawaan framework, bukan berarti custom view-nya salah/tidak
+  kepasang. Kalau mau coba tampilannya di lokal: set sementara
+  `APP_DEBUG=false` lalu picu error apa saja, atau panggil
+  `abort(500)` di satu route buat tes.
+- `503` otomatis beda konten: `resources/views/errors/503.blade.php`
+  cek `app()->isDownForMaintenance()` — kalau `true` (lagi
+  `php artisan down`) tampil "Sedang Maintenance" + auto-reload tiap 30
+  detik; kalau bukan (503 dari sumber lain) tampil "Layanan Tidak
+  Tersedia" generik.
 
 - `Auth::id()` Facade, bukan `auth()->id()` helper (kompatibilitas Intelephense)
 - `asset('storage/...')`, bukan `Storage::disk('public')->url()`
 - Role dicek lewat middleware `role:...` (`App\Http\Middleware\EnsureRole`), bukan Gate/Policy terpisah, untuk sekarang
 - Satu tabel `users` untuk semua role internal (dibedakan kolom `role`), `manager_id` self-reference untuk alur approval
 - Route dikelompokkan per role di `routes/web.php` — halaman baru masuk ke grup yang sesuai, jangan lepas di luar grup
+- Notifikasi & konfirmasi pakai SweetAlert (`resources/js/alerts.js`), **jangan** balik pakai `alert()`/`confirm()` bawaan browser — lihat [Alert & Konfirmasi (SweetAlert)](#alert--konfirmasi-sweetalert)
+- Input tanggal yang secara logis tidak boleh di masa depan (mis. `birth_date`) dikasih atribut `max` di sisi HTML selain validasi server (`before:today` dsb.) — biar salah ketik ketauan sebelum submit, bukan cuma setelah
 
 ## Setup Lokal
 
@@ -151,3 +236,23 @@ pakai beneran**):
 Local dev pakai Laragon (Windows) + SQLite. Sebelum deploy ke cPanel,
 jalankan `npm run build` lalu upload file yang berubah + folder
 `public/build/` — jangan pernah sentuh database live secara langsung.
+
+## Langkah Selanjutnya
+
+1. **Tarik update SweetAlert + error page ini** — `npm install` (biar
+   `sweetalert2` ke-install dari `package.json`), lalu `npm run dev`.
+2. **Uji coba manual** menu Karyawan: tambah karyawan dengan data valid
+   (harusnya toast hijau + masuk ke list), lalu sengaja bikin salah 2+
+   field sekaligus (biar lihat popup checklist-nya), lalu coba tombol
+   Nonaktifkan/Aktifkan & Keluar akun (harus muncul dialog konfirmasi
+   dulu sebelum benar-benar jalan).
+3. **Cek 4 halaman error** sesuai catatan di atas (403 lewat akses beda
+   role, 404 lewat URL ngasal, 503 lewat `php artisan down`, 500 dengan
+   `APP_DEBUG=false` sementara atau `abort(500)` di satu route tes).
+4. Setelah semua dicek beres, lanjut ke **Fase 3: Rekrutmen (HRD)** —
+   kelola lowongan yang nyambung ke halaman Karir publik, form lamaran,
+   pipeline pelamar, sampai convert pelamar jadi karyawan (pakai
+   `EmployeeController` yang sudah ada di Fase 2).
+5. Kalau nanti nambah form/aksi destruktif baru di fase-fase berikutnya,
+   ikuti pola `data-confirm` yang sudah ada supaya semua konsisten,
+   nggak perlu bikin ulang wiring JS-nya.

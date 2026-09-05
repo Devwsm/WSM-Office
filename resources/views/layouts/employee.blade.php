@@ -17,6 +17,8 @@
 </head>
 
 <body class="bg-cream text-ink antialiased">
+    @include('partials.flash-data')
+
     <div class="min-h-screen pb-28">
         <div class="mx-auto max-w-140 px-4 pb-10 pt-5">
             <header class="mb-8 flex items-center justify-between">
@@ -26,7 +28,8 @@
                     </div>
                     <span class="text-xs font-extrabold text-muted">{{ $title ?? 'WSM' }}</span>
                 </div>
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" data-confirm="Kamu akan keluar dari akun ini."
+                    data-confirm-title="Keluar akun?" data-confirm-button="Ya, keluar">
                     @csrf
                     <button class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd] text-xs font-black">
                         ⏻

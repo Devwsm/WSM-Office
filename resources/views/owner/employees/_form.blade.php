@@ -90,7 +90,7 @@
 
     <div>
         <label class="field-label-wsm mb-1.5">Tanggal Lahir</label>
-        <input type="date" name="birth_date"
+        <input type="date" name="birth_date" max="{{ now()->subDay()->format('Y-m-d') }}"
             value="{{ old('birth_date', optional($employee?->birth_date)->format('Y-m-d')) }}" class="input-wsm">
     </div>
 </div>

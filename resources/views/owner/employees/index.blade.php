@@ -16,17 +16,6 @@
         <a href="{{ route('owner.employees.create') }}" class="btn-wsm-black">+ Tambah Karyawan</a>
     </div>
 
-    @if (session('status'))
-        <div class="mb-4 rounded-2xl border border-[#bfe8c9] bg-[#e7f8ec] px-4 py-3 text-sm font-semibold text-[#14733b]">
-            {{ session('status') }}
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="mb-4 rounded-2xl border border-[#f1c7c2] bg-[#fff0ee] px-4 py-3 text-sm font-semibold text-[#a83d35]">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <form method="GET" class="card-wsm-white mb-5 flex flex-wrap items-end gap-3">
         <div class="min-w-45 flex-1">
             <label class="field-label-wsm mb-1.5">Cari</label>
@@ -83,7 +72,9 @@
                         <td class="px-5 py-4">
                             <div class="flex justify-end gap-2">
                                 @if ($employee->trashed())
-                                    <form method="POST" action="{{ route('owner.employees.restore', $employee->id) }}">
+                                    <form method="POST" action="{{ route('owner.employees.restore', $employee->id) }}"
+                                        data-confirm="{{ $employee->name }} akan bisa login & muncul lagi di daftar aktif."
+                                        data-confirm-title="Aktifkan kembali?" data-confirm-button="Ya, aktifkan">
                                         @csrf
                                         <button type="submit" class="btn-wsm-white py-2! px-3.5! text-xs">Aktifkan</button>
                                     </form>
@@ -91,7 +82,9 @@
                                     <a href="{{ route('owner.employees.edit', $employee) }}"
                                         class="btn-wsm-white py-2! px-3.5! text-xs">Edit</a>
                                     <form method="POST" action="{{ route('owner.employees.destroy', $employee) }}"
-                                        onsubmit="return confirm('Nonaktifkan {{ $employee->name }}?');">
+                                        data-confirm="{{ $employee->name }} tidak akan bisa login lagi, tapi riwayat datanya tetap tersimpan."
+                                        data-confirm-title="Nonaktifkan {{ $employee->name }}?"
+                                        data-confirm-button="Ya, nonaktifkan" data-confirm-danger="1">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
