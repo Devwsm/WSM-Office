@@ -250,27 +250,29 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 
 ## Langkah Selanjutnya
 
-1. **Tarik update Fase 3** — jalankan migration baru:
-   `php artisan migrate` (nambah tabel `job_openings` & `job_applications`,
-   tidak mengubah tabel lain, aman dijalankan di database yang sudah ada
-   isinya).
-2. **Uji coba alur Rekrutmen dari 3 sisi:**
-    - Owner/HRD: login → buat lowongan baru (status "Tayang") → cek muncul
-      di `/karir` publik dan link "Lihat Publik" di daftar lowongan jalan.
-    - Publik: buka detail lowongan, kirim lamaran (nama/email/pesan) →
-      harus dapat toast sukses.
-    - Owner/HRD: buka menu Pelamar → lamaran tadi harus muncul dengan
-      status "Baru" → ubah status bertahap sampai "Diterima" → tombol
-      "Terima & Buatkan Akun" muncul → isi form → cek akun karyawan baru
-      kebentuk beneran (bisa login, muncul di menu Karyawan Owner).
-3. **Login sebagai akun ber-role `hrd`** buat mastiin redirect & sidebar-nya
-   benar (harus langsung ke `/rekrutmen/pelamar`, sidebar cuma nampilin
-   menu Pelamar & Lowongan, bukan menu Owner). Kalau belum ada akun HRD
-   buat testing, bikin dulu lewat menu Karyawan (Owner) atau lewat proses
-   convert pelamar di atas dengan role HRD.
-4. Setelah semua dicek beres, lanjut ke **Fase 4: Absensi** — clock-in/out
-   (foto + geolocation) yang tombolnya di `employee/home.blade.php` masih
-   `disabled` sekarang.
-5. Kalau nanti nambah form/aksi destruktif baru, tetap ikuti pola
-   `data-confirm` yang sudah ada (lihat contoh di
-   `recruitment/applications/convert.blade.php`).
+Fase 0–3 sudah selesai dan diverifikasi sinkron dengan kode (migration,
+route, controller, view semua match dengan status di atas). Fase
+berikutnya yang belum digarap: **Fase 4 — Absensi**.
+
+1. **Migration `attendances`** — kolom minimal: `user_id` (FK ke `users`),
+   `clock_in_at`, `clock_out_at` (nullable), `clock_in_lat`/`clock_in_lng`,
+   `clock_out_lat`/`clock_out_lng` (geolocation), `clock_in_photo`/
+   `clock_out_photo` (path storage), `status` (`hadir`/`telat`/`izin`/
+   `alpha` — nyambung ke Fase 5 nanti), `notes`. Satu baris per hari per
+   karyawan (unique `user_id`+tanggal) supaya gampang query rekap.
+2. **`Employee\AttendanceController`** — dua aksi utama: `clockIn()` dan
+   `clockOut()`, terima foto (base64 dari kamera device atau file upload)
+    - koordinat dari `navigator.geolocation` browser. Tombol yang sekarang
+      `disabled` di `employee/home.blade.php` ("Absen Masuk (aktif di
+      Fase 4)") tinggal disambungkan ke sini.
+3. **Halaman riwayat absensi karyawan** — list per bulan, status badge
+   pakai class `.badge-wsm-*` yang sudah ada, bukan style baru.
+4. **Rekap untuk Manajer/Owner** — siapa yang belum absen hari ini, telat
+   berapa kali bulan ini, dsb. Bisa mulai dari versi sederhana dulu
+   (tabel per karyawan), grafik/statistik nanti kalau sudah ada datanya.
+5. Ikuti pola yang sudah mapan di project ini: SweetAlert untuk feedback
+   (`resources/js/alerts.js`, `data-confirm` untuk aksi yang perlu
+   konfirmasi), `Auth::id()` bukan `auth()->id()`, warna & komponen dari
+   `@theme` yang sudah ada — jangan bikin style baru.
+6. Kalau desain kamera/geolocation di prototype `absensi_wsm` belum jelas
+   polanya, cek dulu `WOS_2_0_STANDALONE_v13.html` sebelum ngoding UI-nya.
