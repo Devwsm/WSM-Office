@@ -1,11 +1,13 @@
 {{--
     layouts/app.blade.php
     ---------------------------------------------------------------------
-    Layout untuk sisi Owner & Manajer (dashboard dengan sidebar).
+    Layout untuk sisi Owner, Manajer & HRD (dashboard dengan sidebar).
     Gaya visual disamakan dengan prototype W.O.S 2.0 (absensi_wsm):
     palet cream/paper, brand mark hitam, nav pill aktif hitam.
-    Sidebar SAAT INI statis — mulai Fase 12 (Dashboard Access) harus
-    menyesuaikan otomatis sesuai akses user.
+    Sidebar sudah disesuaikan per role (Fase 3) — menu Karyawan/Struktur
+    Organisasi cuma untuk Owner, menu Rekrutmen untuk HRD & Owner. Mulai
+    Fase 12 (Dashboard Access) baru diatur granular lewat pengaturan,
+    bukan hardcode match role di sini.
     ---------------------------------------------------------------------
 --}}
 <!DOCTYPE html>
@@ -35,18 +37,30 @@
             </div>
 
             <nav class="grid gap-1.5 text-sm">
-                <a href="{{ route('owner.dashboard') }}"
-                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                    Dashboard
-                </a>
-                <a href="{{ route('owner.employees.index') }}"
-                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                    Karyawan
-                </a>
-                <a href="{{ route('owner.organization') }}"
-                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                    Struktur Organisasi
-                </a>
+                @if (auth()->user()->isOwner())
+                    <a href="{{ route('owner.dashboard') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Dashboard
+                    </a>
+                    <a href="{{ route('owner.employees.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Karyawan
+                    </a>
+                    <a href="{{ route('owner.organization') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Struktur Organisasi
+                    </a>
+                @endif
+                @if (auth()->user()->isHrd() || auth()->user()->isOwner())
+                    <a href="{{ route('recruitment.applications.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'applications' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Pelamar
+                    </a>
+                    <a href="{{ route('recruitment.openings.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'openings' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Lowongan
+                    </a>
+                @endif
                 {{-- TODO Fase 4: menu Attendance --}}
                 {{-- TODO Fase 5: menu Requests / Team Approval --}}
                 {{-- TODO Fase 6: menu MoM & Memos --}}

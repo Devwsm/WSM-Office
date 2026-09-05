@@ -13,13 +13,23 @@ Map of Feelings).
 > selesai** — CRUD karyawan/manajer/HRD lengkap dengan soft delete
 > ("nonaktifkan"/aktifkan lagi), assign atasan (`manager_id`), filter +
 > search, dan halaman org-chart. Role `hrd` sudah resmi masuk enum
-> `users.role` (dimajukan dari rencana awal Fase 3). Fase 3 ke atas
-> (Rekrutmen, Absensi, dst.) belum mulai.
+> `users.role` (dimajukan dari rencana awal Fase 3). **Fase 3 (Rekrutmen)
+> selesai** — HRD & Owner kelola lowongan (`job_openings`, draft/
+> published/closed, slug otomatis buat link publik), halaman Karir publik
+> sekarang nampilin lowongan asli + halaman detail & form lamaran
+> (`job_applications`, masih teks: nama/email/telepon/pesan — upload CV
+> menyusul), panel Pelamar dengan pipeline status (Baru → Ditinjau →
+> Interview → Ditawari → Diterima/Ditolak) + catatan internal, dan tombol
+> "Terima & Buatkan Akun" buat convert pelamar diterima jadi akun
+> karyawan asli. HRD sekarang landing ke `/rekrutmen/pelamar` setelah
+> login (bukan `/app/home` lagi). Fase 4 ke atas (Absensi, dst.) belum
+> mulai.
 >
 > **Update tambahan (di luar nomor fase, cross-cutting):** semua alert,
 > validasi, dan konfirmasi aksi destruktif (keluar akun, nonaktifkan/
-> aktifkan karyawan) sudah pindah dari `alert()`/`confirm()` bawaan
-> browser ke SweetAlert2 lewat `resources/js/alerts.js` — lihat bagian
+> aktifkan karyawan, buatkan akun dari pelamar) sudah pindah dari
+> `alert()`/`confirm()` bawaan browser ke SweetAlert2 lewat
+> `resources/js/alerts.js` — lihat bagian
 > [Alert & Konfirmasi (SweetAlert)](#alert--konfirmasi-sweetalert).
 > Halaman error custom (`404`, `403`, `500`, `503`) juga sudah ada,
 > termasuk `503` yang otomatis beda tampilan saat `php artisan down`
@@ -209,6 +219,7 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 - Route dikelompokkan per role di `routes/web.php` — halaman baru masuk ke grup yang sesuai, jangan lepas di luar grup
 - Notifikasi & konfirmasi pakai SweetAlert (`resources/js/alerts.js`), **jangan** balik pakai `alert()`/`confirm()` bawaan browser — lihat [Alert & Konfirmasi (SweetAlert)](#alert--konfirmasi-sweetalert)
 - Input tanggal yang secara logis tidak boleh di masa depan (mis. `birth_date`) dikasih atribut `max` di sisi HTML selain validasi server (`before:today` dsb.) — biar salah ketik ketauan sebelum submit, bukan cuma setelah
+- Model yang punya halaman publik dengan URL berbasis slug (mis. `JobOpening`) override `getRouteKeyName()` jadi `'slug'` — jangan cuma taruh `{param:slug}` di routes/web.php doang, soalnya `route()` helper generate URL pakai `getRouteKeyName()` model, bukan suffix binding di route
 
 ## Setup Lokal
 
@@ -239,20 +250,27 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 
 ## Langkah Selanjutnya
 
-1. **Tarik update SweetAlert + error page ini** — `npm install` (biar
-   `sweetalert2` ke-install dari `package.json`), lalu `npm run dev`.
-2. **Uji coba manual** menu Karyawan: tambah karyawan dengan data valid
-   (harusnya toast hijau + masuk ke list), lalu sengaja bikin salah 2+
-   field sekaligus (biar lihat popup checklist-nya), lalu coba tombol
-   Nonaktifkan/Aktifkan & Keluar akun (harus muncul dialog konfirmasi
-   dulu sebelum benar-benar jalan).
-3. **Cek 4 halaman error** sesuai catatan di atas (403 lewat akses beda
-   role, 404 lewat URL ngasal, 503 lewat `php artisan down`, 500 dengan
-   `APP_DEBUG=false` sementara atau `abort(500)` di satu route tes).
-4. Setelah semua dicek beres, lanjut ke **Fase 3: Rekrutmen (HRD)** —
-   kelola lowongan yang nyambung ke halaman Karir publik, form lamaran,
-   pipeline pelamar, sampai convert pelamar jadi karyawan (pakai
-   `EmployeeController` yang sudah ada di Fase 2).
-5. Kalau nanti nambah form/aksi destruktif baru di fase-fase berikutnya,
-   ikuti pola `data-confirm` yang sudah ada supaya semua konsisten,
-   nggak perlu bikin ulang wiring JS-nya.
+1. **Tarik update Fase 3** — jalankan migration baru:
+   `php artisan migrate` (nambah tabel `job_openings` & `job_applications`,
+   tidak mengubah tabel lain, aman dijalankan di database yang sudah ada
+   isinya).
+2. **Uji coba alur Rekrutmen dari 3 sisi:**
+    - Owner/HRD: login → buat lowongan baru (status "Tayang") → cek muncul
+      di `/karir` publik dan link "Lihat Publik" di daftar lowongan jalan.
+    - Publik: buka detail lowongan, kirim lamaran (nama/email/pesan) →
+      harus dapat toast sukses.
+    - Owner/HRD: buka menu Pelamar → lamaran tadi harus muncul dengan
+      status "Baru" → ubah status bertahap sampai "Diterima" → tombol
+      "Terima & Buatkan Akun" muncul → isi form → cek akun karyawan baru
+      kebentuk beneran (bisa login, muncul di menu Karyawan Owner).
+3. **Login sebagai akun ber-role `hrd`** buat mastiin redirect & sidebar-nya
+   benar (harus langsung ke `/rekrutmen/pelamar`, sidebar cuma nampilin
+   menu Pelamar & Lowongan, bukan menu Owner). Kalau belum ada akun HRD
+   buat testing, bikin dulu lewat menu Karyawan (Owner) atau lewat proses
+   convert pelamar di atas dengan role HRD.
+4. Setelah semua dicek beres, lanjut ke **Fase 4: Absensi** — clock-in/out
+   (foto + geolocation) yang tombolnya di `employee/home.blade.php` masih
+   `disabled` sekarang.
+5. Kalau nanti nambah form/aksi destruktif baru, tetap ikuti pola
+   `data-confirm` yang sudah ada (lihat contoh di
+   `recruitment/applications/convert.blade.php`).

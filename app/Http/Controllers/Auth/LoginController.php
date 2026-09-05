@@ -10,9 +10,10 @@ use Illuminate\Validation\ValidationException;
 /**
  * LoginController
  * ---------------------------------------------------------------------
- * Login memakai 1 form untuk semua role (Owner/Manajer/Karyawan).
+ * Login memakai 1 form untuk semua role (Owner/Manajer/Karyawan/HRD).
  * Setelah berhasil login, redirectPath() menentukan halaman awal sesuai
- * role — Owner ke /owner/dashboard, Manajer & Karyawan ke /app/home.
+ * role — Owner ke /owner/dashboard, HRD ke /rekrutmen/pelamar (kerjaan
+ * utamanya sekarang), Manajer & Karyawan ke /app/home.
  * ---------------------------------------------------------------------
  */
 class LoginController extends Controller
@@ -53,6 +54,7 @@ class LoginController extends Controller
     {
         return match (Auth::user()->role) {
             'owner' => route('owner.dashboard'),
+            'hrd' => route('recruitment.applications.index'),
             default => route('employee.home'),
         };
     }

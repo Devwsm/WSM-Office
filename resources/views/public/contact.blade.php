@@ -32,18 +32,6 @@
             </div>
 
             <div class="card-wsm">
-                @if (session('contactSent'))
-                    <div class="mb-5 rounded-2xl bg-[#e7f8ec] px-4 py-3 text-sm font-bold text-[#14733b]">
-                        Pesan kamu terkirim. Tim kami akan segera menghubungi balik.
-                    </div>
-                @endif
-
-                @if ($errors->any())
-                    <div class="mb-5 rounded-2xl border border-[#f1c7c2] bg-[#fff0ee] px-4 py-3 text-sm text-[#a83d35]">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
-
                 <form method="POST" action="{{ route('public.contact.store') }}" class="grid gap-4">
                     @csrf
                     <div class="grid gap-1.5">

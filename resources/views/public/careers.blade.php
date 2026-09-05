@@ -1,10 +1,9 @@
 {{--
     public/careers.blade.php — Karir
     ---------------------------------------------------------------------
-    Fase 1: halaman & route-nya sudah ada, tapi datanya masih kosong
-    ($openings dari PageController@careers). Detail lowongan + form
-    lamaran publik baru dibangun di Fase 3 (Rekrutmen) begitu tabel
-    `job_openings` & `applicants` ada.
+    Fase 3: data lowongan asli dari job_openings (status = published),
+    lihat PageController@careers. Detail + form lamaran di
+    public/career-show.blade.php.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.public', ['title' => 'Karir'])
@@ -22,7 +21,7 @@
 
     <section class="border-t border-line bg-paper px-4 py-10 sm:px-6 sm:py-14">
         <div class="mx-auto max-w-4xl">
-            @if (count($openings) === 0)
+            @if ($openings->isEmpty())
                 <div class="card-wsm-white text-center">
                     <p class="text-lg font-black">Belum ada lowongan yang dibuka</p>
                     <p class="mx-auto mt-2 max-w-sm text-sm text-muted">
@@ -32,7 +31,23 @@
                     <a href="{{ route('public.contact') }}" class="btn-wsm-black mt-6 inline-flex">Hubungi Kami</a>
                 </div>
             @else
-                {{-- TODO Fase 3: list lowongan (@foreach $openings) + link ke halaman detail --}}
+                <div class="grid gap-3.5">
+                    @foreach ($openings as $opening)
+                        <a href="{{ route('public.careers.show', $opening) }}"
+                            class="card-wsm-white flex flex-wrap items-center justify-between gap-3 hover:bg-white">
+                            <div>
+                                <p class="text-base font-black">{{ $opening->title }}</p>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                                    <span class="badge-wsm-blue">{{ $opening->employmentTypeLabel() }}</span>
+                                    @if ($opening->division)
+                                        <span class="badge-wsm-gray">{{ $opening->division }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <span class="btn-wsm-white text-xs">Lihat Detail &amp; Lamar</span>
+                        </a>
+                    @endforeach
+                </div>
             @endif
         </div>
     </section>
