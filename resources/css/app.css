@@ -159,4 +159,21 @@
     .floating-nav-wsm-cta {
         @apply flex-none whitespace-nowrap rounded-full bg-brand-blue px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110;
     }
+
+    /* Fase 4 — widget absen (kartu di employee/home.blade.php) */
+    .mode-toggle-wsm {
+        @apply grid grid-cols-2 gap-2;
+    }
+    .mode-toggle-wsm-btn {
+        @apply rounded-2xl bg-[#e8e3d9] px-3 py-2.5 text-[11px] font-extrabold text-[#5e5951] transition;
+    }
+    .mode-toggle-wsm-btn.active {
+        @apply bg-ink text-white;
+    }
+    .geo-status-wsm {
+        @apply flex items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3.5;
+    }
+    .wsm-map {
+        @apply h-52 w-full overflow-hidden rounded-2xl border border-line bg-[#ece7dd];
+    }
 }

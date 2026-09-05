@@ -45,12 +45,11 @@
                 class="bottom-nav-wsm-item {{ ($navActive ?? '') === 'home' ? 'active' : '' }}">
                 <span>⌂</span><em class="not-italic">Home</em>
             </a>
-            <a href="#" class="bottom-nav-wsm-item">
-                {{-- TODO Fase 4: riwayat absensi --}}
+            <a href="{{ route('employee.attendance.history') }}"
+                class="bottom-nav-wsm-item {{ ($navActive ?? '') === 'riwayat' ? 'active' : '' }}">
                 <span>◷</span><em class="not-italic">Riwayat</em>
             </a>
-            <a href="#" class="bottom-nav-wsm-item center">
-                {{-- TODO Fase 4: tombol clock-in/out cepat --}}
+            <a href="{{ route('employee.home') }}#attendance-card" class="bottom-nav-wsm-item center">
                 <span class="text-lg leading-none">+</span>
             </a>
             <a href="#" class="bottom-nav-wsm-item">

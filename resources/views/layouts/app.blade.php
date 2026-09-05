@@ -61,7 +61,10 @@
                         Lowongan
                     </a>
                 @endif
-                {{-- TODO Fase 4: menu Attendance --}}
+                <a href="{{ route('attendance.recap.index') }}"
+                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                    Absensi
+                </a>
                 {{-- TODO Fase 5: menu Requests / Team Approval --}}
                 {{-- TODO Fase 6: menu MoM & Memos --}}
                 {{-- TODO Fase 7: menu Projects & Timeline --}}

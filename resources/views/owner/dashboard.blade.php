@@ -16,15 +16,16 @@
         <div class="stat-wsm-blue">
             <span class="stat-wsm-label">Kehadiran Hari Ini</span>
             <div>
-                <strong class="stat-wsm-value">—</strong>
-                <p class="stat-wsm-note mt-1">Data aktif mulai Fase 4</p>
+                <strong class="stat-wsm-value">{{ $hadirHariIni }}/{{ $totalKaryawan }}</strong>
+                <p class="stat-wsm-note mt-1"><a href="{{ route('attendance.recap.index') }}" class="underline">Lihat rekap
+                        →</a></p>
             </div>
         </div>
         <div class="stat-wsm-yellow">
-            <span class="stat-wsm-label">Pengajuan Pending</span>
+            <span class="stat-wsm-label">Pelamar Baru</span>
             <div>
-                <strong class="stat-wsm-value">—</strong>
-                <p class="stat-wsm-note mt-1">Data aktif mulai Fase 5</p>
+                <strong class="stat-wsm-value">{{ $pelamarBaru }}</strong>
+                <p class="stat-wsm-note mt-1">Pengajuan izin/cuti aktif mulai Fase 5</p>
             </div>
         </div>
         <div class="stat-wsm-green">

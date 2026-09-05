@@ -8,9 +8,11 @@
  * ---------------------------------------------------------------------
  */
 
+use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
 use App\Http\Controllers\Owner\OrganizationController;
+use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
@@ -34,7 +36,13 @@ require __DIR__ . '/auth.php';
 // --- Karyawan & Manajer (Manajer tetap karyawan; HRD juga staf internal) ---
 Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->name('employee.')->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
-    // TODO Fase 4: history absensi, Fase 5: request izin/cuti
+
+    // --- Fase 4: Absensi (self-service, berlaku buat semua role internal) ---
+    Route::post('/absensi/masuk', [AttendanceController::class, 'clockIn'])->middleware('throttle:10,1')->name('attendance.clockIn');
+    Route::post('/absensi/pulang', [AttendanceController::class, 'clockOut'])->middleware('throttle:10,1')->name('attendance.clockOut');
+    Route::get('/riwayat', [AttendanceController::class, 'history'])->name('attendance.history');
+
+    // TODO Fase 5: request izin/cuti
 });
 
 // --- Manajer only ---
@@ -51,7 +59,9 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::post('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
     Route::get('/organisasi', [OrganizationController::class, 'index'])->name('organization');
 
-    // TODO Fase 4-12: attendance, requests, mom, memos, projects,
+    // Fase 4 (rekap absensi) ada di grup 'attendance.recap.' di bawah,
+    // bareng Manajer & HRD — bukan di sini.
+    // TODO Fase 5-12: requests, mom, memos, projects,
     // kpi, contracts, payroll, budgeting, royalty, settings
 });
 
@@ -68,4 +78,13 @@ Route::middleware(['auth', 'role:hrd,owner'])->prefix('rekrutmen')->name('recrui
     Route::patch('/pelamar/{application}/status', [JobApplicationController::class, 'updateStatus'])->name('applications.status');
     Route::get('/pelamar/{application}/convert', [JobApplicationController::class, 'convert'])->name('applications.convert');
     Route::post('/pelamar/{application}/convert', [JobApplicationController::class, 'storeConvert'])->name('applications.convert.store');
+});
+
+// --- Manajer, HRD & Owner (Rekap Absensi, Fase 4) ---
+// Dipisah dari grup 'owner'/'manajer' karena dipakai bareng 3 role
+// sekaligus (sama seperti pola rekrutmen di atas), dengan scope data
+// berbeda per role (lihat RecapController::scopedUsers()).
+Route::middleware(['auth', 'role:manajer,owner,hrd'])->prefix('absensi')->name('attendance.recap.')->group(function () {
+    Route::get('/', [RecapController::class, 'index'])->name('index');
+    Route::get('/{user}', [RecapController::class, 'show'])->name('show');
 });
