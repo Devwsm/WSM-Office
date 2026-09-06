@@ -57,6 +57,10 @@
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                         Struktur Organisasi
                     </a>
+                    <a href="{{ route('owner.office-settings.edit') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'office-settings' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Pengaturan Kantor
+                    </a>
                 @endif
                 @if (auth()->user()->isHrd() || auth()->user()->isOwner())
                     <a href="{{ route('recruitment.applications.index') }}"

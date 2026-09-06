@@ -1,17 +1,17 @@
 {{--
-    approval/leave/index.blade.php
+    approval/overtime/index.blade.php
     ---------------------------------------------------------------------
-    Fase 5 — Manajer lihat pengajuan bawahan LANGSUNG aja, Owner lihat
-    semua (lihat Approval\LeaveRequestController::index()). Tab filter
-    status via query string, default 'pending'.
+    Fase 7 — Manajer lihat pengajuan bawahan LANGSUNG aja, Owner lihat
+    semua (lihat Approval\OvertimeRequestController::index()). Struktur
+    SENGAJA disamain persis approval/leave/index.blade.php (Fase 5).
     ---------------------------------------------------------------------
 --}}
-@extends('layouts.app', ['title' => 'Persetujuan Izin/Cuti', 'navActive' => 'approval'])
+@extends('layouts.app', ['title' => 'Persetujuan Lembur', 'navActive' => 'approval'])
 
 @section('content')
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3.5">
         <div>
-            <h2 class="text-[36px] font-black leading-[0.98] tracking-tight">Persetujuan Izin/Cuti</h2>
+            <h2 class="text-[36px] font-black leading-[0.98] tracking-tight">Persetujuan Lembur</h2>
             <p class="mt-1 text-[13px] text-muted">
                 @if (auth()->user()->isOwner())
                     Menampilkan semua pengajuan karyawan.
@@ -20,23 +20,19 @@
                 @endif
             </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ route('approval.overtime.index') }}" class="btn-wsm-white py-2! px-3! text-[11px]!">Persetujuan
-                Lembur →</a>
+        <div class="flex flex-wrap gap-1.5">
+            @foreach (['pending' => 'Pending', 'disetujui' => 'Disetujui', 'ditolak' => 'Ditolak', 'dibatalkan' => 'Dibatalkan', 'semua' => 'Semua'] as $key => $label)
+                <a href="{{ route('approval.overtime.index', ['status' => $key]) }}"
+                    class="rounded-full px-3.5 py-2 text-xs font-extrabold {{ $status === $key ? 'bg-ink text-white' : 'bg-white text-[#5e5951] border border-line' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
         </div>
-    </div>
-    <div class="mb-5 flex flex-wrap gap-1.5">
-        @foreach (['pending' => 'Pending', 'disetujui' => 'Disetujui', 'ditolak' => 'Ditolak', 'dibatalkan' => 'Dibatalkan', 'semua' => 'Semua'] as $key => $label)
-            <a href="{{ route('approval.leave.index', ['status' => $key]) }}"
-                class="rounded-full px-3.5 py-2 text-xs font-extrabold {{ $status === $key ? 'bg-ink text-white' : 'bg-white text-[#5e5951] border border-line' }}">
-                {{ $label }}
-            </a>
-        @endforeach
     </div>
 
     @if ($rows->isEmpty())
         <div class="card-wsm-white text-center">
-            <p class="text-xs text-muted">Tidak ada pengajuan di status ini.</p>
+            <p class="text-xs text-muted">Tidak ada pengajuan lembur di status ini.</p>
         </div>
     @else
         <div class="grid gap-3">
@@ -47,12 +43,7 @@
                             <strong class="block text-sm">{{ $row->user->name }}</strong>
                             <span class="text-[10px] text-muted">{{ $row->user->division ?? '-' }} ·
                                 {{ $row->user->job_title ?? '-' }}</span>
-                            <p class="mt-1.5 text-xs font-extrabold">{{ $row->typeLabel() }} —
-                                {{ $row->start_date->translatedFormat('d M Y') }}
-                                @if (!$row->start_date->isSameDay($row->end_date))
-                                    – {{ $row->end_date->translatedFormat('d M Y') }}
-                                @endif
-                                ({{ $row->work_days }} hari kerja)
+                            <p class="mt-1.5 text-xs font-extrabold">Lembur — {{ $row->date->translatedFormat('d M Y') }}
                             </p>
                             <p class="mt-1 text-xs text-ink">{{ $row->reason }}</p>
 
@@ -77,8 +68,8 @@
 
                     @if ($row->isPending())
                         <div class="mt-3.5 flex flex-wrap gap-2 border-t border-[#eee8df] pt-3.5">
-                            <form method="POST" action="{{ route('approval.leave.approve', $row) }}"
-                                data-confirm="Karyawan ini akan diizinkan cuti/izin untuk tanggal yang diajukan."
+                            <form method="POST" action="{{ route('approval.overtime.approve', $row) }}"
+                                data-confirm="Karyawan ini akan diizinkan lembur untuk tanggal yang diajukan."
                                 data-confirm-title="Setujui pengajuan ini?" data-confirm-button="Ya, setujui">
                                 @csrf
                                 <button type="submit" class="btn-wsm-black py-2.5! text-xs!">Setujui</button>
@@ -86,7 +77,7 @@
                             <button type="button" x-show="!showReject" @click="showReject = true"
                                 class="btn-wsm-white py-2.5! text-xs!">Tolak</button>
                         </div>
-                        <form x-show="showReject" method="POST" action="{{ route('approval.leave.reject', $row) }}"
+                        <form x-show="showReject" method="POST" action="{{ route('approval.overtime.reject', $row) }}"
                             class="mt-3 grid gap-2" data-confirm="Karyawan akan melihat alasan penolakan ini."
                             data-confirm-title="Tolak pengajuan ini?" data-confirm-button="Ya, tolak"
                             data-confirm-danger="1">
@@ -104,11 +95,11 @@
                         <div class="mt-3.5 border-t border-[#eee8df] pt-3.5">
                             <button type="button" x-show="!showCancel" @click="showCancel = true"
                                 class="text-[11px] font-extrabold text-[#a83d35]">
-                                Batalkan izin/cuti ini
+                                Batalkan lembur ini
                             </button>
-                            <form x-show="showCancel" method="POST" action="{{ route('approval.leave.cancel', $row) }}"
-                                class="mt-2 grid gap-2" data-confirm="Izin/cuti yang udah disetujui ini akan dibatalkan."
-                                data-confirm-title="Batalkan izin/cuti ini?" data-confirm-button="Ya, batalkan"
+                            <form x-show="showCancel" method="POST" action="{{ route('approval.overtime.cancel', $row) }}"
+                                class="mt-2 grid gap-2" data-confirm="Lembur yang udah disetujui ini akan dibatalkan."
+                                data-confirm-title="Batalkan lembur ini?" data-confirm-button="Ya, batalkan"
                                 data-confirm-danger="1">
                                 @csrf
                                 <textarea name="cancellation_reason" rows="2" placeholder="Alasan pembatalan (wajib)..."

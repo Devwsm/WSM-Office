@@ -155,7 +155,7 @@ di riwayat commit/dokumen breakdown lama, itu sudah tidak berlaku).
 - Alpine.js untuk interaksi ringan (sidebar toggle, dsb.) + widget yang lebih kompleks (mis. absen — geolocation, map, kompresi foto)
 - Leaflet + OpenStreetMap (tanpa API key) untuk mini map absen (Fase 4) — lihat `resources/js/attendance.js`
 - Vite + `laravel-vite-plugin` (font di-_bundle_ lewat Bunny Fonts, bukan Google Fonts CDN)
-- MySQL di produksi (SQLite untuk dev lokal saat ini)
+- MySQL
 - Deploy target: shared hosting cPanel/Rumahweb tanpa akses terminal — sama seperti Mavnus & Map of Feelings, jadi hindari dependency yang butuh compile/CLI di server.
 
 ## Desain — Disamakan dengan Prototype W.O.S 2.0
@@ -261,20 +261,27 @@ Urutan fase development:
     > ini.
 
 7. **Absensi Lanjutan (Kebijakan WFO v18)** — revisi Fase 4, BUKAN
-   modul baru. Jam kerja normal WFO 09:30–20:00 + auto-close jam 20:00
-   kalau lupa checkout dan gak ada Lembur disetujui (nyusul job/cek
-   on-load, sama kayak keterbatasan prototype — server beneran gak
-   butuh "app harus dibuka dulu" kayak prototype browser-based). Modul
-   **Lembur** baru: request → approval (siapa yang approve nyusul sama
-   pola Fase 5) → dibayar **flat rate per jabatan/karyawan**, bukan
-   per jam. Potongan kurang jam diakumulasi & dipotong per blok 60
-   menit (sisa menit dibawa ke perhitungan bulan itu). Mode
-   **Lapangan/Gigs**: attendance boleh multi-sesi per hari (perlu
-   lepas constraint `unique(user_id,date)`, ganti jadi
-   `unique(user_id,date,session_number)` atau tabel sesi terpisah).
-   **Geo settings pindah dari seeder ke UI**: Owner/HR bisa atur nama
-   kantor, lat/lng, radius (default 200m, bukan 150m), toggle
-   enable/disable geo attendance, toggle enforce/disable radius.
+    > **Keputusan (2026-09-06):** field `Gaji Pokok`/`Target Jam/Hari`/
+    > `Flat Overtime Rate` di form Karyawan (ada di form Owner prototype
+    > v18) SENGAJA ditunda ke Fase 12 (Payroll), TIDAK digarap di Fase
+    > 7 ini. Modul Lembur di Fase 7 cuma nyimpen status request &
+    > approval (disetujui/ditolak) buat basis hitung jam kerja & potongan
+    > shortage — belum ngitung nominal rupiah, karena rate-nya belum ada
+    > sampai Fase 12.
+    > modul baru. Jam kerja normal WFO 09:30–20:00 + auto-close jam 20:00
+    > kalau lupa checkout dan gak ada Lembur disetujui (nyusul job/cek
+    > on-load, sama kayak keterbatasan prototype — server beneran gak
+    > butuh "app harus dibuka dulu" kayak prototype browser-based). Modul
+    > **Lembur** baru: request → approval (siapa yang approve nyusul sama
+    > pola Fase 5) → dibayar **flat rate per jabatan/karyawan**, bukan
+    > per jam. Potongan kurang jam diakumulasi & dipotong per blok 60
+    > menit (sisa menit dibawa ke perhitungan bulan itu). Mode
+    > **Lapangan/Gigs**: attendance boleh multi-sesi per hari (perlu
+    > lepas constraint `unique(user_id,date)`, ganti jadi
+    > `unique(user_id,date,session_number)` atau tabel sesi terpisah).
+    > **Geo settings pindah dari seeder ke UI**: Owner/HR bisa atur nama
+    > kantor, lat/lng, radius (default 200m, bukan 150m), toggle
+    > enable/disable geo attendance, toggle enforce/disable radius.
 8. **Memo Forum & Home Personalization** — revisi Fase 6b, BUKAN modul
    baru. `Memo` yang sekarang cuma broadcast satu arah dirombak jadi
    forum: status read/unread & hide/unhide per-karyawan (butuh tabel
@@ -298,7 +305,10 @@ Urutan fase development:
     jelas dilabeli "Kontrak Karyawan" biar gak ketuker sama Legal.
 12. **Payroll** — modul `payroll`. Baru bisa akurat kalau Fase 7
     (Lembur + potongan blok 60 menit) udah selesai duluan — payroll
-    butuh angka itu sebagai input.
+    butuh angka itu sebagai input. **Juga nampung field yang ditunda
+    dari Fase 7**: `Gaji Pokok`, `Target Jam/Hari`, `Flat Overtime
+Rate` per karyawan (di form Karyawan, `users` table) — baru
+    ditambah di sini, bukan Fase 2/7, sesuai keputusan 2026-09-06.
 13. **Project Budgeting & Royalty** — modul `budget` (budget vs actual
     per project) & `royalty` (royalty, share, recoupment, status
     pembayaran) — dua modul terpisah tapi biasanya dikerjain

@@ -9,16 +9,19 @@
  */
 
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
+use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
+use App\Http\Controllers\Owner\OfficeSettingController;
 use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Employee\LeaveRequestController;
+use App\Http\Controllers\Employee\OvertimeRequestController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
 use App\Http\Controllers\Recruitment\JobOpeningController;
@@ -42,7 +45,7 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->name('employee.')->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-    // --- Fase 4: Absensi (self-service, berlaku buat semua role internal) ---
+    // --- Fase 4 & 7: Absensi (self-service, berlaku buat semua role internal) ---
     Route::post('/absensi/masuk', [AttendanceController::class, 'clockIn'])->middleware('throttle:10,1')->name('attendance.clockIn');
     Route::post('/absensi/pulang', [AttendanceController::class, 'clockOut'])->middleware('throttle:10,1')->name('attendance.clockOut');
     Route::get('/riwayat', [AttendanceController::class, 'history'])->name('attendance.history');
@@ -51,12 +54,17 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     Route::get('/pengajuan', [LeaveRequestController::class, 'index'])->name('leave.index');
     Route::post('/pengajuan', [LeaveRequestController::class, 'store'])->middleware('throttle:10,1')->name('leave.store');
     Route::post('/pengajuan/{leave}/batalkan', [LeaveRequestController::class, 'cancel'])->name('leave.cancel');
+
+    // --- Fase 7: Pengajuan Lembur (self-service) ---
+    Route::get('/lembur', [OvertimeRequestController::class, 'index'])->name('overtime.index');
+    Route::post('/lembur', [OvertimeRequestController::class, 'store'])->middleware('throttle:10,1')->name('overtime.store');
+    Route::post('/lembur/{overtime}/batalkan', [OvertimeRequestController::class, 'cancel'])->name('overtime.cancel');
 });
 
 // --- Manajer only ---
 Route::middleware(['auth', 'role:manajer,owner'])->prefix('manajer')->name('manajer.')->group(function () {
-    // Approval izin/cuti ada di grup 'approval.leave.' (prefix
-    // /persetujuan) di bawah, bareng Owner — bukan di sini.
+    // Approval izin/cuti & lembur ada di grup 'approval.leave.'/'approval.overtime.'
+    // (prefix /persetujuan) di bawah, bareng Owner — bukan di sini.
     // TODO Fase 1: team-overview
 });
 
@@ -76,13 +84,19 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::get('/employees/{employee}/akses', [DashboardAccessController::class, 'edit'])->name('employees.access.edit');
     Route::patch('/employees/{employee}/akses', [DashboardAccessController::class, 'update'])->name('employees.access.update');
 
+    // --- Fase 7: Pengaturan Kantor (geo & jam kerja normal) ---
+    // Sebelumnya cuma bisa diubah lewat OfficeSettingSeeder (developer
+    // yang ubah + deploy ulang) — sekarang Owner bisa ubah sendiri.
+    Route::get('/pengaturan-kantor', [OfficeSettingController::class, 'edit'])->name('office-settings.edit');
+    Route::patch('/pengaturan-kantor', [OfficeSettingController::class, 'update'])->name('office-settings.update');
+
     // Fase 4 (rekap absensi) ada di grup 'attendance.recap.' di bawah,
-    // bareng Manajer & HRD — Fase 5 (approval izin/cuti) ada di grup
-    // 'approval.leave.' bareng Manajer — bukan di sini. Fase 6a
-    // (dashboard_access) ada di atas ('employees.access.*'). Fase 6b
-    // (MoM & Memo) ada di grup 'dashboard.work.' di bawah.
-    // TODO Fase 7-12: projects, kpi, contracts, payroll, budgeting,
-    // royalty, settings
+    // bareng Manajer & HRD — Fase 5 & 7 (approval izin/cuti/lembur) ada
+    // di grup 'approval.leave.'/'approval.overtime.' bareng Manajer —
+    // bukan di sini. Fase 6a (dashboard_access) ada di atas
+    // ('employees.access.*'). Fase 6b (MoM & Memo) ada di grup
+    // 'dashboard.work.' di bawah.
+    // TODO Fase 8-18: lihat README bagian "Roadmap Modul & Role"
 });
 
 // --- HRD & Owner (Rekrutmen) ---
@@ -118,6 +132,16 @@ Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan')->name('
     Route::post('/{leave}/setujui', [ApprovalLeaveRequestController::class, 'approve'])->name('approve');
     Route::post('/{leave}/tolak', [ApprovalLeaveRequestController::class, 'reject'])->name('reject');
     Route::post('/{leave}/batalkan', [ApprovalLeaveRequestController::class, 'cancel'])->name('cancel');
+});
+
+// --- Manajer & Owner (Persetujuan Lembur, Fase 7) ---
+// Scope & alasan HRD-dikecualikan SAMA PERSIS grup 'approval.leave.'
+// di atas — lihat Approval\OvertimeRequestController.
+Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan-lembur')->name('approval.overtime.')->group(function () {
+    Route::get('/', [ApprovalOvertimeRequestController::class, 'index'])->name('index');
+    Route::post('/{overtime}/setujui', [ApprovalOvertimeRequestController::class, 'approve'])->name('approve');
+    Route::post('/{overtime}/tolak', [ApprovalOvertimeRequestController::class, 'reject'])->name('reject');
+    Route::post('/{overtime}/batalkan', [ApprovalOvertimeRequestController::class, 'cancel'])->name('cancel');
 });
 
 // --- Semua role internal (Dashboard modul, Fase 6a) ---

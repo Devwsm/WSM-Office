@@ -2,23 +2,24 @@
 
 namespace App\Http\Requests\Employee;
 
-use App\Models\LeaveRequest;
+use App\Models\OvertimeRequest;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Validator;
 
 /**
- * StoreLeaveRequestRequest
+ * StoreOvertimeRequestRequest
  * ---------------------------------------------------------------------
- * Fase 5 — validasi pengajuan izin/cuti baru. `after_or_equal:today`
- * karena kesepakatan Fase 5: nggak bisa ajukan buat tanggal yang udah
- * lewat (beda kasus sama koreksi absen yang emang buat masa lalu).
- * Validasi saldo cuti tahunan dilakukan lewat withValidator() karena
- * butuh hitung work_days dulu dari start_date/end_date, bukan aturan
- * per-field biasa.
+ * Fase 7 — validasi pengajuan Lembur baru. `after_or_equal:today` sama
+ * alasan kayak StoreLeaveRequestRequest (Fase 5): gak bisa ajukan buat
+ * tanggal yang udah lewat. Cek duplikat (1 user cuma boleh 1 pengajuan
+ * AKTIF per tanggal, sesuai `unique(user_id,date)` di migration) lewat
+ * `withValidator()` karena butuh exclude pengajuan yang statusnya udah
+ * 'ditolak'/'dibatalkan' (constraint DB `unique` gak bisa syarat
+ * "kecuali status tertentu").
  * ---------------------------------------------------------------------
  */
-class StoreLeaveRequestRequest extends FormRequest
+class StoreOvertimeRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -28,9 +29,7 @@ class StoreLeaveRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'in:' . implode(',', LeaveRequest::TYPES)],
-            'start_date' => ['required', 'date', 'after_or_equal:today'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'date' => ['required', 'date', 'after_or_equal:today'],
             'reason' => ['required', 'string', 'max:1000'],
         ];
     }
@@ -38,22 +37,18 @@ class StoreLeaveRequestRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (! $this->filled('type') || ! $this->filled('start_date') || ! $this->filled('end_date')) {
+            if (! $this->filled('date')) {
                 return;
             }
 
-            if ($this->input('type') !== LeaveRequest::QUOTA_TYPE) {
-                return;
-            }
+            $exists = OvertimeRequest::query()
+                ->where('user_id', Auth::id())
+                ->whereDate('date', $this->input('date'))
+                ->whereIn('status', ['pending', 'disetujui'])
+                ->exists();
 
-            $workDays = LeaveRequest::countWorkDays($this->input('start_date'), $this->input('end_date'));
-            $remaining = $this->user()->remainingAnnualLeaveDays();
-
-            if ($workDays > $remaining) {
-                $validator->errors()->add(
-                    'start_date',
-                    "Sisa jatah cuti tahunan kamu tinggal {$remaining} hari kerja, pengajuan ini butuh {$workDays} hari kerja."
-                );
+            if ($exists) {
+                $validator->errors()->add('date', 'Kamu sudah punya pengajuan lembur aktif di tanggal ini.');
             }
         });
     }
@@ -61,8 +56,7 @@ class StoreLeaveRequestRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'start_date.after_or_equal' => 'Tanggal mulai nggak boleh tanggal yang udah lewat.',
-            'end_date.after_or_equal' => 'Tanggal selesai nggak boleh sebelum tanggal mulai.',
+            'date.after_or_equal' => 'Tanggal lembur nggak boleh tanggal yang udah lewat.',
         ];
     }
 }

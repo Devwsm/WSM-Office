@@ -8,6 +8,7 @@ use App\Http\Requests\Employee\ClockOutRequest;
 use App\Models\Attendance;
 use App\Models\LeaveRequest;
 use App\Models\OfficeSetting;
+use App\Support\AttendanceReconciler;
 use App\Support\Geo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,52 +19,65 @@ use Illuminate\Support\Carbon;
 /**
  * AttendanceController (Employee)
  * ---------------------------------------------------------------------
- * Fase 4 — absen masuk/pulang buat diri sendiri. Berlaku buat semua role
- * internal (Karyawan/Manajer/HRD/Owner absen sendiri-sendiri, sama-sama
- * "karyawan" dari sisi absensi). Jarak dari kantor DIHITUNG ULANG di sini
- * (bukan percaya angka dari JS) — koordinat browser tetap bisa disundul
- * user, jadi validasi utama tetap di server.
+ * Fase 4 — absen masuk/pulang buat diri sendiri. Fase 7 nambah 3 hal
+ * (lihat README "Rombak Rencana" & Roadmap Fase 7):
  *
- * Kesepakatan Fase 4:
- * - Mode WFH -> radius di-skip (nggak dianggap "di luar radius").
- * - Mode Kantor di luar radius -> TETAP boleh absen, cuma ditandai
- *   `within_radius = false` (bukan diblokir).
- * - Foto selfie opsional, dikirim sebagai base64 dari kamera browser.
- * - Koreksi/approval absen manual SENGAJA belum ada di sini — nyusul
- *   nyambung ke Fase 5 (Izin/Cuti & Approval).
+ * 1. Multi-sesi buat mode Lapangan/Gigs — SEKUENSIAL, bukan bersamaan
+ *    (checkin1 -> checkout1 -> checkin2 -> checkout2), sama kayak
+ *    tombol "CHECK IN AGAIN" di prototype yang cuma muncul SETELAH
+ *    sesi sebelumnya checkout. Kantor/WFH tetap 1 sesi per hari.
+ * 2. Auto-close: sesi Kantor/WFH yang lupa checkout DAN tanggalnya
+ *    udah lewat, dipaksa ditutup sistem pas method apa pun di
+ *    controller ini kepanggil (`AttendanceReconciler::reconcile()`,
+ *    class terpisah — dipakai bareng `HomeController` juga) — gak ada
+ *    cron di hosting cPanel shared, jadi reconcile-nya "on-demand"
+ *    tiap ada yang buka halaman terkait (sama keterbatasan prototype
+ *    yang browser-based, cuma di sini triggernya request ke server,
+ *    bukan app dibuka).
+ * 3. Geo toggle: `OfficeSetting::geo_attendance_enabled` &
+ *    `enforce_radius` — kalau geo dimatiin total, gak ada
+ *    perhitungan jarak sama sekali (bukan cuma di-skip nilainya).
+ *    Kalau geo nyala tapi `enforce_radius` mati, jarak tetap dihitung
+ *    & dicatat (buat informasi), tapi `within_radius` dipaksa true.
  * ---------------------------------------------------------------------
  */
 class AttendanceController extends Controller
 {
+    public function __construct(private readonly AttendanceReconciler $reconciler) {}
+
     public function clockIn(ClockInRequest $request)
     {
         $userId = Auth::id();
         $today = Carbon::today()->toDateString();
 
+        $this->reconciler->reconcile((int) $userId);
+
         if (LeaveRequest::approvedFor((int) $userId, $today)) {
             return back()->with('error', 'Kamu sedang izin/cuti hari ini, gak perlu absen.');
         }
 
-        $existing = Attendance::query()->where('user_id', $userId)->where('date', $today)->first();
-
-        if ($existing && $existing->clock_in_at) {
-            return back()->with('warning', 'Kamu sudah absen masuk hari ini.');
-        }
-
         $data = $request->validated();
-        $setting = OfficeSetting::current();
+        $isMultiSession = in_array($data['mode'], Attendance::MULTI_SESSION_MODES, true);
 
-        $distance = null;
-        $withinRadius = null;
+        $sessions = Attendance::sessionsFor((int) $userId, $today);
+        $openSession = $sessions->first(fn(Attendance $a) => $a->clock_in_at && ! $a->clock_out_at);
 
-        if ($data['mode'] === 'kantor') {
-            $distance = Geo::distanceMeters($setting->latitude, $setting->longitude, (float) $data['lat'], (float) $data['lng']);
-            $withinRadius = $distance <= $setting->radius_meters;
+        if ($openSession) {
+            return back()->with('warning', 'Kamu masih dalam sesi kerja yang belum checkout. Checkout dulu sebelum absen masuk lagi.');
         }
 
-        $photoPath = $this->storePhoto($data['photo'] ?? null, $userId, $today, 'masuk');
+        if (! $isMultiSession && $sessions->isNotEmpty()) {
+            return back()->with('warning', 'Kamu sudah absen masuk hari ini. Mode Kantor/WFH cuma 1 sesi per hari.');
+        }
 
-        $attendance = $existing ?? new Attendance(['user_id' => $userId, 'date' => $today]);
+        $nextSessionNumber = $sessions->isEmpty() ? 1 : $sessions->max('session_number') + 1;
+
+        $setting = OfficeSetting::current();
+        [$distance, $withinRadius] = $this->calculateGeo($data['mode'], $setting, (float) $data['lat'], (float) $data['lng']);
+
+        $photoPath = $this->storePhoto($data['photo'] ?? null, (int) $userId, $today, "sesi{$nextSessionNumber}-masuk");
+
+        $attendance = new Attendance(['user_id' => $userId, 'date' => $today, 'session_number' => $nextSessionNumber]);
         $attendance->fill([
             'mode' => $data['mode'],
             'work_context' => $data['work_context'] ?? null,
@@ -77,7 +91,10 @@ class AttendanceController extends Controller
         ]);
         $attendance->save();
 
-        $message = 'Absen masuk berhasil dicatat.';
+        $message = $nextSessionNumber > 1
+            ? "Absen masuk sesi ke-{$nextSessionNumber} berhasil dicatat."
+            : 'Absen masuk berhasil dicatat.';
+
         if ($data['mode'] === 'kantor' && $withinRadius === false) {
             $message .= " Catatan: lokasi kamu sekitar {$distance}m dari kantor, di luar radius {$setting->radius_meters}m.";
         }
@@ -90,28 +107,24 @@ class AttendanceController extends Controller
         $userId = Auth::id();
         $today = Carbon::today()->toDateString();
 
-        $attendance = Attendance::query()->where('user_id', $userId)->where('date', $today)->first();
+        $this->reconciler->reconcile((int) $userId);
+
+        $attendance = Attendance::query()
+            ->where('user_id', $userId)
+            ->where('date', $today)
+            ->whereNull('clock_out_at')
+            ->orderByDesc('session_number')
+            ->first();
 
         if (! $attendance || ! $attendance->clock_in_at) {
             return back()->with('error', 'Kamu belum absen masuk hari ini.');
         }
 
-        if ($attendance->clock_out_at) {
-            return back()->with('warning', 'Kamu sudah absen pulang hari ini.');
-        }
-
         $data = $request->validated();
         $setting = OfficeSetting::current();
+        [$distance, $withinRadius] = $this->calculateGeo($attendance->mode, $setting, (float) $data['lat'], (float) $data['lng']);
 
-        $distance = null;
-        $withinRadius = null;
-
-        if ($attendance->mode === 'kantor') {
-            $distance = Geo::distanceMeters($setting->latitude, $setting->longitude, (float) $data['lat'], (float) $data['lng']);
-            $withinRadius = $distance <= $setting->radius_meters;
-        }
-
-        $photoPath = $this->storePhoto($data['photo'] ?? null, $userId, $today, 'pulang');
+        $photoPath = $this->storePhoto($data['photo'] ?? null, (int) $userId, $today, "sesi{$attendance->session_number}-pulang");
 
         $attendance->fill([
             'clock_out_at' => Carbon::now(),
@@ -124,12 +137,18 @@ class AttendanceController extends Controller
         ]);
         $attendance->save();
 
-        return back()->with('status', 'Absen pulang berhasil dicatat. Selamat istirahat!');
+        $message = $attendance->session_number > 1
+            ? "Absen pulang sesi ke-{$attendance->session_number} berhasil dicatat."
+            : 'Absen pulang berhasil dicatat. Selamat istirahat!';
+
+        return back()->with('status', $message);
     }
 
     /** Riwayat absensi bulanan milik sendiri. */
     public function history(Request $request)
     {
+        $this->reconciler->reconcile((int) Auth::id());
+
         $month = $request->query('bulan', Carbon::now()->format('Y-m'));
 
         try {
@@ -143,9 +162,11 @@ class AttendanceController extends Controller
             ->where('user_id', Auth::id())
             ->whereBetween('date', [$period->copy()->startOfMonth()->toDateString(), $period->copy()->endOfMonth()->toDateString()])
             ->orderByDesc('date')
+            ->orderByDesc('session_number')
             ->get();
 
         $setting = OfficeSetting::current();
+        $shortage = Attendance::monthlyShortageBlocks((int) Auth::id(), $month, $setting);
 
         return view('employee.attendance.history', [
             'rows' => $rows,
@@ -155,7 +176,28 @@ class AttendanceController extends Controller
             'prevMonth' => $period->copy()->subMonth()->format('Y-m'),
             'nextMonth' => $period->copy()->addMonth()->format('Y-m'),
             'isCurrentMonth' => $period->isSameMonth(Carbon::now()),
+            'shortage' => $shortage,
         ]);
+    }
+
+    /**
+     * Fase 7 — hitung ulang jarak dari kantor. Return [distance, withinRadius].
+     * - Mode WFH/Lapangan/Gigs -> radius selalu di-skip (null, null), sama Fase 4.
+     * - Geo dimatiin total (`geo_attendance_enabled=false`) -> (null, null) juga,
+     *   walau mode-nya kantor.
+     * - Geo nyala tapi `enforce_radius=false` -> jarak TETAP dihitung & dicatat
+     *   (informasi), tapi `within_radius` dipaksa true (gak pernah dianggap masalah).
+     */
+    private function calculateGeo(string $mode, OfficeSetting $setting, float $lat, float $lng): array
+    {
+        if ($mode !== 'kantor' || ! $setting->geo_attendance_enabled) {
+            return [null, null];
+        }
+
+        $distance = Geo::distanceMeters($setting->latitude, $setting->longitude, $lat, $lng);
+        $withinRadius = $setting->enforce_radius ? $distance <= $setting->radius_meters : true;
+
+        return [$distance, $withinRadius];
     }
 
     /** Decode foto base64 dari browser lalu simpan ke storage publik. Return path relatif atau null. */

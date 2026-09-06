@@ -2,15 +2,16 @@
 
 namespace App\Http\Requests\Employee;
 
+use App\Models\Attendance;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * ClockInRequest
  * ---------------------------------------------------------------------
- * Validasi absen masuk (Fase 4). `photo` dikirim sebagai base64 data URL
- * (bukan file upload biasa) karena diambil & dikompres di sisi browser
- * lewat <canvas> sebelum submit — lihat resources/js/attendance.js.
- * Foto sifatnya opsional (sesuai keputusan awal Fase 4).
+ * Fase 4: validasi absen masuk. Fase 7: `mode` diperluas dari
+ * `kantor,wfh` jadi 4 pilihan (`Attendance::ALL_MODES`) buat nampung
+ * Lapangan/Gigs — dua mode itu yang boleh multi-sesi per hari (lihat
+ * `AttendanceController::clockIn()`). Foto tetap opsional, sama Fase 4.
  * ---------------------------------------------------------------------
  */
 class ClockInRequest extends FormRequest
@@ -23,7 +24,7 @@ class ClockInRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'mode' => ['required', 'in:kantor,wfh'],
+            'mode' => ['required', 'in:' . implode(',', Attendance::ALL_MODES)],
             'work_context' => ['nullable', 'string', 'max:150'],
             'lat' => ['required', 'numeric', 'between:-90,90'],
             'lng' => ['required', 'numeric', 'between:-180,180'],

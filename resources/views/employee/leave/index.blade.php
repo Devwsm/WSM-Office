@@ -10,10 +10,13 @@
 @extends('layouts.employee', ['title' => 'Pengajuan', 'navActive' => 'pengajuan'])
 
 @section('content')
-    <div class="mb-5">
-        <h2 class="text-[30px] font-black leading-none tracking-tight">Pengajuan Izin/Cuti</h2>
-        <p class="mt-1.5 text-xs text-muted">Diajukan ke atasan langsung kamu, atau Owner kalau kamu gak punya
-            atasan.</p>
+    <div class="mb-5 flex items-start justify-between gap-3">
+        <div>
+            <h2 class="text-[30px] font-black leading-none tracking-tight">Pengajuan Izin/Cuti</h2>
+            <p class="mt-1.5 text-xs text-muted">Diajukan ke atasan langsung kamu, atau Owner kalau kamu gak punya
+                atasan.</p>
+        </div>
+        <a href="{{ route('employee.overtime.index') }}" class="btn-wsm-white flex-none py-2! px-3! text-[11px]!">Lembur →</a>
     </div>
 
     <div class="stat-wsm-blue mb-4">
