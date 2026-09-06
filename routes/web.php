@@ -10,6 +10,9 @@
 
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Attendance\RecapController;
+use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
+use App\Http\Controllers\Dashboard\Work\MemoController;
+use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
 use App\Http\Controllers\Owner\OrganizationController;
@@ -66,11 +69,20 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::post('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
     Route::get('/organisasi', [OrganizationController::class, 'index'])->name('organization');
 
+    // --- Fase 6a: Dashboard Access (permission per-user per-modul) ---
+    // Sengaja cuma di grup role:owner (bukan manajer,owner,hrd kayak
+    // fitur lain) — kesepakatan Fase 6: cuma Owner yang boleh
+    // assign/ubah akses modul orang lain.
+    Route::get('/employees/{employee}/akses', [DashboardAccessController::class, 'edit'])->name('employees.access.edit');
+    Route::patch('/employees/{employee}/akses', [DashboardAccessController::class, 'update'])->name('employees.access.update');
+
     // Fase 4 (rekap absensi) ada di grup 'attendance.recap.' di bawah,
     // bareng Manajer & HRD — Fase 5 (approval izin/cuti) ada di grup
-    // 'approval.leave.' bareng Manajer — bukan di sini.
-    // TODO Fase 6-12: mom, memos, projects,
-    // kpi, contracts, payroll, budgeting, royalty, settings
+    // 'approval.leave.' bareng Manajer — bukan di sini. Fase 6a
+    // (dashboard_access) ada di atas ('employees.access.*'). Fase 6b
+    // (MoM & Memo) ada di grup 'dashboard.work.' di bawah.
+    // TODO Fase 7-12: projects, kpi, contracts, payroll, budgeting,
+    // royalty, settings
 });
 
 // --- HRD & Owner (Rekrutmen) ---
@@ -106,4 +118,33 @@ Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan')->name('
     Route::post('/{leave}/setujui', [ApprovalLeaveRequestController::class, 'approve'])->name('approve');
     Route::post('/{leave}/tolak', [ApprovalLeaveRequestController::class, 'reject'])->name('reject');
     Route::post('/{leave}/batalkan', [ApprovalLeaveRequestController::class, 'cancel'])->name('cancel');
+});
+
+// --- Semua role internal (Dashboard modul, Fase 6a) ---
+// SENGAJA dibuka buat role:karyawan,manajer,owner,hrd (bukan cuma
+// role tinggi) — akses beneran dicek per-modul di controller lewat
+// User::canViewModule(), bukan lewat middleware role di sini. Jadi
+// karyawan biasa yang di-assign akses ke 1 modul saja tetap bisa
+// masuk /dashboard, cuma modul itu doang yang kelihatan.
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('dashboard')->name('dashboard.')->group(function () {
+    Route::get('/', [ModuleDashboardController::class, 'index'])->name('index');
+
+    // --- Fase 6b: Work Control -> MoM & Memo ---
+    // PENTING: grup ini harus terdaftar SEBELUM route '/{module}' generik
+    // di bawah, soalnya Laravel matching route dari atas ke bawah —
+    // kalau kebalik, '/dashboard/work' bakal kena ke
+    // ModuleDashboardController::show('work') (placeholder), bukan ke
+    // MemoController. 6 modul lain (budget, royalty, kpi, people,
+    // contracts, payroll) belum punya controller sendiri, jadi masih
+    // lewat placeholder generik itu.
+    Route::prefix('work')->name('work.')->group(function () {
+        Route::get('/', [MemoController::class, 'index'])->middleware('module:work,view')->name('index');
+        Route::get('/create', [MemoController::class, 'create'])->middleware('module:work,manage')->name('create');
+        Route::post('/', [MemoController::class, 'store'])->middleware('module:work,manage')->name('store');
+        Route::get('/{memo}/edit', [MemoController::class, 'edit'])->middleware('module:work,manage')->name('edit');
+        Route::patch('/{memo}', [MemoController::class, 'update'])->middleware('module:work,manage')->name('update');
+        Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
+    });
+
+    Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
 });

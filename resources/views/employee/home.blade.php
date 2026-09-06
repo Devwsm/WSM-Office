@@ -226,6 +226,24 @@
 
     <div class="card-wsm-white">
         <p class="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Info dari Owner</p>
-        <p class="text-xs text-muted">Belum ada memo — fitur aktif di Fase 6.</p>
+        @if ($memos->isEmpty())
+            <p class="text-xs text-muted">Belum ada memo.</p>
+        @else
+            <div class="grid gap-3">
+                @foreach ($memos as $memo)
+                    <div class="{{ !$loop->last ? 'border-b border-[#eee8df] pb-3' : '' }}">
+                        <div class="flex items-center gap-1.5">
+                            @if ($memo->pinned)
+                                <span class="text-[10px] font-extrabold text-[#a8873d]">📌</span>
+                            @endif
+                            <strong class="text-xs">{{ $memo->title }}</strong>
+                        </div>
+                        <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
+                            {{ $memo->created_at->translatedFormat('d M Y') }}</span>
+                        <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $memo->content }}</p>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 @endsection

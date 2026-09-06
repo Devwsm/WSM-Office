@@ -67,6 +67,43 @@ class User extends Authenticatable
         return $this->hasMany(LeaveRequest::class);
     }
 
+    /** Baris dashboard_access milik user ini (kosong buat Owner — lihat accessLevel()). */
+    public function dashboardAccess(): HasMany
+    {
+        return $this->hasMany(DashboardAccess::class);
+    }
+
+    /**
+     * Level akses user ini ke satu modul: 'none' | 'view' | 'manage'.
+     * Owner SENGAJA di-hardcode 'manage' di semua modul di sini (bukan
+     * disimpan sebagai baris di DB) — biar Owner baru otomatis
+     * full-access tanpa perlu seed ulang tabel dashboard_access.
+     */
+    public function accessLevel(string $module): string
+    {
+        if ($this->isOwner()) {
+            return 'manage';
+        }
+
+        return $this->dashboardAccess->firstWhere('module', $module)?->level ?? 'none';
+    }
+
+    public function canViewModule(string $module): bool
+    {
+        return $this->accessLevel($module) !== 'none';
+    }
+
+    public function canManageModule(string $module): bool
+    {
+        return $this->accessLevel($module) === 'manage';
+    }
+
+    /** Dipakai buat nampilin/nyembunyiin tombol "Dashboard" di app-mobile. */
+    public function hasAnyDashboardAccess(): bool
+    {
+        return $this->isOwner() || $this->dashboardAccess->isNotEmpty();
+    }
+
     /** Total hari cuti tahunan yang sudah TERPAKAI (status disetujui aja — pending/ditolak/dibatalkan nggak motong). */
     public function usedAnnualLeaveDays(): int
     {

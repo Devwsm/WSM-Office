@@ -41,6 +41,17 @@
                             Kelola Tim
                         </a>
                     @endif
+                    @if (auth()->user()->hasAnyDashboardAccess())
+                        {{-- Terpisah dari "Kelola Tim" di atas: ini berdasarkan
+                             dashboard_access (Fase 6a, per-user per-modul),
+                             sedangkan "Kelola Tim" berdasarkan role (Fase 4/5).
+                             Bisa aja Karyawan biasa lihat tombol ini doang
+                             tanpa "Kelola Tim", atau sebaliknya. --}}
+                        <a href="{{ route('dashboard.index') }}"
+                            class="grid h-10 place-items-center rounded-2xl border border-line bg-white px-3.5 text-[10px] font-extrabold text-ink">
+                            Dashboard
+                        </a>
+                    @endif
                     <form method="POST" action="{{ route('logout') }}" data-confirm="Kamu akan keluar dari akun ini."
                         data-confirm-title="Keluar akun?" data-confirm-button="Ya, keluar">
                         @csrf

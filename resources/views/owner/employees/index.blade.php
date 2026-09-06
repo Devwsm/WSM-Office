@@ -81,6 +81,10 @@
                                 @else
                                     <a href="{{ route('owner.employees.edit', $employee) }}"
                                         class="btn-wsm-white py-2! px-3.5! text-xs">Edit</a>
+                                    @unless ($employee->isOwner())
+                                        <a href="{{ route('owner.employees.access.edit', $employee) }}"
+                                            class="btn-wsm-white py-2! px-3.5! text-xs">Akses</a>
+                                    @endunless
                                     <form method="POST" action="{{ route('owner.employees.destroy', $employee) }}"
                                         data-confirm="{{ $employee->name }} tidak akan bisa login lagi, tapi riwayat datanya tetap tersimpan."
                                         data-confirm-title="Nonaktifkan {{ $employee->name }}?"

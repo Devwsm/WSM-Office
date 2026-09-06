@@ -5,9 +5,10 @@
     Gaya visual disamakan dengan prototype W.O.S 2.0 (absensi_wsm):
     palet cream/paper, brand mark hitam, nav pill aktif hitam.
     Sidebar sudah disesuaikan per role (Fase 3) — menu Karyawan/Struktur
-    Organisasi cuma untuk Owner, menu Rekrutmen untuk HRD & Owner. Mulai
-    Fase 12 (Dashboard Access) baru diatur granular lewat pengaturan,
-    bukan hardcode match role di sini.
+    Organisasi cuma untuk Owner, menu Rekrutmen untuk HRD & Owner. Sejak
+    Fase 6a, section "Modul" di bawah ini murni dari dashboard_access
+    (User::canViewModule()) — bukan role — jadi bisa beda-beda per
+    orang, bukan cuma per jabatan.
     ---------------------------------------------------------------------
 --}}
 <!DOCTYPE html>
@@ -77,13 +78,23 @@
                         Persetujuan
                     </a>
                 @endif
-                {{-- TODO Fase 6: menu MoM & Memos --}}
-                {{-- TODO Fase 7: menu Projects & Timeline --}}
-                {{-- TODO Fase 8: menu KPI & Performance --}}
-                {{-- TODO Fase 9: menu Contracts --}}
-                {{-- TODO Fase 10: menu Payroll --}}
-                {{-- TODO Fase 11: menu Project Budgeting & Royalty --}}
-                {{-- TODO Fase 12: menu Settings & Dashboard Access --}}
+
+                @php $accessibleModules = collect(\App\Models\DashboardAccess::MODULES)->keys()->filter(fn($m) => auth()->user()->canViewModule($m)); @endphp
+                @if ($accessibleModules->isNotEmpty())
+                    <p class="mt-3 px-3.5 text-[10px] font-extrabold uppercase tracking-wide text-muted">Modul</p>
+                    @foreach ($accessibleModules as $moduleKey)
+                        @php
+                            $moduleActive =
+                                $moduleKey === 'work'
+                                    ? request()->routeIs('dashboard.work.*')
+                                    : request()->routeIs('dashboard.show') && request()->route('module') === $moduleKey;
+                        @endphp
+                        <a href="{{ $moduleKey === 'work' ? route('dashboard.work.index') : route('dashboard.show', $moduleKey) }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            {{ \App\Models\DashboardAccess::MODULES[$moduleKey]['label'] }}
+                        </a>
+                    @endforeach
+                @endif
             </nav>
 
             <div class="mt-auto border-t border-line pt-3.5">

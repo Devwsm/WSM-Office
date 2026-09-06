@@ -194,13 +194,13 @@ Urutan fase development:
 3. **Rekrutmen (HRD)** — kelola lowongan (nyambung ke halaman Karir), form lamaran publik, pipeline pelamar, convert ke karyawan. ✅ _(`Recruitment\JobOpeningController` (resource, slug otomatis dari judul) + `Recruitment\JobApplicationController` (index/show/updateStatus/convert). Halaman Karir publik (`PageController::careers`/`careerShow`/`careerApply`) sekarang nampilin lowongan status "Tayang" beneran, bukan hardcode lagi. Pipeline status di `JobApplication::STATUSES`. HRD landing ke `/rekrutmen/pelamar` setelah login. Belum ada: upload CV, notifikasi email ke pelamar.)_
 4. **Absensi** — clock in/out, riwayat, rekap. ✅ _(`Employee\AttendanceController` — `clockIn()`/`clockOut()` hitung ulang jarak dari kantor di server (`App\Support\Geo::distanceMeters`, Haversine) biar nggak percaya koordinat mentah dari browser, `history()` buat riwayat bulanan sendiri. `Attendance\RecapController` — rekap harian + detail bulanan per karyawan, scope Manajer dibatasi ke bawahan turunan (`scopedUsers()`, sama polanya dengan tree org-chart Fase 2), Owner/HRD lihat semua. Status (`Hadir`/`Terlambat`/`Kurang Jam Kerja`/`Sedang Bekerja`/`Lupa Absen Pulang`) dihitung on-the-fly di model `Attendance`, bukan kolom DB, biar nggak basi kalau `office_settings` diubah. Widget di `employee/home.blade.php` (Alpine component `attendanceWidget`, `resources/js/attendance.js`) urus geolocation, mini map Leaflet (marker kantor + user + lingkaran radius), kompresi foto selfie client-side, dan modal konfirmasi. Koreksi absen manual pindah & selesai di Fase 5. Belum ada: mode Lapangan/Event, halaman Settings buat Owner ubah lokasi/radius dari UI — nyusul Fase 12.)_
 5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner. ✅ _(`LeaveRequest` model — 4 jenis (`cuti_tahunan`/`izin_sakit`/`izin_pribadi`/`lainnya`), `countWorkDays()` hitung hari kerja Senin-Jumat, `approveBy()`/`rejectBy()`/`cancelBy()` sebagai state transition biar logic-nya gak keulang di 2 controller. `Employee\LeaveRequestController` — ajukan (cuma hari ini/ke depan, saldo cuti tahunan divalidasi server di `StoreLeaveRequestRequest`) + riwayat + batalkan sendiri. `Approval\LeaveRequestController` — **scope beda dari rekap absensi**: Manajer cuma bawahan LANGSUNG (`manager_id` persis dia, bukan turunan), Owner bisa lihat & putuskan siapa aja kapan aja (approver tercatat siapa yang beneran mutusin). HRD sengaja TIDAK dikasih akses approval. Ditolak wajib alasan (`decision_note`), dibatalkan wajib alasan (`cancellation_reason`, oleh karyawan sendiri ATAU Manajer/Owner) — dua-duanya lewat `CancelLeaveRequestRequest`/`RejectLeaveRequestRequest`. Hari yang izin/cutinya disetujui: tombol absen ilang dari Home (`LeaveRequest::approvedFor()` dicek di `HomeController` buat UI DAN di `AttendanceController::clockIn()` buat validasi server — bukan cuma sembunyi tombol doang), dan muncul badge "Cuti"/"Izin" (bukan "Belum Absen") di rekap `RecapController`. Koreksi absen manual (`RecapController::correct()`, `CorrectAttendanceRequest`) — cuma edit jam, nyimpen `original_clock_in_at`/`original_clock_out_at` (kesisi sekali di koreksi pertama) + siapa/kapan/alasan, dan karyawan bisa lihat catatan itu transparan di riwayatnya sendiri. Semua aksi berdampak (setuju/tolak/batalkan/koreksi) dipasangi `data-confirm`. Belum ada: notifikasi real-time/email (baru badge count, itupun masih ditunda), approval berjenjang (mis. HRD ikut approve cuti tahunan).)_
-6. **MoM & Memo**
+6. **Dashboard Access & MoM/Memo** ✅ _(Fase 6a — fondasi permission per-user per-modul, ngikutin persis konsep prototype v13: tabel `dashboard_access` (`user_id`×`module`×`level` view/manage, baris dihapus kalau levelnya 'none' — bukan disimpan literal), 7 modul (`App\Models\DashboardAccess::MODULES`): Work Control, Project Budgeting, Royalty, KPI & Performance, People & Leave, Contract Monitoring, Payroll Overview. Owner SENGAJA gak punya baris di tabel ini — `User::accessLevel()` hardcode 'manage' semua modul buat Owner, jadi Owner baru otomatis full-access tanpa seed ulang. Middleware baru `module:{modul},{level}` (`EnsureModuleAccess`, alias di `bootstrap/app.php`) — polanya disamain sama `role:...` yang udah ada. Assign akses cuma bisa Owner, lewat `Owner\DashboardAccessController` (tombol "Akses" di tabel karyawan, gak muncul buat baris Owner). Sisi user: tombol "Dashboard" di header app-mobile (`hasAnyDashboardAccess()`) + section "Modul" dinamis di sidebar (`app.blade.php`) — beda tombol dari "Kelola Tim" yang tetap role-based (rekap absensi/approval cuti Fase 4/5 SENGAJA TIDAK dipindah ke sistem ini, kesepakatan waktu breakdown Fase 6). — Fase 6b — modul pertama yang jalan di atas fondasi itu: `Memo` (tabel `memos`, kolom `type` bedain 'memo'/pengumuman vs 'mom'/Minutes of Meeting, `pinned` buat nahan di atas). `Dashboard\Work\MemoController` — CRUD, dijaga `module:work,view` (index) / `module:work,manage` (create/edit/delete) di routing, bukan dicek manual di controller. Kartu "Info dari Owner" di Home (`employee/home.blade.php`) sekarang nampilin 3 memo terbaru beneran — SENGAJA kelihatan buat SEMUA role internal terlepas dari `dashboard_access`, karena ini pengumuman ke tim, bukan modul kerja. `DemoSeeder` nambah contoh: Aldora (karyawan biasa) dikasih akses 'manage' ke Work Control walau dia bukan Manajer/HRD/Owner — buat nunjukin sistemnya beneran per-user bukan per-role. Belum ada: 6 modul lain masih placeholder generik (`dashboard/module.blade.php`) sampai dibangun satu-satu.)_
 7. **Task & Project Tracker**
 8. **KPI & Performance**
 9. **Kontrak Kerja**
 10. **Payroll**
 11. **Project Budgeting & Royalty**
-12. **Dashboard Access & CMS Landing Page** — Owner atur akses granular per modul + edit konten landing page tanpa sentuh kode
+12. **CMS Landing Page** — Owner edit konten landing page tanpa sentuh kode _(Dashboard Access sendiri udah kelar duluan di Fase 6a, lebih cepat dari rencana awal — dulu digabung "Fase 12" bareng CMS, ternyata dibutuhkan lebih awal buat navigasi app-mobile.)_
 13. **Keamanan, Testing, Deployment** — staging/production terpisah, backup otomatis, monitoring
 
 Detail lengkap tiap fase dan peta halaman per role ada di dokumen breakdown
@@ -281,8 +281,30 @@ sama)
 - ✅ Menu Persetujuan → lihat & putuskan pengajuan **SIAPA AJA**, kapan
   aja — termasuk yang harusnya diurus Manajer (tercatat "disetujui oleh
   Owner" biar jelas siapa yang beneran mutusin)
+- ✅ Assign/ubah Dashboard Access karyawan per modul (tombol "Akses" di
+  tabel Karyawan) — cuma Owner yang bisa
+- ✅ Otomatis akses 'manage' ke semua 7 modul tanpa perlu di-assign
+  (dihitung di kode, bukan data)
 - ❌ Atur lokasi kantor/radius/jam kerja dari UI (masih lewat seeder,
   UI-nya baru Fase 12)
+
+**Dashboard Access & MoM/Memo (Fase 6)** — siapa aja yang punya akses,
+bukan cuma role tertentu
+
+- ✅ Tombol "Dashboard" muncul di header app-mobile buat siapa aja yang
+  punya minimal 1 akses modul (`hasAnyDashboardAccess()`) — termasuk
+  karyawan biasa kalau di-assign Owner, bukan cuma Manajer/HRD/Owner
+- ✅ Landing `/dashboard` nampilin modul yang diakses aja, dengan badge
+  level (View/Manage)
+- ✅ Modul **Work Control** (satu-satunya yang udah ada isinya): lihat
+  daftar Memo & MoM (kalau level View), tambah/edit/hapus (kalau
+  level Manage) — pin memo penting biar nongol duluan
+- ✅ Memo yang di-pin/terbaru (3 teratas) otomatis muncul di kartu "Info
+  dari Owner" di Home **semua** role internal, terlepas dari siapa
+  yang punya akses modul Work Control
+- ❌ 6 modul lain (Project Budgeting, Royalty, KPI, People & Leave,
+  Contract Monitoring, Payroll) — masih placeholder "belum dibangun",
+  levelnya udah bisa di-assign tapi isinya kosong
 
 ## Alert & Konfirmasi (SweetAlert)
 
@@ -412,78 +434,70 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 
 ## Langkah Selanjutnya
 
-Fase 0–5 sudah selesai di sisi kode. **Fase 4 udah dikonfirmasi jalan
-sempurna di environment asli** (Laragon, sudah di-commit). **Fase 5
-belum sempat dites end-to-end** (sandbox yang dipakai nulis kode ini
-cuma punya PHP 8.3, project butuh 8.4 — jadi `php artisan migrate`
-beneran + klik-klik alurnya perlu dicoba sendiri dulu). Checklist:
+Fase 0–6 sudah selesai di sisi kode. Fase 0–5 sudah dikonfirmasi jalan di
+environment asli (Laragon). **Fase 6 (a & b) belum sempat dites
+end-to-end** — sandbox yang dipakai nulis kode ini gak punya PHP sama
+sekali, jadi migration/seeder/klik-klik alurnya murni ditulis manual,
+belum pernah dijalankan beneran. Checklist:
 
-1. **Migrate dari nol**: `php artisan migrate:fresh --seed` (ada 2
-   migration baru: `leave_requests` + kolom koreksi di `attendances`).
-   `php artisan storage:link` kalau session Laragon-nya baru/beda dari
-   sebelumnya.
-2. **Uji alur pengajuan sebagai Karyawan**:
-    - Buka menu Request → coba pilih "Cuti Tahunan", isi tanggal
-      melebihi sisa saldo → tombol "Kirim Pengajuan" harus otomatis
-      disable, muncul teks "Melebihi sisa cuti tahunan kamu".
-    - Ajukan yang valid (dalam kuota) → submit → cek muncul di riwayat
-      dengan status "Pending".
-    - Coba tombol "Batalkan pengajuan" → isi alasan → cek status
-      berubah jadi "Dibatalkan" + alasan kelihatan.
-3. **Login sebagai Manajer** (yang punya bawahan langsung) → menu
-   Persetujuan:
-    - Pastikan CUMA muncul pengajuan bawahan LANGSUNG (test: pengajuan
-      dari karyawan yang manajernya BUKAN kamu harusnya nggak
-      kelihatan).
-    - Klik "Setujui" → konfirmasi muncul → cek status berubah,
-      `approver_id` keisi nama Manajer tsb.
-    - Coba "Tolak" pengajuan lain → alasan wajib diisi (coba submit
-      kosong, harus ke-reject validasi) → cek karyawan yang bersangkutan
-      bisa lihat alasan itu di riwayatnya.
-4. **Login sebagai Owner** → menu Persetujuan harus nampilin SEMUA
-   pengajuan (termasuk punya karyawan yang Manajer-nya orang lain) →
-   coba approve salah satu → cek di riwayat karyawan tulisannya
-   "Disetujui oleh [nama Owner]", bukan nama manajer aslinya.
-5. **Cek saldo cuti kepotong bener**: setelah approve 1 pengajuan Cuti
-   Tahunan senilai N hari kerja, buka lagi menu Request karyawan
-   tsb → "Sisa Cuti Tahunan" harus berkurang N dari jatah awal
-   (`annual_leave_entitlement`, default 12).
-6. **Cek blokir absen pas cuti**: approve satu pengajuan buat tanggal
-   HARI INI → login sebagai karyawan itu → buka Home → tombol absen
-   harus ilang, ganti jadi kartu "Kamu sedang [jenis] hari ini". Coba
-   juga akses langsung endpoint clock-in (kalau bisa via Postman/curl)
-   buat mastiin server nolak juga, bukan cuma UI yang disembunyiin.
-7. **Uji koreksi absen**: dari halaman riwayat karyawan (`Absensi →
-Riwayat →`), klik "Koreksi jam absen" di salah satu baris → ubah jam
-   → alasan wajib diisi → simpan → cek baris di riwayat KARYAWAN (bukan
-   cuma sisi Manajer/Owner) muncul catatan "Dikoreksi oleh..." beserta
-   jam aslinya.
-8. **Cek rekap harian**: buka `attendance.recap.index` di tanggal
-   karyawan yang lagi cuti → badge-nya harus nunjukin jenis cuti/izin
-   (bukan "Belum Absen"), dan stat card "Izin/Cuti" ikut kehitung.
-9. Kalau semua di atas beres, lanjut ke **Fase 6: MoM & Memo** — catatan
-   rapat dan pengumuman internal dari Owner/Manajer ke tim.
+1. **Migrate dari nol**: `php artisan migrate:fresh --seed` (2 tabel
+   baru: `dashboard_access` dan `memos`; `DemoSeeder` sekarang juga isi
+   contoh akses & memo).
+2. **Cek Owner otomatis full-access**: login `owner@wsm.local` → tombol
+   "Dashboard" di header app-mobile harus muncul tanpa perlu di-assign
+   apa-apa duluan → buka, ketujuh modul harus kelihatan semua dengan
+   badge "Manage".
+3. **Uji assign akses (Owner)**: buka Karyawan → klik "Akses" di baris
+   Gepeng → cek dropdown-nya nunjukin "None" di semua modul (belum ada
+   baris di seed buat Gepeng selain Work Control) → ubah salah satu
+   jadi View/Manage → simpan → cek balik lagi ke halaman itu,
+   pilihannya harus kesimpen. Coba juga baris Owner — tombol "Akses"-nya
+   seharusnya gak ada sama sekali di tabel.
+4. **Login sebagai Aldora** (dikasih 'manage' Work Control di seeder):
+    - Tombol "Dashboard" di header app-mobile harus muncul (dia
+      karyawan biasa, BUKAN Manajer/HRD/Owner — ini pembuktian utama
+      kalau sistemnya per-user bukan per-role).
+    - Buka Dashboard → cuma modul "Work Control" yang muncul, badge
+      "Manage".
+    - Masuk modul itu → tombol "+ Tambah" harus ada → coba bikin Memo
+      baru & MoM baru (isi tanggal rapat + peserta) → cek muncul di
+      listing, urutan pinned duluan baru terbaru.
+    - Coba edit & hapus punya sendiri → harus bisa (dia 'manage').
+5. **Login sebagai Gepeng** (dikasih 'view' doang Work Control):
+    - Masuk modul Work Control → BOLEH lihat listing, tapi tombol
+      "+ Tambah"/Edit/Hapus TIDAK BOLEH muncul.
+    - Coba akses langsung URL `/dashboard/work/create` (ketik manual di
+      address bar) → harus kena 403, bukan cuma tombolnya yang
+      disembunyikan di UI.
+6. **Login sebagai Karyawan biasa yang belum di-assign apa-apa** (mis.
+   sebelum langkah 3 di atas dilakukan buat dia) → tombol "Dashboard" di
+   header app-mobile TIDAK BOLEH muncul sama sekali.
+7. **Cek kartu "Info dari Owner" di Home** — login role apa aja (bukan
+   cuma yang punya akses Work Control) → harus lihat memo yang dibuat
+   Aldora/seeder tadi, maksimal 3, yang di-pin duluan.
+8. **Cek urutan route `/dashboard/work` gak ketuker** — ini yang paling
+   gampang salah kalau ada modul baru ditambah nanti: pastikan
+   `/dashboard/work` masuk ke `MemoController` (ada listing beneran),
+   BUKAN ke halaman placeholder "belum dibangun". Kalau ternyata malah
+   placeholder yang muncul, cek urutan route di `routes/web.php` — grup
+   `work` harus terdaftar SEBELUM route `/{module}` generik.
+9. Kalau semua di atas beres, lanjut ke **Fase 7: Task & Project
+   Tracker** (lihat peta di bawah).
 
-### Peta Fase 6–12 (belum mulai, baru garis besar)
+### Peta Fase 7–12
 
-Roadmap di atas Fase 5 sejauh ini cuma tertulis sebagai komentar TODO di
-`routes/web.php` (grup `owner.`), belum pernah dijabarkan di README.
-Urutan kasarnya: **MoM & Memo → Projects → KPI & Performance → Contracts
-→ Payroll → Project Budgeting → Royalty → Settings**. Belum ada
-keputusan urutan mana duluan di antara Projects/KPI/Contracts/Payroll —
-ini masih perlu didiskusikan sebelum mulai ngoding Fase 6, bukan cuma
-diikutin urutan nulis di komentar.
+1. **Fase 7 — Task & Project Tracker** — nempel di modul `work` yang
+   sama kayak MoM & Memo (satu "Work Control", bukan modul terpisah).
+2. **Fase 8 — KPI & Performance** — nempel di modul `kpi`.
+3. **Fase 9 — Kontrak Kerja** — modul `contracts`.
+4. **Fase 10 — Payroll** — modul `payroll`.
+5. **Fase 11 — Project Budgeting & Royalty** — modul `budget` & `royalty`.
+6. **Fase 12 — CMS Landing Page** — Owner edit konten landing page
+   tanpa sentuh kode. _(Dashboard Access, yang tadinya direncanain gabung
+   di sini, udah kelar duluan di Fase 6a — ternyata dibutuhkan lebih
+   awal buat navigasi app-mobile, bukan nunggu CMS.)_
 
-**Belum diputuskan: model akses per-modul.** Prototype `absensi_wsm`
-(`WOS_2_0_STANDALONE_v13.html`) sudah menyorot konsep **akses dashboard
-per-karyawan yang di-assign manual oleh Owner**, terpisah dari jabatan —
-level akses _No Access / View / Manage_ per modul (Work Control,
-Project Budgeting, Royalty, KPI & Performance, People & Leave,
-Contracts, Payroll). Ini beda dari pola akses yang dipakai project
-sekarang (middleware `role:...` per grup route, semua-atau-tidak per
-role). Kalau mau ngikutin prototype persis, Fase 6+ butuh desain ulang
-lapisan otorisasi (tabel permission per user×modul, bukan cuma enum
-`role`) SEBELUM modul-modul itu mulai dibangun satu-satu — kalau
-dibangun role-based dulu terus baru diubah ke permission-based
-belakangan, kemungkinan besar banyak middleware yang harus ditulis
-ulang. Perlu diputuskan dulu mana yang mau dipakai buat WSM-Office.
+Belum ada keputusan urutan mana duluan di antara Fase 7/8/9/10/11 (semua
+nempel di modul yang levelnya udah bisa di-assign lewat Fase 6a, tinggal
+pilih mana yang paling kepake duluan) — masih perlu didiskusikan sebelum
+mulai ngoding, bukan cuma diikutin urutan nomor di atas.
