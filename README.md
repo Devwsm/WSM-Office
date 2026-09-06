@@ -77,6 +77,26 @@ Map of Feelings).
 > termasuk `503` yang otomatis beda tampilan saat `php artisan down`
 > (maintenance) vs gangguan layanan biasa — lihat
 > [Halaman Error Custom](#halaman-error-custom).
+>
+> **Perbaikan gap navigasi (Manajer/HRD/Owner):** sebelum ini, Manajer
+> landing di app-mobile (`employee.home`, bottom-nav) tapi fitur
+> rekap+koreksi absensi bawahan (`attendance.recap.*`) dan approval
+> izin/cuti (`approval.leave.*`) cuma ada link-nya di sidebar dashboard
+> (`layouts.app`) — gak ada penghubung dari app-mobile ke situ. Sekarang
+> header app-mobile dapat 1 tombol "Kelola Tim" (bukan tab navbar
+> terpisah per fitur — sengaja disamakan sama pola prototype yang taruh
+> 1 tombol "Role Dashboard" di halaman/header), muncul buat
+> Manajer/Owner/HRD, landing di `attendance.recap.index` (satu-satunya
+> route yang dibolehkan buat ketiga role itu — dari situ sidebar
+> `layouts.app` nampilin link lain sesuai role, mis. Persetujuan buat
+> Manajer/Owner). Sebaliknya, sidebar dashboard sekarang juga dapat link
+> "← App Saya" balik ke `employee.home`, buat Manajer, HRD, **dan
+> Owner** (Owner tetap butuh ini karena Absensi/Cuti Fase 4–5 berlaku
+> buat semua role internal termasuk Owner, bukan cuma karena dia landing
+> di dashboard). Ini perbaikan cepat dengan role-based yang sudah ada —
+> sistem akses per-modul yang lebih fleksibel (lihat
+> [Peta Fase 6–12](#peta-fase-6–12-belum-mulai-baru-garis-besar))
+> menyusul di Fase 6, belum dikerjakan di sini.
 
 ## Tech Stack
 
@@ -443,3 +463,27 @@ Riwayat →`), klik "Koreksi jam absen" di salah satu baris → ubah jam
    (bukan "Belum Absen"), dan stat card "Izin/Cuti" ikut kehitung.
 9. Kalau semua di atas beres, lanjut ke **Fase 6: MoM & Memo** — catatan
    rapat dan pengumuman internal dari Owner/Manajer ke tim.
+
+### Peta Fase 6–12 (belum mulai, baru garis besar)
+
+Roadmap di atas Fase 5 sejauh ini cuma tertulis sebagai komentar TODO di
+`routes/web.php` (grup `owner.`), belum pernah dijabarkan di README.
+Urutan kasarnya: **MoM & Memo → Projects → KPI & Performance → Contracts
+→ Payroll → Project Budgeting → Royalty → Settings**. Belum ada
+keputusan urutan mana duluan di antara Projects/KPI/Contracts/Payroll —
+ini masih perlu didiskusikan sebelum mulai ngoding Fase 6, bukan cuma
+diikutin urutan nulis di komentar.
+
+**Belum diputuskan: model akses per-modul.** Prototype `absensi_wsm`
+(`WOS_2_0_STANDALONE_v13.html`) sudah menyorot konsep **akses dashboard
+per-karyawan yang di-assign manual oleh Owner**, terpisah dari jabatan —
+level akses _No Access / View / Manage_ per modul (Work Control,
+Project Budgeting, Royalty, KPI & Performance, People & Leave,
+Contracts, Payroll). Ini beda dari pola akses yang dipakai project
+sekarang (middleware `role:...` per grup route, semua-atau-tidak per
+role). Kalau mau ngikutin prototype persis, Fase 6+ butuh desain ulang
+lapisan otorisasi (tabel permission per user×modul, bukan cuma enum
+`role`) SEBELUM modul-modul itu mulai dibangun satu-satu — kalau
+dibangun role-based dulu terus baru diubah ke permission-based
+belakangan, kemungkinan besar banyak middleware yang harus ditulis
+ulang. Perlu diputuskan dulu mana yang mau dipakai buat WSM-Office.

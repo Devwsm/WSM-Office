@@ -37,6 +37,12 @@
             </div>
 
             <nav class="grid gap-1.5 text-sm">
+                @if (auth()->user()->isManajer() || auth()->user()->isHrd() || auth()->user()->isOwner())
+                    <a href="{{ route('employee.home') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold text-[#5e5951] hover:bg-white">
+                        ← App Saya
+                    </a>
+                @endif
                 @if (auth()->user()->isOwner())
                     <a href="{{ route('owner.dashboard') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">

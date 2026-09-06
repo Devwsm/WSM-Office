@@ -28,13 +28,27 @@
                     </div>
                     <span class="text-xs font-extrabold text-muted">{{ $title ?? 'WSM' }}</span>
                 </div>
-                <form method="POST" action="{{ route('logout') }}" data-confirm="Kamu akan keluar dari akun ini."
-                    data-confirm-title="Keluar akun?" data-confirm-button="Ya, keluar">
-                    @csrf
-                    <button class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd] text-xs font-black">
-                        ⏻
-                    </button>
-                </form>
+                <div class="flex items-center gap-2">
+                    @if (auth()->user()->isManajer() || auth()->user()->isOwner() || auth()->user()->isHrd())
+                        {{-- Entry point tunggal ke dashboard (pola prototype: 1 tombol
+                             di halaman/header, bukan tab terpisah di bottom-nav). Landing
+                             di attendance.recap.index karena itu satu-satunya route yang
+                             dibolehkan buat ketiga role ini — dari situ sidebar
+                             layouts.app nampilin link lain (Persetujuan, Pelamar, dst)
+                             sesuai role. --}}
+                        <a href="{{ route('attendance.recap.index') }}"
+                            class="grid h-10 place-items-center rounded-2xl bg-ink px-3.5 text-[10px] font-extrabold text-white">
+                            Kelola Tim
+                        </a>
+                    @endif
+                    <form method="POST" action="{{ route('logout') }}" data-confirm="Kamu akan keluar dari akun ini."
+                        data-confirm-title="Keluar akun?" data-confirm-button="Ya, keluar">
+                        @csrf
+                        <button class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd] text-xs font-black">
+                            ⏻
+                        </button>
+                    </form>
+                </div>
             </header>
 
             @yield('content')
