@@ -97,6 +97,47 @@ Map of Feelings).
 > sistem akses per-modul yang lebih fleksibel (lihat
 > [Peta Fase 6–12](#peta-fase-6–12-belum-mulai-baru-garis-besar))
 > menyusul di Fase 6, belum dikerjakan di sini.
+>
+> **Audit posisi UI/UX vs prototype v18 (2026-09-06):** dibandingin
+> struktur kode `WSM-Office` sama `WOS_2_0_App_v18` (standalone HTML)
+> secara menyeluruh — lihat tabel gap arsitektur di bagian
+> [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
+> di bawah untuk temuan besar (Memo Forum, sidebar 7 grup, dst, semua
+> sudah masuk roadmap Fase 8/16). Dari audit itu ada 2 kategori
+> tambahan:
+>
+> 1. **Sudah dibetulin sekarang** — tab "Profile" di bottom-nav
+>    app-mobile sebelumnya `href="#"` (`TODO Fase 1`), sekarang halaman
+>    beneran (`Employee\ProfileController` + `employee/profile.blade.php`):
+>    kartu identitas (nama/role/jabatan/divisi/atasan/sisa cuti) + form
+>    ganti password (`UpdatePasswordRequest`, cek `current_password`
+>    lewat `Hash::check` manual). Header app-mobile juga dapat avatar
+>    inisial nama (link ke Profile) di ujung kanan, biar posisinya
+>    sejajar sama avatar di `.mobile-top` prototype. `ProfileController`
+>    juga langsung dikasih `/** @var User $me */` di `Auth::user()`
+>    (pola yang sama kayak fix Intelephense `isHrd()` di
+>    `RecapController` pas Fase 4) — bukan nunggu ketemu warning dulu.
+> 2. **SENGAJA belum dibetulin, dicatat aja dulu:**
+>     - Prototype punya icon "⋮" (account switcher, buat gonta-ganti akun
+>       karyawan di 1 device) & "◌" (notifikasi) di header app-mobile —
+>       dua-duanya **cuma dekorasi di prototype, gak ada `onclick`/fungsi
+>       beneran**, jadi TIDAK direplikasi di sini. "⋮" juga gak relevan:
+>       sistem ini pakai email+password per akun (bukan pilih-employee
+>       dari 1 device kayak prototype), jadi konsepnya beda.
+>     - **"Lock Dashboard"** (tombol merah di footer sidebar Owner
+>       prototype, quick-lock terpisah dari logout penuh) — **temuan
+>       baru, belum ada di roadmap Fase 7–18 manapun.** Perlu keputusan
+>       dulu sebelum dikerjain: pakai PIN terpisah atau password akun
+>       yang sama, timeout otomatis atau manual doang, berlaku cuma
+>       Owner atau semua yang masuk `layouts.app` (Manajer/HRD juga).
+>       Taruh sebagai kandidat Fase 16 (bareng CEO Dashboard IA
+>       Restructure) atau fase tersendiri — belum diputusin.
+>     - Split tombol "Kelola Tim" (role-based) + "Dashboard"
+>       (dashboard_access-based) di header, dan posisi "← App Saya" di
+>       dalam nav sidebar (bukan tombol header/footer terpisah kayak
+>       "Preview Employee"/"← Employee Dashboard" di prototype) — ini
+>       **deviasi disengaja**, bukan gap yang perlu dibetulin (sudah
+>       dijelasin di entri "Perbaikan gap navigasi" di atas).
 
 ## 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
 
@@ -221,7 +262,8 @@ rekursif), halaman-halaman Fase 3 (`public/careers/*.blade.php`,
 `recruitment/*.blade.php`), serta halaman-halaman Fase 4
 (`employee/attendance/history.blade.php`, `attendance/recap/*.blade.php`),
 serta halaman-halaman Fase 5 (`employee/leave/index.blade.php`,
-`approval/leave/index.blade.php`)
+`approval/leave/index.blade.php`), serta `employee/profile.blade.php`
+(baru, audit UI/UX 2026-09-06)
 sudah ikut disesuaikan (kartu, tombol, stat card warna).
 Halaman lain yang belum dibuat (Fase 6 ke atas) tinggal pakai class-class
 di atas supaya konsisten — jangan balik pakai `bg-white border
@@ -621,6 +663,13 @@ belum pernah dijalankan beneran. Checklist:
    Project Tracker" seperti rencana lama, lihat
    [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
    di atas untuk alasan urutan berubah.
+10. **Belum dites juga**: halaman Profile baru (`employee.profile.index`,
+    `employee.profile.password`) dari audit UI/UX 2026-09-06 — login role
+    apa aja → tab Profile di bottom-nav harus kebuka (bukan `#` lagi) →
+    coba ganti password pakai `current_password` salah (harus muncul
+    error "Password saat ini salah") lalu yang benar (harus redirect
+    balik + toast sukses) → logout → login ulang pakai password baru
+    buat mastiin `Hash::make` kesimpen bener.
 
 ### Peta Fase 7–18 (rombak total, lihat Rombak Rencana di atas)
 

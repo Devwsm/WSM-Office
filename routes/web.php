@@ -22,6 +22,7 @@ use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Employee\LeaveRequestController;
 use App\Http\Controllers\Employee\OvertimeRequestController;
+use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
 use App\Http\Controllers\Recruitment\JobOpeningController;
@@ -59,6 +60,10 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     Route::get('/lembur', [OvertimeRequestController::class, 'index'])->name('overtime.index');
     Route::post('/lembur', [OvertimeRequestController::class, 'store'])->middleware('throttle:10,1')->name('overtime.store');
     Route::post('/lembur/{overtime}/batalkan', [OvertimeRequestController::class, 'cancel'])->name('overtime.cancel');
+
+    // --- Tab Profile (bottom-nav) — sebelumnya placeholder "TODO Fase 1" ---
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 // --- Manajer only ---

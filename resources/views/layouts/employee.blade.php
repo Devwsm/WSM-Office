@@ -59,6 +59,14 @@
                             ⏻
                         </button>
                     </form>
+                    {{-- Avatar user (posisi paling kanan header, mengikuti pola
+                         prototype) — link ke tab Profile. Sengaja cuma inisial
+                         nama, belum ada foto profil karyawan sama sekali di
+                         sistem ini. --}}
+                    <a href="{{ route('employee.profile.index') }}"
+                        class="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-ink text-xs font-black text-white">
+                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    </a>
                 </div>
             </header>
 
@@ -81,8 +89,8 @@
                 class="bottom-nav-wsm-item {{ ($navActive ?? '') === 'pengajuan' ? 'active' : '' }}">
                 <span>↗</span><em class="not-italic">Request</em>
             </a>
-            <a href="#" class="bottom-nav-wsm-item">
-                {{-- TODO Fase 1 --}}
+            <a href="{{ route('employee.profile.index') }}"
+                class="bottom-nav-wsm-item {{ ($navActive ?? '') === 'profile' ? 'active' : '' }}">
                 <span>◎</span><em class="not-italic">Profile</em>
             </a>
         </nav>
