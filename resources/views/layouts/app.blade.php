@@ -65,7 +65,12 @@
                     class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                     Absensi
                 </a>
-                {{-- TODO Fase 5: menu Requests / Team Approval --}}
+                @if (auth()->user()->isManajer() || auth()->user()->isOwner())
+                    <a href="{{ route('approval.leave.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'approval' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Persetujuan
+                    </a>
+                @endif
                 {{-- TODO Fase 6: menu MoM & Memos --}}
                 {{-- TODO Fase 7: menu Projects & Timeline --}}
                 {{-- TODO Fase 8: menu KPI & Performance --}}

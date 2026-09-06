@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\ClockInRequest;
 use App\Http\Requests\Employee\ClockOutRequest;
 use App\Models\Attendance;
+use App\Models\LeaveRequest;
 use App\Models\OfficeSetting;
 use App\Support\Geo;
 use Illuminate\Http\Request;
@@ -38,6 +39,10 @@ class AttendanceController extends Controller
     {
         $userId = Auth::id();
         $today = Carbon::today()->toDateString();
+
+        if (LeaveRequest::approvedFor((int) $userId, $today)) {
+            return back()->with('error', 'Kamu sedang izin/cuti hari ini, gak perlu absen.');
+        }
 
         $existing = Attendance::query()->where('user_id', $userId)->where('date', $today)->first();
 

@@ -44,6 +44,18 @@
                             <span class="mt-1 block text-[10px] font-extrabold text-[#a53b33]">📍 Absen masuk di
                                 luar radius ({{ $row->clock_in_distance_meters }}m)</span>
                         @endif
+                        @if ($row->wasCorrected())
+                            <p class="mt-2 rounded-xl bg-[#eef2ff] p-2.5 text-[10px] text-brand-blue">
+                                <strong>Dikoreksi oleh {{ $row->corrector?->name ?? '-' }}</strong>
+                                ({{ $row->corrected_at->translatedFormat('d M, H:i') }})
+                                : {{ $row->correction_note }}
+                                @if ($row->original_clock_in_at || $row->original_clock_out_at)
+                                    <br>Jam asli sebelum dikoreksi:
+                                    {{ $row->original_clock_in_at?->format('H:i') ?? '--:--' }} –
+                                    {{ $row->original_clock_out_at?->format('H:i') ?? '--:--' }}
+                                @endif
+                            </p>
+                        @endif
                     </div>
                     <div class="flex-none text-right">
                         <span class="{{ $row->statusBadgeClass($setting) }}">{{ $row->statusLabel($setting) }}</span>

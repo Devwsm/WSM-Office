@@ -62,6 +62,25 @@ class User extends Authenticatable
         return $this->hasMany(User::class, 'manager_id');
     }
 
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
+    /** Total hari cuti tahunan yang sudah TERPAKAI (status disetujui aja — pending/ditolak/dibatalkan nggak motong). */
+    public function usedAnnualLeaveDays(): int
+    {
+        return (int) $this->leaveRequests()
+            ->where('type', LeaveRequest::QUOTA_TYPE)
+            ->where('status', 'disetujui')
+            ->sum('work_days');
+    }
+
+    public function remainingAnnualLeaveDays(): int
+    {
+        return max(0, (int) $this->annual_leave_entitlement - $this->usedAnnualLeaveDays());
+    }
+
     public function isOwner(): bool
     {
         return $this->role === 'owner';

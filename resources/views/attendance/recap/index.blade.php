@@ -25,7 +25,7 @@
         </form>
     </div>
 
-    <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+    <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-5">
         <div class="stat-wsm-blue">
             <span class="stat-wsm-label">Total</span>
             <div><strong class="stat-wsm-value">{{ $summary['total'] }}</strong></div>
@@ -37,6 +37,10 @@
         <div class="stat-wsm-yellow">
             <span class="stat-wsm-label">Terlambat</span>
             <div><strong class="stat-wsm-value">{{ $summary['terlambat'] }}</strong></div>
+        </div>
+        <div class="stat-wsm-lime">
+            <span class="stat-wsm-label">Izin/Cuti</span>
+            <div><strong class="stat-wsm-value">{{ $summary['izin_cuti'] }}</strong></div>
         </div>
         <div class="stat-wsm-lime">
             <span class="stat-wsm-label">Belum Absen</span>

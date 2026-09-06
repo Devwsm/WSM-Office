@@ -52,8 +52,8 @@
             <a href="{{ route('employee.home') }}#attendance-card" class="bottom-nav-wsm-item center">
                 <span class="text-lg leading-none">+</span>
             </a>
-            <a href="#" class="bottom-nav-wsm-item">
-                {{-- TODO Fase 5 --}}
+            <a href="{{ route('employee.leave.index') }}"
+                class="bottom-nav-wsm-item {{ ($navActive ?? '') === 'pengajuan' ? 'active' : '' }}">
                 <span>↗</span><em class="not-italic">Request</em>
             </a>
             <a href="#" class="bottom-nav-wsm-item">

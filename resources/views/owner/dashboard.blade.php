@@ -22,10 +22,14 @@
             </div>
         </div>
         <div class="stat-wsm-yellow">
-            <span class="stat-wsm-label">Pelamar Baru</span>
+            <span class="stat-wsm-label">Pengajuan Pending</span>
             <div>
-                <strong class="stat-wsm-value">{{ $pelamarBaru }}</strong>
-                <p class="stat-wsm-note mt-1">Pengajuan izin/cuti aktif mulai Fase 5</p>
+                <strong class="stat-wsm-value">{{ $pendingTotal }}</strong>
+                <p class="stat-wsm-note mt-1">
+                    {{ $leavePending }} izin/cuti ·
+                    {{ $attendanceNeedsAttention }} absen perlu dicek ·
+                    <a href="{{ route('approval.leave.index') }}" class="underline">Lihat →</a>
+                </p>
             </div>
         </div>
         <div class="stat-wsm-green">

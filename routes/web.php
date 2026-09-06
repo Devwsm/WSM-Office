@@ -8,12 +8,14 @@
  * ---------------------------------------------------------------------
  */
 
+use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
 use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\HomeController;
+use App\Http\Controllers\Employee\LeaveRequestController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
 use App\Http\Controllers\Recruitment\JobOpeningController;
@@ -42,12 +44,17 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     Route::post('/absensi/pulang', [AttendanceController::class, 'clockOut'])->middleware('throttle:10,1')->name('attendance.clockOut');
     Route::get('/riwayat', [AttendanceController::class, 'history'])->name('attendance.history');
 
-    // TODO Fase 5: request izin/cuti
+    // --- Fase 5: Pengajuan Izin/Cuti (self-service) ---
+    Route::get('/pengajuan', [LeaveRequestController::class, 'index'])->name('leave.index');
+    Route::post('/pengajuan', [LeaveRequestController::class, 'store'])->middleware('throttle:10,1')->name('leave.store');
+    Route::post('/pengajuan/{leave}/batalkan', [LeaveRequestController::class, 'cancel'])->name('leave.cancel');
 });
 
 // --- Manajer only ---
 Route::middleware(['auth', 'role:manajer,owner'])->prefix('manajer')->name('manajer.')->group(function () {
-    // TODO Fase 3: team-approval, Fase 1: team-overview
+    // Approval izin/cuti ada di grup 'approval.leave.' (prefix
+    // /persetujuan) di bawah, bareng Owner — bukan di sini.
+    // TODO Fase 1: team-overview
 });
 
 // --- Owner only ---
@@ -60,8 +67,9 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
     Route::get('/organisasi', [OrganizationController::class, 'index'])->name('organization');
 
     // Fase 4 (rekap absensi) ada di grup 'attendance.recap.' di bawah,
-    // bareng Manajer & HRD — bukan di sini.
-    // TODO Fase 5-12: requests, mom, memos, projects,
+    // bareng Manajer & HRD — Fase 5 (approval izin/cuti) ada di grup
+    // 'approval.leave.' bareng Manajer — bukan di sini.
+    // TODO Fase 6-12: mom, memos, projects,
     // kpi, contracts, payroll, budgeting, royalty, settings
 });
 
@@ -87,4 +95,15 @@ Route::middleware(['auth', 'role:hrd,owner'])->prefix('rekrutmen')->name('recrui
 Route::middleware(['auth', 'role:manajer,owner,hrd'])->prefix('absensi')->name('attendance.recap.')->group(function () {
     Route::get('/', [RecapController::class, 'index'])->name('index');
     Route::get('/{user}', [RecapController::class, 'show'])->name('show');
+    Route::post('/{attendance}/koreksi', [RecapController::class, 'correct'])->name('correct');
+});
+
+// --- Manajer & Owner (Persetujuan Izin/Cuti, Fase 5) ---
+// HRD SENGAJA nggak dikasih akses di sini (kesepakatan Fase 5: cuma
+// Manajer & Owner yang approve/reject/cancel izin-cuti).
+Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan')->name('approval.leave.')->group(function () {
+    Route::get('/', [ApprovalLeaveRequestController::class, 'index'])->name('index');
+    Route::post('/{leave}/setujui', [ApprovalLeaveRequestController::class, 'approve'])->name('approve');
+    Route::post('/{leave}/tolak', [ApprovalLeaveRequestController::class, 'reject'])->name('reject');
+    Route::post('/{leave}/batalkan', [ApprovalLeaveRequestController::class, 'cancel'])->name('cancel');
 });

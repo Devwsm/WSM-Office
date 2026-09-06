@@ -36,6 +36,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'clock_out_distance_meters',
     'clock_out_within_radius',
     'clock_out_photo',
+    'original_clock_in_at',
+    'original_clock_out_at',
+    'corrected_by',
+    'corrected_at',
+    'correction_note',
 ])]
 class Attendance extends Model
 {
@@ -51,12 +56,25 @@ class Attendance extends Model
             'clock_out_lng' => 'float',
             'clock_in_within_radius' => 'boolean',
             'clock_out_within_radius' => 'boolean',
+            'original_clock_in_at' => 'datetime',
+            'original_clock_out_at' => 'datetime',
+            'corrected_at' => 'datetime',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function corrector(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'corrected_by');
+    }
+
+    public function wasCorrected(): bool
+    {
+        return $this->corrected_by !== null;
     }
 
     /** Sudah check-in tapi belum check-out, DAN itu hari ini juga. */

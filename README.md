@@ -35,7 +35,28 @@ Map of Feelings).
 > singleton `office_settings` (diisi placeholder lewat
 > `OfficeSettingSeeder` — **wajib diganti ke koordinat kantor asli**
 > sebelum dipakai beneran). Koreksi/approval absen manual SENGAJA belum
-> ada — nyambung ke Fase 5. Fase 5 ke atas (Izin/Cuti, dst.) belum mulai.
+> ada — nyambung ke Fase 5. **Fase 5 (Izin/Cuti & Approval) selesai** —
+> karyawan ajukan Cuti Tahunan/Izin Sakit/Izin Pribadi/Lainnya (cuma
+> tanggal hari ini & ke depan, gak bisa backdate), diputuskan atasan
+> langsung (`manager_id`) lewat Manajer, dengan Owner bisa lihat &
+> memutuskan SEMUA pengajuan kapan aja (bukan cuma fallback — beda
+> sengaja dari scope rekap absensi Fase 4 yang pakai bawahan turunan,
+> approval Fase 5 cuma bawahan LANGSUNG). HRD sengaja TIDAK ikut
+> approval. Saldo cuti tahunan (`users.annual_leave_entitlement`)
+> otomatis kepotong pas disetujui, dihitung hari kerja Senin-Jumat aja,
+> tombol ajukan otomatis disable kalau sisa saldo gak cukup. Ditolak
+> wajib alasan (karyawan boleh ajukan ulang), dibatalkan (oleh karyawan
+> sendiri ATAU Manajer/Owner) juga wajib alasan — semua aksi berdampak
+> (setuju/tolak/batalkan/koreksi) dipasangi konfirmasi `data-confirm`.
+> Hari yang izin/cutinya disetujui bikin tombol absen ilang dari Home
+> (dicek ganda di server, bukan cuma sembunyi UI). Koreksi absen manual
+> yang ditunda dari Fase 4 juga masuk sini — Manajer/Owner cuma bisa
+> edit JAM (bukan override status jadi izin/cuti manual), tersimpan jam
+> asli sebelum dikoreksi + siapa/kapan yang koreksi, dan karyawan bisa
+> lihat catatan itu di riwayatnya sendiri (transparan). Dashboard Owner
+> kartu "Pengajuan Pending" gabungan izin/cuti pending + absen yang
+> butuh perhatian (lupa checkout). Fase 6 ke atas (MoM & Memos, dst.)
+> belum mulai.
 >
 > **Perbaikan pasca-Fase 4:** `config/app.php` timezone dibetulin dari
 > default Laravel (`UTC`) ke `Asia/Jakarta` — sebelum ini semua jam
@@ -122,9 +143,11 @@ Halaman `auth/login.blade.php`, `employee/home.blade.php`,
 komponen `components/org-node.blade.php` untuk render node org-chart
 rekursif), halaman-halaman Fase 3 (`public/careers/*.blade.php`,
 `recruitment/*.blade.php`), serta halaman-halaman Fase 4
-(`employee/attendance/history.blade.php`, `attendance/recap/*.blade.php`)
+(`employee/attendance/history.blade.php`, `attendance/recap/*.blade.php`),
+serta halaman-halaman Fase 5 (`employee/leave/index.blade.php`,
+`approval/leave/index.blade.php`)
 sudah ikut disesuaikan (kartu, tombol, stat card warna).
-Halaman lain yang belum dibuat (Fase 5 ke atas) tinggal pakai class-class
+Halaman lain yang belum dibuat (Fase 6 ke atas) tinggal pakai class-class
 di atas supaya konsisten — jangan balik pakai `bg-white border
 rounded-xl` polos lagi.
 
@@ -149,8 +172,8 @@ Urutan fase development:
 1. **Landing Page & Company Profile** — Beranda, Tentang Kami, Layanan, Karir, Kontak (publik, tanpa login). ✅ _(route + view sudah ada; konten masih hardcode di Blade, bukan CMS — itu baru Fase 12. Form kontak baru flash message, belum simpan ke tabel/kirim email. Halaman Karir sengaja tampil "belum ada lowongan" karena data pipeline lowongan asli baru Fase 3.)_
 2. **Manajemen Karyawan & Struktur Organisasi** — CRUD karyawan, assign role, org-chart. ✅ _(`Owner\EmployeeController` — index dengan filter role/search/nonaktif + pagination, create/edit/update, soft-delete lewat `destroy` yang dilabeli "nonaktifkan" di UI + `restore` untuk aktifkan lagi; bawahan otomatis dioper ke atasan-di-atasnya kalau manager-nya dinonaktifkan. `Owner\OrganizationController` bangun tree org-chart dari `manager_id` di memori (belum perlu CTE, jumlah karyawan masih kecil), di-render rekursif lewat komponen `components/org-node.blade.php`. Validasi lewat `StoreEmployeeRequest`/`UpdateEmployeeRequest`. `DemoSeeder` isi 1 Owner + 1 Manajer + 1 HRD + 2 Karyawan buat coba langsung. Belum ada: foto profil karyawan, riwayat perubahan role/atasan, halaman detail per karyawan.)_
 3. **Rekrutmen (HRD)** — kelola lowongan (nyambung ke halaman Karir), form lamaran publik, pipeline pelamar, convert ke karyawan. ✅ _(`Recruitment\JobOpeningController` (resource, slug otomatis dari judul) + `Recruitment\JobApplicationController` (index/show/updateStatus/convert). Halaman Karir publik (`PageController::careers`/`careerShow`/`careerApply`) sekarang nampilin lowongan status "Tayang" beneran, bukan hardcode lagi. Pipeline status di `JobApplication::STATUSES`. HRD landing ke `/rekrutmen/pelamar` setelah login. Belum ada: upload CV, notifikasi email ke pelamar.)_
-4. **Absensi** — clock in/out, riwayat, rekap. ✅ _(`Employee\AttendanceController` — `clockIn()`/`clockOut()` hitung ulang jarak dari kantor di server (`App\Support\Geo::distanceMeters`, Haversine) biar nggak percaya koordinat mentah dari browser, `history()` buat riwayat bulanan sendiri. `Attendance\RecapController` — rekap harian + detail bulanan per karyawan, scope Manajer dibatasi ke bawahan turunan (`scopedUsers()`, sama polanya dengan tree org-chart Fase 2), Owner/HRD lihat semua. Status (`Hadir`/`Terlambat`/`Kurang Jam Kerja`/`Sedang Bekerja`/`Lupa Absen Pulang`) dihitung on-the-fly di model `Attendance`, bukan kolom DB, biar nggak basi kalau `office_settings` diubah. Widget di `employee/home.blade.php` (Alpine component `attendanceWidget`, `resources/js/attendance.js`) urus geolocation, mini map Leaflet (marker kantor + user + lingkaran radius), kompresi foto selfie client-side, dan modal konfirmasi. Belum ada: koreksi/approval absen manual, mode Lapangan/Event, halaman Settings buat Owner ubah lokasi/radius dari UI — semua nyusul Fase 5/12.)_
-5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner
+4. **Absensi** — clock in/out, riwayat, rekap. ✅ _(`Employee\AttendanceController` — `clockIn()`/`clockOut()` hitung ulang jarak dari kantor di server (`App\Support\Geo::distanceMeters`, Haversine) biar nggak percaya koordinat mentah dari browser, `history()` buat riwayat bulanan sendiri. `Attendance\RecapController` — rekap harian + detail bulanan per karyawan, scope Manajer dibatasi ke bawahan turunan (`scopedUsers()`, sama polanya dengan tree org-chart Fase 2), Owner/HRD lihat semua. Status (`Hadir`/`Terlambat`/`Kurang Jam Kerja`/`Sedang Bekerja`/`Lupa Absen Pulang`) dihitung on-the-fly di model `Attendance`, bukan kolom DB, biar nggak basi kalau `office_settings` diubah. Widget di `employee/home.blade.php` (Alpine component `attendanceWidget`, `resources/js/attendance.js`) urus geolocation, mini map Leaflet (marker kantor + user + lingkaran radius), kompresi foto selfie client-side, dan modal konfirmasi. Koreksi absen manual pindah & selesai di Fase 5. Belum ada: mode Lapangan/Event, halaman Settings buat Owner ubah lokasi/radius dari UI — nyusul Fase 12.)_
+5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner. ✅ _(`LeaveRequest` model — 4 jenis (`cuti_tahunan`/`izin_sakit`/`izin_pribadi`/`lainnya`), `countWorkDays()` hitung hari kerja Senin-Jumat, `approveBy()`/`rejectBy()`/`cancelBy()` sebagai state transition biar logic-nya gak keulang di 2 controller. `Employee\LeaveRequestController` — ajukan (cuma hari ini/ke depan, saldo cuti tahunan divalidasi server di `StoreLeaveRequestRequest`) + riwayat + batalkan sendiri. `Approval\LeaveRequestController` — **scope beda dari rekap absensi**: Manajer cuma bawahan LANGSUNG (`manager_id` persis dia, bukan turunan), Owner bisa lihat & putuskan siapa aja kapan aja (approver tercatat siapa yang beneran mutusin). HRD sengaja TIDAK dikasih akses approval. Ditolak wajib alasan (`decision_note`), dibatalkan wajib alasan (`cancellation_reason`, oleh karyawan sendiri ATAU Manajer/Owner) — dua-duanya lewat `CancelLeaveRequestRequest`/`RejectLeaveRequestRequest`. Hari yang izin/cutinya disetujui: tombol absen ilang dari Home (`LeaveRequest::approvedFor()` dicek di `HomeController` buat UI DAN di `AttendanceController::clockIn()` buat validasi server — bukan cuma sembunyi tombol doang), dan muncul badge "Cuti"/"Izin" (bukan "Belum Absen") di rekap `RecapController`. Koreksi absen manual (`RecapController::correct()`, `CorrectAttendanceRequest`) — cuma edit jam, nyimpen `original_clock_in_at`/`original_clock_out_at` (kesisi sekali di koreksi pertama) + siapa/kapan/alasan, dan karyawan bisa lihat catatan itu transparan di riwayatnya sendiri. Semua aksi berdampak (setuju/tolak/batalkan/koreksi) dipasangi `data-confirm`. Belum ada: notifikasi real-time/email (baru badge count, itupun masih ditunda), approval berjenjang (mis. HRD ikut approve cuti tahunan).)_
 6. **MoM & Memo**
 7. **Task & Project Tracker**
 8. **KPI & Performance**
@@ -185,9 +208,19 @@ sama)
 - ✅ Absen Masuk — modal konfirmasi (map + jarak + radius), foto selfie
   opsional dari kamera langsung
 - ✅ Absen Pulang — pola konfirmasi sama
-- ✅ Riwayat absensi bulanan sendiri (navigasi bulan)
+- ✅ Riwayat absensi bulanan sendiri (navigasi bulan), termasuk catatan
+  transparan kalau ada absen yang dikoreksi Manajer/Owner (siapa, kapan,
+  kenapa, jam aslinya berapa)
 - ✅ Banner reminder kalau lupa absen pulang hari sebelumnya
-- ❌ Ajukan izin/cuti, koreksi absen sendiri kalau salah — Fase 5
+- ✅ Menu Request → ajukan Cuti Tahunan/Izin Sakit/Izin Pribadi/Lainnya,
+  lihat sisa saldo cuti tahunan, tombol ajukan otomatis disable kalau
+  saldo kurang
+- ✅ Batalkan pengajuan sendiri (pending atau yang udah disetujui) —
+  wajib isi alasan
+- ✅ Kalau hari ini lagi izin/cuti disetujui: tombol absen ilang, kartu
+  Home ganti jadi info izin/cuti
+- ❌ Koreksi absen sendiri kalau salah (harus lewat Manajer/Owner) — di
+  luar scope, karyawan cuma bisa "lapor", bukan edit sendiri
 
 **Manajer** (semua flow Karyawan di atas, ditambah)
 
@@ -195,7 +228,15 @@ sama)
   aja** (bukan seluruh perusahaan)
 - ✅ Klik nama karyawan → riwayat bulanan (jam, radius, link Google
   Maps, foto selfie)
-- ❌ Approval izin/cuti bawahan, koreksi absen manual — Fase 5
+- ✅ Menu Persetujuan di sidebar → izin/cuti bawahan **LANGSUNG aja**
+  (beda dari scope rekap absensi di atas yang bawahan turunan — ini
+  kesepakatan khusus Fase 5)
+- ✅ Setujui (satu klik + konfirmasi) atau Tolak (wajib alasan) pengajuan
+  pending
+- ✅ Batalkan izin/cuti bawahan yang udah disetujui — wajib alasan
+- ✅ Koreksi jam absen bawahan dari halaman riwayat (edit jam masuk/
+  pulang + catatan alasan wajib, karyawan bisa lihat catatannya)
+- ❌ Approval berjenjang / ikut campur approval Owner
 
 **HRD** (semua flow Karyawan di atas, ditambah)
 
@@ -205,14 +246,21 @@ sama)
   jadi akun karyawan)
 - ✅ Menu Absensi → rekap **SEMUA karyawan** (beda dari Manajer yang
   cuma lihat timnya)
-- ❌ Upload CV pelamar, notifikasi email
+- ❌ Approval izin/cuti (sengaja gak dikasih — kesepakatan Fase 5: cuma
+  Manajer & Owner), upload CV pelamar, notifikasi email
 
 **Owner** (semua flow HRD & Manajer di atas, ditambah)
 
-- ✅ Dashboard: kehadiran hari ini (X/Y karyawan), jumlah pelamar baru
+- ✅ Dashboard: kehadiran hari ini (X/Y karyawan), "Pengajuan Pending"
+  gabungan izin/cuti pending + absen yang butuh perhatian (lupa
+  checkout)
 - ✅ CRUD karyawan penuh (tambah/edit/nonaktifkan/aktifkan lagi)
 - ✅ Struktur organisasi (org-chart dari `manager_id`)
-- ✅ Menu Absensi → rekap semua karyawan (sama seperti HRD)
+- ✅ Menu Absensi → rekap semua karyawan (sama seperti HRD) + koreksi
+  jam absen siapa aja
+- ✅ Menu Persetujuan → lihat & putuskan pengajuan **SIAPA AJA**, kapan
+  aja — termasuk yang harusnya diurus Manajer (tercatat "disetujui oleh
+  Owner" biar jelas siapa yang beneran mutusin)
 - ❌ Atur lokasi kantor/radius/jam kerja dari UI (masih lewat seeder,
   UI-nya baru Fase 12)
 
@@ -302,6 +350,8 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 - Status yang bisa dihitung ulang dari data lain (mis. status kehadiran di `Attendance`) sengaja TIDAK disimpan sebagai kolom DB — dihitung lewat accessor di model, biar nggak ada data basi kalau aturan/pengaturan berubah belakangan
 - Data sensitif yang dikirim dari browser (koordinat GPS, dsb.) selalu dihitung ulang/divalidasi di server (`App\Support\Geo`), jangan percaya begitu saja angka yang dikirim JS — bisa dimanipulasi user
 - Kompresi gambar (mis. foto selfie absen) dilakukan di browser lewat `<canvas>`, bukan library PHP (Intervention/GD) di server — sesuai batasan hosting cPanel tanpa terminal, hindari nambah dependency yang butuh extension khusus kalau bisa dihindari
+- **Scope "bawahan Manajer" BEDA-BEDA per modul, ini sengaja bukan bug**: rekap absensi (`Attendance\RecapController::scopedUsers()`) pakai bawahan TURUNAN (rekursif, ikut cucu-cicit di org-chart), sedangkan approval izin/cuti (`Approval\LeaveRequestController::canDecide()`) pakai bawahan LANGSUNG doang (`manager_id` persis Manajer tsb). Dua keputusan beda yang diambil terpisah pas breakdown fase — kalau nambah modul baru yang ada konsep "scope Manajer", jangan asumsikan otomatis sama, konfirmasi dulu mana yang dimaksud
+- State transition (approve/reject/cancel di `LeaveRequest`, dst.) ditaruh sebagai method di model (`approveBy()`, `rejectBy()`, `cancelBy()`), bukan logic mentah di controller — biar gak keulang nulis hal yang sama pas dipanggil dari 2 controller berbeda (Employee & Approval)
 
 ## Setup Lokal
 
@@ -342,49 +392,54 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 
 ## Langkah Selanjutnya
 
-Fase 0–4 sudah selesai di sisi kode (migration, route, controller, view
-semua ada dan saling nyambung — lihat detail per fase di atas). **Belum
-sempat dites end-to-end di lingkungan asli** (server yang dipakai buat
-nulis kode ini cuma punya PHP 8.3, sedangkan project butuh PHP 8.4 —
-jadi `php artisan migrate` beneran + klik-klik alurnya perlu dicoba
-sendiri dulu). Checklist sebelum lanjut ke Fase 5:
+Fase 0–5 sudah selesai di sisi kode. **Fase 4 udah dikonfirmasi jalan
+sempurna di environment asli** (Laragon, sudah di-commit). **Fase 5
+belum sempat dites end-to-end** (sandbox yang dipakai nulis kode ini
+cuma punya PHP 8.3, project butuh 8.4 — jadi `php artisan migrate`
+beneran + klik-klik alurnya perlu dicoba sendiri dulu). Checklist:
 
-1. **Migrate + seed dari nol** di environment asli (Laragon):
-   `php artisan migrate:fresh --seed`. Cek nggak ada error, dan
-   `office_settings` kebentuk 1 baris.
-2. **Ganti koordinat kantor asli** di `OfficeSettingSeeder.php` (lihat
-   peringatan di bagian Setup Lokal di atas), seed ulang.
-3. **`php artisan storage:link`** kalau belum — tanpa ini foto selfie
-   absen ke-upload tapi nggak kebuka di browser (404).
-4. **Uji alur absen dari HP asli** (browser desktop nggak selalu bisa
-   akses kamera depan `capture="user"` dengan baik, dan geolocation
-   akurasinya beda jauh dari HP):
-    - Login sebagai Karyawan → klik "Test Lokasi" → pastikan map muncul,
-      titik posisi & titik kantor kelihatan, radius (lingkaran biru)
-      kebentuk.
-    - Klik "Absen Masuk" → modal konfirmasi muncul dengan jarak yang
-      sama kaya hasil "Test Lokasi" → coba dengan & tanpa foto selfie.
-    - Kalau kamu tes dari lokasi jauh dari kantor (radius meleset
-      sengaja), pastikan tetap bisa absen (cuma warning "di luar
-      radius"), BUKAN diblokir.
-    - Klik "Absen Pulang" di hari yang sama → cek kartu berubah jadi
-      "Absensi Hari Ini Selesai" dengan jam masuk/pulang yang benar.
-    - Buka menu Riwayat → absen tadi harus muncul dengan status yang
-      masuk akal (Hadir/Terlambat, tergantung jam absen vs jam kerja di
-      `office_settings`).
-5. **Login sebagai Manajer, HRD, dan Owner** satu-satu → buka menu
-   Absensi di sidebar:
-    - Manajer cuma boleh lihat dirinya sendiri + bawahan turunannya
-      (bukan seluruh perusahaan).
-    - HRD & Owner harus lihat semua karyawan.
-    - Klik "Riwayat →" salah satu karyawan → pastikan link "Lihat
-      lokasi" ke Google Maps kebuka dengan koordinat yang benar, dan
-      thumbnail foto selfie (kalau ada) kebuka juga (bukan broken image
-      — balik lagi ke poin `storage:link`).
-6. Kalau semua di atas beres, lanjut ke **Fase 5: Izin/Cuti & Approval**
-   — alur pengajuan Karyawan → approval Manajer → fallback Owner (kalau
-   karyawan tsb nggak punya manajer/manajernya nonaktif). Ini juga saat
-   yang pas buat akhirnya bikin fitur **koreksi absen manual** yang
-   sengaja di-skip di Fase 4 (Manajer/Owner edit absen karyawan yang lupa
-   absen pulang/GPS error), karena approval flow-nya sama-sama butuh
-   halaman "daftar pengajuan pending" yang mirip.
+1. **Migrate dari nol**: `php artisan migrate:fresh --seed` (ada 2
+   migration baru: `leave_requests` + kolom koreksi di `attendances`).
+   `php artisan storage:link` kalau session Laragon-nya baru/beda dari
+   sebelumnya.
+2. **Uji alur pengajuan sebagai Karyawan**:
+    - Buka menu Request → coba pilih "Cuti Tahunan", isi tanggal
+      melebihi sisa saldo → tombol "Kirim Pengajuan" harus otomatis
+      disable, muncul teks "Melebihi sisa cuti tahunan kamu".
+    - Ajukan yang valid (dalam kuota) → submit → cek muncul di riwayat
+      dengan status "Pending".
+    - Coba tombol "Batalkan pengajuan" → isi alasan → cek status
+      berubah jadi "Dibatalkan" + alasan kelihatan.
+3. **Login sebagai Manajer** (yang punya bawahan langsung) → menu
+   Persetujuan:
+    - Pastikan CUMA muncul pengajuan bawahan LANGSUNG (test: pengajuan
+      dari karyawan yang manajernya BUKAN kamu harusnya nggak
+      kelihatan).
+    - Klik "Setujui" → konfirmasi muncul → cek status berubah,
+      `approver_id` keisi nama Manajer tsb.
+    - Coba "Tolak" pengajuan lain → alasan wajib diisi (coba submit
+      kosong, harus ke-reject validasi) → cek karyawan yang bersangkutan
+      bisa lihat alasan itu di riwayatnya.
+4. **Login sebagai Owner** → menu Persetujuan harus nampilin SEMUA
+   pengajuan (termasuk punya karyawan yang Manajer-nya orang lain) →
+   coba approve salah satu → cek di riwayat karyawan tulisannya
+   "Disetujui oleh [nama Owner]", bukan nama manajer aslinya.
+5. **Cek saldo cuti kepotong bener**: setelah approve 1 pengajuan Cuti
+   Tahunan senilai N hari kerja, buka lagi menu Request karyawan
+   tsb → "Sisa Cuti Tahunan" harus berkurang N dari jatah awal
+   (`annual_leave_entitlement`, default 12).
+6. **Cek blokir absen pas cuti**: approve satu pengajuan buat tanggal
+   HARI INI → login sebagai karyawan itu → buka Home → tombol absen
+   harus ilang, ganti jadi kartu "Kamu sedang [jenis] hari ini". Coba
+   juga akses langsung endpoint clock-in (kalau bisa via Postman/curl)
+   buat mastiin server nolak juga, bukan cuma UI yang disembunyiin.
+7. **Uji koreksi absen**: dari halaman riwayat karyawan (`Absensi →
+Riwayat →`), klik "Koreksi jam absen" di salah satu baris → ubah jam
+   → alasan wajib diisi → simpan → cek baris di riwayat KARYAWAN (bukan
+   cuma sisi Manajer/Owner) muncul catatan "Dikoreksi oleh..." beserta
+   jam aslinya.
+8. **Cek rekap harian**: buka `attendance.recap.index` di tanggal
+   karyawan yang lagi cuti → badge-nya harus nunjukin jenis cuti/izin
+   (bukan "Belum Absen"), dan stat card "Izin/Cuti" ikut kehitung.
+9. Kalau semua di atas beres, lanjut ke **Fase 6: MoM & Memo** — catatan
+   rapat dan pengumuman internal dari Owner/Manajer ke tim.
