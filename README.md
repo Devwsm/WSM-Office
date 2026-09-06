@@ -98,6 +98,56 @@ Map of Feelings).
 > [Peta Fase 6–12](#peta-fase-6–12-belum-mulai-baru-garis-besar))
 > menyusul di Fase 6, belum dikerjakan di sini.
 
+## 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
+
+Acuan desain & sistem sebelumnya adalah prototype **W.O.S 2.0 v13**
+(`WOS_2_0_STANDALONE_v13.html`). Prototype itu sudah berkembang jauh
+lebih lengkap sampai **v18** (`WOS_2_0_App_v18` /
+`WOS_2_0_STANDALONE_v18.html`) — bukan cuma nambah halaman, tapi ada
+beberapa keputusan produk baru yang mengubah bentuk beberapa modul yang
+sebagian sudah kadung dibangun (Fase 4 & 6b). Roadmap di bawah ini
+**dirombak total** menyesuaikan v18, dampaknya:
+
+- **Landing page publik (Fase 0–3) TETAP DIPERTAHANKAN apa adanya** —
+  ini improvement di luar scope prototype (prototype v13 maupun v18
+  cuma didesain untuk sistem internal, gak ada landing page publik/
+  rekrutmen sama sekali di sana). Jangan dirombak cuma karena
+  "gak ada di prototype".
+- **Fase 4 (Absensi) & Fase 6b (Memo) yang sudah "selesai" perlu
+  di-revisit**, bukan dianggap gugur — pondasinya (geo, radius,
+  riwayat, CRUD memo) tetap dipakai, cuma perlu tambahan sesuai
+  kebijakan v18 yang lebih detail dari yang diasumsikan pas Fase 4/6b
+  digarap.
+- **2 modul sama sekali baru** yang gak ada di rencana lama:
+  **Legal** (Kontrak Album & Perjanjian Royalti — beda dari Kontrak
+  Karyawan) dan **IT** (Audit Log + System Change Log).
+- **CEO Dashboard punya Information Architecture baru**: sidebar
+  dikelompokkan 7 grup bernomor (People, Work Control, Finance,
+  Royalty, HR Admin, Legal, IT) dengan badge "LIMITED" di grup yang
+  aksesnya dibatasi, plus warna aksen CEO/Work Control yang bisa
+  di-custom dan sidebar yang scroll independen.
+
+Ringkasan gap yang ditemukan pas audit kode vs `README.md`
+(`WOS_2_0_App_v18`) prototype:
+
+| Area                      | Status kode sekarang                                      | Spec v18                                                                                          |
+| ------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Memo                      | 1 arah (Owner/Manajer → tim), CRUD biasa, cuma `pinned`   | Forum: read/unread, hide/unhide, reply berthread per karyawan                                     |
+| Home — identitas karyawan | Cuma nama depan                                           | Nama + job title + divisi                                                                         |
+| Home — banner cuti        | Cuma cek cuti diri sendiri hari ini                       | Ditambah info cuti tim yang disetujui bulan berjalan                                              |
+| Jam kerja WFO             | `work_start_time` + `late_tolerance_minutes` generik      | Jam normal 09:30–20:00, auto-close jam 20:00 kalau lupa checkout & gak ada lembur disetujui       |
+| Lembur                    | Belum ada                                                 | Wajib approval, dibayar flat rate per jabatan/karyawan (bukan per durasi jam)                     |
+| Potongan kurang jam       | Belum ada logic block                                     | Diakumulasi & dipotong per blok 60 menit                                                          |
+| Lapangan/Gigs             | 1 baris absen per orang per hari (`unique(user_id,date)`) | Boleh multi-sesi check-in/out dalam 1 hari                                                        |
+| Geo settings              | Lewat seeder, radius fix 150m                             | UI Owner/HR: office name/lat/lng/radius, enable/disable geo, enforce/disable radius, default 200m |
+| CEO sidebar               | Flat list satu level                                      | 7 grup bernomor + badge LIMITED + warna aksen custom                                              |
+| Legal, IT                 | Tidak ada di rencana lama sama sekali                     | Modul baru (Kontrak Album/Royalti, Audit Log, Change Log)                                         |
+
+Roadmap Fase 7 ke atas di bagian **Roadmap Modul & Role** di bawah ini
+sudah ditulis ulang total mengikuti temuan di atas — jangan pakai lagi
+peta fase lama (Fase 7–13 versi sebelumnya, kalau ketemu referensinya
+di riwayat commit/dokumen breakdown lama, itu sudah tidak berlaku).
+
 ## Tech Stack
 
 - Laravel (latest) + PHP
@@ -111,11 +161,17 @@ Map of Feelings).
 ## Desain — Disamakan dengan Prototype W.O.S 2.0
 
 Tampilan lama (default Tailwind gray/putih polos) sudah diganti supaya
-konsisten dengan prototype desain **W.O.S 2.0** (`WOS_2_0_STANDALONE_v13.html`,
-lihat folder `absensi_wsm` yang dikirim terpisah). Prototype itu adalah
-acuan visual (bukan kode yang dipakai langsung — dia HTML/CSS/JS standalone
-tanpa Laravel), jadi setiap kali menambah halaman baru, cocokkan gaya ke
-prototype tersebut dulu sebelum ngoding.
+konsisten dengan prototype desain **W.O.S 2.0**. Acuan sekarang naik ke
+**v18** (`WOS_2_0_App_v18/index.html` a.k.a `WOS_2_0_STANDALONE_v18.html`,
+dikirim terpisah) — sebelumnya v13. Prototype itu adalah acuan visual +
+perilaku sistem (bukan kode yang dipakai langsung — dia HTML/CSS/JS
+standalone berbasis `localStorage`, tanpa Laravel/database beneran),
+jadi setiap kali menambah halaman/fitur baru, cocokkan ke prototype
+v18 dulu sebelum ngoding (bukan v13 lagi). Token warna/radius/font di
+bawah ini gak berubah dari v13→v18, cuma struktur IA (sidebar,
+grouping modul) dan sebagian behavior sistem yang berubah — lihat
+[Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
+di atas.
 
 Token desain didefinisikan di `resources/css/app.css` lewat blok `@theme`
 Tailwind v4 (otomatis jadi utility class, contoh: `--color-cream` → class
@@ -195,13 +251,82 @@ Urutan fase development:
 4. **Absensi** — clock in/out, riwayat, rekap. ✅ _(`Employee\AttendanceController` — `clockIn()`/`clockOut()` hitung ulang jarak dari kantor di server (`App\Support\Geo::distanceMeters`, Haversine) biar nggak percaya koordinat mentah dari browser, `history()` buat riwayat bulanan sendiri. `Attendance\RecapController` — rekap harian + detail bulanan per karyawan, scope Manajer dibatasi ke bawahan turunan (`scopedUsers()`, sama polanya dengan tree org-chart Fase 2), Owner/HRD lihat semua. Status (`Hadir`/`Terlambat`/`Kurang Jam Kerja`/`Sedang Bekerja`/`Lupa Absen Pulang`) dihitung on-the-fly di model `Attendance`, bukan kolom DB, biar nggak basi kalau `office_settings` diubah. Widget di `employee/home.blade.php` (Alpine component `attendanceWidget`, `resources/js/attendance.js`) urus geolocation, mini map Leaflet (marker kantor + user + lingkaran radius), kompresi foto selfie client-side, dan modal konfirmasi. Koreksi absen manual pindah & selesai di Fase 5. Belum ada: mode Lapangan/Event, halaman Settings buat Owner ubah lokasi/radius dari UI — nyusul Fase 12.)_
 5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner. ✅ _(`LeaveRequest` model — 4 jenis (`cuti_tahunan`/`izin_sakit`/`izin_pribadi`/`lainnya`), `countWorkDays()` hitung hari kerja Senin-Jumat, `approveBy()`/`rejectBy()`/`cancelBy()` sebagai state transition biar logic-nya gak keulang di 2 controller. `Employee\LeaveRequestController` — ajukan (cuma hari ini/ke depan, saldo cuti tahunan divalidasi server di `StoreLeaveRequestRequest`) + riwayat + batalkan sendiri. `Approval\LeaveRequestController` — **scope beda dari rekap absensi**: Manajer cuma bawahan LANGSUNG (`manager_id` persis dia, bukan turunan), Owner bisa lihat & putuskan siapa aja kapan aja (approver tercatat siapa yang beneran mutusin). HRD sengaja TIDAK dikasih akses approval. Ditolak wajib alasan (`decision_note`), dibatalkan wajib alasan (`cancellation_reason`, oleh karyawan sendiri ATAU Manajer/Owner) — dua-duanya lewat `CancelLeaveRequestRequest`/`RejectLeaveRequestRequest`. Hari yang izin/cutinya disetujui: tombol absen ilang dari Home (`LeaveRequest::approvedFor()` dicek di `HomeController` buat UI DAN di `AttendanceController::clockIn()` buat validasi server — bukan cuma sembunyi tombol doang), dan muncul badge "Cuti"/"Izin" (bukan "Belum Absen") di rekap `RecapController`. Koreksi absen manual (`RecapController::correct()`, `CorrectAttendanceRequest`) — cuma edit jam, nyimpen `original_clock_in_at`/`original_clock_out_at` (kesisi sekali di koreksi pertama) + siapa/kapan/alasan, dan karyawan bisa lihat catatan itu transparan di riwayatnya sendiri. Semua aksi berdampak (setuju/tolak/batalkan/koreksi) dipasangi `data-confirm`. Belum ada: notifikasi real-time/email (baru badge count, itupun masih ditunda), approval berjenjang (mis. HRD ikut approve cuti tahunan).)_
 6. **Dashboard Access & MoM/Memo** ✅ _(Fase 6a — fondasi permission per-user per-modul, ngikutin persis konsep prototype v13: tabel `dashboard_access` (`user_id`×`module`×`level` view/manage, baris dihapus kalau levelnya 'none' — bukan disimpan literal), 7 modul (`App\Models\DashboardAccess::MODULES`): Work Control, Project Budgeting, Royalty, KPI & Performance, People & Leave, Contract Monitoring, Payroll Overview. Owner SENGAJA gak punya baris di tabel ini — `User::accessLevel()` hardcode 'manage' semua modul buat Owner, jadi Owner baru otomatis full-access tanpa seed ulang. Middleware baru `module:{modul},{level}` (`EnsureModuleAccess`, alias di `bootstrap/app.php`) — polanya disamain sama `role:...` yang udah ada. Assign akses cuma bisa Owner, lewat `Owner\DashboardAccessController` (tombol "Akses" di tabel karyawan, gak muncul buat baris Owner). Sisi user: tombol "Dashboard" di header app-mobile (`hasAnyDashboardAccess()`) + section "Modul" dinamis di sidebar (`app.blade.php`) — beda tombol dari "Kelola Tim" yang tetap role-based (rekap absensi/approval cuti Fase 4/5 SENGAJA TIDAK dipindah ke sistem ini, kesepakatan waktu breakdown Fase 6). — Fase 6b — modul pertama yang jalan di atas fondasi itu: `Memo` (tabel `memos`, kolom `type` bedain 'memo'/pengumuman vs 'mom'/Minutes of Meeting, `pinned` buat nahan di atas). `Dashboard\Work\MemoController` — CRUD, dijaga `module:work,view` (index) / `module:work,manage` (create/edit/delete) di routing, bukan dicek manual di controller. Kartu "Info dari Owner" di Home (`employee/home.blade.php`) sekarang nampilin 3 memo terbaru beneran — SENGAJA kelihatan buat SEMUA role internal terlepas dari `dashboard_access`, karena ini pengumuman ke tim, bukan modul kerja. `DemoSeeder` nambah contoh: Aldora (karyawan biasa) dikasih akses 'manage' ke Work Control walau dia bukan Manajer/HRD/Owner — buat nunjukin sistemnya beneran per-user bukan per-role. Belum ada: 6 modul lain masih placeholder generik (`dashboard/module.blade.php`) sampai dibangun satu-satu.)_
-7. **Task & Project Tracker**
-8. **KPI & Performance**
-9. **Kontrak Kerja**
-10. **Payroll**
-11. **Project Budgeting & Royalty**
-12. **CMS Landing Page** — Owner edit konten landing page tanpa sentuh kode _(Dashboard Access sendiri udah kelar duluan di Fase 6a, lebih cepat dari rencana awal — dulu digabung "Fase 12" bareng CMS, ternyata dibutuhkan lebih awal buat navigasi app-mobile.)_
-13. **Keamanan, Testing, Deployment** — staging/production terpisah, backup otomatis, monitoring
+
+    > ⚠️ **Peta Fase 7 ke bawah ini sudah dirombak total (2026-09-06)**
+    > menyesuaikan prototype v18 — lihat
+    > [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
+    > di atas untuk alasannya. Kalau ada dokumen breakdown lama yang masih
+    > nyebut "Fase 7: Task & Project Tracker" langsung habis "Fase 6:
+    > Dashboard Access & MoM/Memo", itu urutan LAMA — pakai urutan di bawah
+    > ini.
+
+7. **Absensi Lanjutan (Kebijakan WFO v18)** — revisi Fase 4, BUKAN
+   modul baru. Jam kerja normal WFO 09:30–20:00 + auto-close jam 20:00
+   kalau lupa checkout dan gak ada Lembur disetujui (nyusul job/cek
+   on-load, sama kayak keterbatasan prototype — server beneran gak
+   butuh "app harus dibuka dulu" kayak prototype browser-based). Modul
+   **Lembur** baru: request → approval (siapa yang approve nyusul sama
+   pola Fase 5) → dibayar **flat rate per jabatan/karyawan**, bukan
+   per jam. Potongan kurang jam diakumulasi & dipotong per blok 60
+   menit (sisa menit dibawa ke perhitungan bulan itu). Mode
+   **Lapangan/Gigs**: attendance boleh multi-sesi per hari (perlu
+   lepas constraint `unique(user_id,date)`, ganti jadi
+   `unique(user_id,date,session_number)` atau tabel sesi terpisah).
+   **Geo settings pindah dari seeder ke UI**: Owner/HR bisa atur nama
+   kantor, lat/lng, radius (default 200m, bukan 150m), toggle
+   enable/disable geo attendance, toggle enforce/disable radius.
+8. **Memo Forum & Home Personalization** — revisi Fase 6b, BUKAN modul
+   baru. `Memo` yang sekarang cuma broadcast satu arah dirombak jadi
+   forum: status read/unread & hide/unhide per-karyawan (butuh tabel
+   baru, mis. `memo_reads`), balasan berthread (`memo_replies` atau
+   `memo_threads`) — CEO/Manajer bisa reply balik, ada badge jumlah
+   balasan belum dibaca di sidebar (samain konsep `unreadMemoReplies()`
+   di prototype). Home dashboard: sapaan tampil nama + job title +
+   divisi (bukan cuma nama depan), banner cuti nambah info "cuti tim
+   yang disetujui bulan ini" di bawah banner cuti pribadi.
+9. **Work Control Lanjutan** — Projects, Work Tracker (papan
+   status/board), Timeline Calendar, dan MoM (Minutes of Meeting)
+   sebagai fitur-fitur terpisah di modul `work` yang sama (bukan cuma
+   1 tabel `type=memo|mom` kayak sekarang) — nempel di
+   `dashboard_access` modul `work` yang udah ada dari Fase 6a, cuma
+   nambah tab/section baru, gak perlu modul access baru.
+10. **KPI & Performance** — modul `kpi` (udah ada di
+    `DashboardAccess::MODULES`, tinggal diisi).
+11. **Kontrak Karyawan** — modul `contracts`, KHUSUS kontrak kerja
+    karyawan (bukan kontrak album/royalti — itu masuk Legal di Fase
+    14). Nama modul di kode boleh tetap `contracts`, tapi UI-nya perlu
+    jelas dilabeli "Kontrak Karyawan" biar gak ketuker sama Legal.
+12. **Payroll** — modul `payroll`. Baru bisa akurat kalau Fase 7
+    (Lembur + potongan blok 60 menit) udah selesai duluan — payroll
+    butuh angka itu sebagai input.
+13. **Project Budgeting & Royalty** — modul `budget` (budget vs actual
+    per project) & `royalty` (royalty, share, recoupment, status
+    pembayaran) — dua modul terpisah tapi biasanya dikerjain
+    berurutan karena sama-sama "Finance & Rights" di sidebar CEO.
+14. **Legal — BARU, gak ada di rencana lama** — Kontrak Album &
+    Perjanjian Royalti, SENGAJA dipisah dari Kontrak Karyawan (Fase
+    11). Modul access baru (`legal` atau dipecah `legal_album`/
+    `legal_royalty` — perlu diputusin pas breakdown, prototype pakai 2
+    halaman terpisah tapi belum tentu perlu 2 level akses beda).
+15. **IT — BARU, gak ada di rencana lama** — Audit Logs (siapa ubah
+    apa, kapan — lintas modul) + System Change Log (riwayat rilis
+    fitur, versi, tanggal — mirip semangat bagian "Status saat ini" di
+    README ini, tapi buat end-user Owner lewat UI, bukan cuma
+    dokumentasi repo). Modul access baru (`it`).
+16. **CEO Dashboard IA Restructure & Settings** — sidebar Owner
+    dirombak dari flat list jadi 7 grup bernomor (People/Work
+    Control/Finance/Royalty/HR Admin/Legal/IT), grup yang aksesnya
+    dibatasi dikasih badge "LIMITED". Halaman Settings baru: warna
+    aksen CEO Dashboard & Work Control Dashboard bisa di-custom Owner
+    (disimpan di `office_settings` atau tabel `settings` baru), sidebar
+    dibikin scroll independen dari main content biar nav panjang tetap
+    kejangkau.
+17. **CMS Landing Page** — Owner edit konten landing page publik
+    (Fase 1) tanpa sentuh kode. Tetap di urutan paling akhir kayak
+    rencana lama — landing page publik statis kontennya jarang
+    berubah, gak sepenting modul internal di atas.
+18. **Keamanan, Testing, Deployment** — staging/production terpisah,
+    backup otomatis, monitoring.
 
 Detail lengkap tiap fase dan peta halaman per role ada di dokumen breakdown
 project (dibagikan terpisah oleh tim, bukan bagian repo ini).
@@ -481,23 +606,55 @@ belum pernah dijalankan beneran. Checklist:
    BUKAN ke halaman placeholder "belum dibangun". Kalau ternyata malah
    placeholder yang muncul, cek urutan route di `routes/web.php` — grup
    `work` harus terdaftar SEBELUM route `/{module}` generik.
-9. Kalau semua di atas beres, lanjut ke **Fase 7: Task & Project
-   Tracker** (lihat peta di bawah).
+9. Kalau semua di atas beres, lanjut ke **Fase 7: Absensi Lanjutan
+   (Kebijakan WFO v18)** (lihat peta di bawah) — bukan lagi "Task &
+   Project Tracker" seperti rencana lama, lihat
+   [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
+   di atas untuk alasan urutan berubah.
 
-### Peta Fase 7–12
+### Peta Fase 7–18 (rombak total, lihat Rombak Rencana di atas)
 
-1. **Fase 7 — Task & Project Tracker** — nempel di modul `work` yang
-   sama kayak MoM & Memo (satu "Work Control", bukan modul terpisah).
-2. **Fase 8 — KPI & Performance** — nempel di modul `kpi`.
-3. **Fase 9 — Kontrak Kerja** — modul `contracts`.
-4. **Fase 10 — Payroll** — modul `payroll`.
-5. **Fase 11 — Project Budgeting & Royalty** — modul `budget` & `royalty`.
-6. **Fase 12 — CMS Landing Page** — Owner edit konten landing page
-   tanpa sentuh kode. _(Dashboard Access, yang tadinya direncanain gabung
-   di sini, udah kelar duluan di Fase 6a — ternyata dibutuhkan lebih
-   awal buat navigasi app-mobile, bukan nunggu CMS.)_
+1. **Fase 7 — Absensi Lanjutan (Kebijakan WFO v18)** — jam WFO
+   09:30–20:00 + auto-close, Lembur (flat rate per jabatan), potongan
+   kurang jam per blok 60 menit, mode Lapangan/Gigs multi-sesi, geo
+   settings pindah ke UI Owner/HR.
+2. **Fase 8 — Memo Forum & Home Personalization** — Memo jadi forum
+   (read/unread/hide/reply thread), Home nampilin job title+divisi +
+   banner cuti tim bulan ini.
+3. **Fase 9 — Work Control Lanjutan** — Projects, Work Tracker
+   (board), Timeline Calendar, MoM dipisah dari Memo, tetap nempel
+   modul `work` yang sama.
+4. **Fase 10 — KPI & Performance** — modul `kpi`.
+5. **Fase 11 — Kontrak Karyawan** — modul `contracts` (khusus kontrak
+   kerja karyawan, bukan album/royalti).
+6. **Fase 12 — Payroll** — modul `payroll` (butuh Fase 7 kelar duluan
+   buat data Lembur & potongan jam).
+7. **Fase 13 — Project Budgeting & Royalty** — modul `budget` &
+   `royalty`.
+8. **Fase 14 — Legal (BARU)** — Kontrak Album & Perjanjian Royalti,
+   modul access baru, terpisah dari Kontrak Karyawan.
+9. **Fase 15 — IT (BARU)** — Audit Logs + System Change Log, modul
+   access baru.
+10. **Fase 16 — CEO Dashboard IA Restructure & Settings** — sidebar
+    7 grup bernomor + badge LIMITED, warna aksen custom, sidebar
+    scroll independen.
+11. **Fase 17 — CMS Landing Page** — Owner edit konten landing page
+    publik tanpa sentuh kode.
+12. **Fase 18 — Keamanan, Testing, Deployment** — staging/production
+    terpisah, backup otomatis, monitoring.
 
-Belum ada keputusan urutan mana duluan di antara Fase 7/8/9/10/11 (semua
-nempel di modul yang levelnya udah bisa di-assign lewat Fase 6a, tinggal
-pilih mana yang paling kepake duluan) — masih perlu didiskusikan sebelum
-mulai ngoding, bukan cuma diikutin urutan nomor di atas.
+**Kenapa Fase 7 (Absensi Lanjutan) didahulukan** dari Memo Forum (Fase 8) meski Memo Forum lebih "berdiri sendiri"/lebih cepat dikerjain:
+data Lembur & potongan jam per blok yang dihasilkan Fase 7 jadi input
+buat Payroll (Fase 12) — makin lama ditunda, makin banyak histori
+absensi yang harus di-reconcile manual belakangan. Kalau tim lebih
+butuh "menang cepat" yang kelihatan user-facing duluan (mis. buat demo
+ke stakeholder), Fase 8 (Memo Forum & Home Personalization) juga aman
+dikerjain duluan — dua-duanya independen satu sama lain, gak saling
+depend. Fase 9 ke atas WAJIB nunggu 7 & 8 kelar dulu karena sama-sama
+numpuk di modul `work`/`office_settings` yang sama.
+
+Belum ada keputusan final urutan Fase 10–13 (KPI/Kontrak/Payroll/
+Budgeting & Royalty) — sama seperti rencana lama, itu masih perlu
+didiskusikan tim sebelum mulai ngoding, cuma Fase 14 (Legal) & Fase 15
+(IT) yang baru ketauan urutannya wajar diletakkan setelah modul
+finance karena sama-sama grup "terbatas" di sidebar CEO v18.
