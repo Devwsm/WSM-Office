@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'module', 'level', 'granted_by'])]
 class DashboardAccess extends Model
 {
+    protected $table = 'dashboard_access';
+
     public const MODULES = [
         'work' => [
             'label' => 'Work Control',
