@@ -781,7 +781,43 @@ belum pernah dijalankan beneran. Checklist:
     Dashboard" TIDAK BOLEH muncul sama sekali (dia gak pernah masuk
     `layouts.app`).
 
-### Peta Fase 7–18 (rombak total, lihat Rombak Rencana di atas)
+### Ceklis Parity UI/UX vs Prototype v18 (2026-09-07)
+
+**Aturan baku buat semua fase di bawah:** ikutin UX & posisi elemen
+prototype v18 SEPERSIS mungkin. Boleh dirubah dari aslinya HANYA kalau
+niru persis bikin sesuatu **gak responsif** (mis. sidebar 7-grup
+prototype didesain buat layar lebar, harus dites & disesuaikan buat
+mobile) atau **berantakan** (mis. prototype numpuk banyak badge/label
+di 1 baris yang muat di layar besar tapi kepotong di HP) — kalau
+kejadian salah satu itu, susunan/posisi boleh disesuaikan, tapi
+elemen & fungsinya harus tetap ada, jangan dihilangin.
+
+**Sudah selesai:**
+
+- [x] Tab Profile bottom-nav (kartu identitas + ganti password) — dulu placeholder `href="#"`
+- [x] Avatar inisial nama di header app-mobile (posisi kanan, sejajar prototype)
+- [x] Lock Dashboard — tombol posisi footer sidebar (di atas kartu profil), layar unlock terpisah
+- [x] "← App Saya" — posisi di paling atas nav sidebar
+- [x] Sidebar Modul (7 modul, urutan & label persis prototype: Work Control, Project Budgeting, Royalty Dashboard, KPI & Performance, People & Leave, Contract Monitoring, Payroll Overview)
+- [x] Split "Kelola Tim" + "Dashboard" di header app-mobile (deviasi disengaja, alasannya di atas)
+- [x] Halaman error custom (404/403/500/503) — gaya brand mark disamain
+- [x] SweetAlert buat semua konfirmasi/alert (termasuk logout & kunci dashboard)
+
+**Belum, per fase (urutan sama kayak [Peta Fase 7–18](#peta-fase-718-rombak-total-lihat-rombak-rencana-di-atas) di bawah, sekarang tiap fase ada catatan UI/UX-nya sendiri):**
+
+- **Fase 7 (Absensi Lanjutan)** — badge status WFO (Hadir/Terlambat/Auto-close) di kartu absensi Home & Riwayat, posisi & warna badge ikut prototype; form pengajuan Lembur (flat rate) posisinya nempel di halaman Lembur yang udah ada (`employee/overtime`), bukan halaman baru.
+- **Fase 8 (Memo Forum)** — ini yang paling banyak elemen baru:
+    - Badge unread (`.ceo-response-badge`, lingkaran kecil angka) nempel di item nav sidebar "Work Control", BUKAN cuma di dalam halaman.
+    - Icon "✦" di depan label nav (prototype pakai icon per-item, web resmi sekarang belum ada icon di item Modul sama sekali — perlu ditambah buat semua 7 modul, bukan cuma Memo).
+    - Reply dibuat thread (nested), BUKAN flat list kayak sekarang.
+    - Tombol hide/pin per-memo di pojok kanan card (posisi sama kayak card Memo yang sudah ada, cuma nambah 2 aksi).
+- **Fase 9 (Work Control Lanjutan)** — Tracker pakai board (kolom Todo/In Progress/Done, drag-drop), Timeline Calendar pakai grid kalender bulanan — dua-duanya UI BARU (belum ada padanan lama sama sekali di web resmi), jadi bebas ambil struktur HTML/CSS-nya dari prototype (bukan kode JS-nya, itu di-porting jadi Blade+Livewire/Alpine sesuai stack yang udah dipakai).
+- **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** — semua modul ini masih placeholder generik (`dashboard/module.blade.php`), jadi UI-nya 100% belum ada — tiap mulai salah satu, cek dulu halaman `data-opage` yang sepadan di prototype (lihat daftar di bagian atas README kalau perlu) buat contoh layout kartu/tabelnya sebelum desain dari nol.
+- **Fase 16 (CEO Dashboard IA Restructure)** — perubahan UI paling besar:
+    - Sidebar dipecah jadi section berlabel angka: `1·PEOPLE`, `2·WORK CONTROL`, `3·FINANCE`, `4·ROYALTY`, `5·HR ADMIN`, `6·LEGAL`, `7·IT` (label persis, posisi di atas grupnya masing-masing, style `.sidebar-group-label`).
+    - Section yang dibatasin (mis. Finance/Royalty kalau user gak punya akses) dikasih badge "LIMITED" (`.sidebar-lock`) di ujung kanan label grup, BUKAN grup itu disembunyikan total — beda dari cara `canViewModule()` sekarang yang nyembunyiin modul kalau gak ada akses.
+    - Warna aksen custom per-user (Owner bisa atur) — ini satu-satunya bagian Fase 16 yang butuh kolom baru di database (`users.accent_color` atau semacamnya), bukan cuma soal tata letak.
+    - **Sidebar-nya sendiri kudu scroll independen** dari konten utama kalau daftar modul udah panjang (7 grup + isinya) — cek dulu di layar pendek/laptop kecil, jangan sampe keseluruhan sidebar kepotong tanpa bisa di-scroll.
 
 1. **Fase 7 — Absensi Lanjutan (Kebijakan WFO v18)** — jam WFO
    09:30–20:00 + auto-close, Lembur (flat rate per jabatan), potongan
@@ -826,4 +862,4 @@ Belum ada keputusan final urutan Fase 10–13 (KPI/Kontrak/Payroll/
 Budgeting & Royalty) — sama seperti rencana lama, itu masih perlu
 didiskusikan tim sebelum mulai ngoding, cuma Fase 14 (Legal) & Fase 15
 (IT) yang baru ketauan urutannya wajar diletakkan setelah modul
-finance karena sama-sama grup "terbatas" di sidebar CEO v18.X
+finance karena sama-sama grup "terbatas" di sidebar CEO v18.
