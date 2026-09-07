@@ -138,6 +138,88 @@ Map of Feelings).
 >       "Preview Employee"/"← Employee Dashboard" di prototype) — ini
 >       **deviasi disengaja**, bukan gap yang perlu dibetulin (sudah
 >       dijelasin di entri "Perbaikan gap navigasi" di atas).
+>
+> **Update (2026-09-06, lanjutan):** halaman Profile & avatar di atas
+> sudah dites manual — **aman, jalan sesuai spesifikasi**. Arahan buat
+> semua pekerjaan lanjutan (Fase 7 ke atas & backlog gap UI/UX):
+> **dibuat semirip mungkin sama prototype v18**, pembeda yang disengaja
+> **cuma landing page publik + rekrutmen** (Fase 0–3, sudah ditulis di
+> [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
+> di bawah kalau perlu dicek ulang) — di luar itu, kalau prototype
+> punya suatu perilaku/posisi UI dan belum ada alasan teknis kuat buat
+> beda, ikuti prototype, bukan diadaptasi seenaknya.
+>
+> Prinsip itu langsung dipakai buat jawab pertanyaan "Lock Dashboard"
+> yang kemarin masih terbuka — dibongkar isi `lockOwner()` &
+> `openOwnerLogin()` di kode prototype v18:
+>
+> ```js
+> function lockOwner() {
+>     sessionStorage.removeItem(OWNER_SESSION_KEY);
+>     openOwnerLogin();
+> }
+> ```
+>
+> Ternyata mekanismenya simpel: **1 password manajemen yang SAMA buat
+> semua yang masuk area CEO Dashboard** (bukan PIN per-orang), disimpan
+> client-side (`sessionStorage`), gak ada timeout otomatis (murni
+> tombol manual), dan ada tombol "Kembali" balik ke pemilihan akun
+> (`showAccess()`). Prototype bahkan hardcode "Password awal: **123**,
+> segera ganti di Settings → Security" sebagai placeholder demo.
+>
+> **Ini TIDAK bisa ditransplant mentah-mentah** ke web resmi: sistem
+> sekarang per-user (email+password masing-masing akun, `Auth::attempt`
+> server-side) — bikin 1 password manajemen yang dibagi rame-rame
+> (apalagi disimpan di `sessionStorage`, bisa dibaca lewat devtools)
+> justru **mundur dari sisi keamanan** dibanding yang udah ada, bukan
+> "menyamai prototype". Adaptasi yang tetap pegang SEMANGAT prototype
+> (quick-lock terpisah dari logout, manual doang gak ada timeout,
+> ada tombol balik) tapi konsisten sama arsitektur auth yang udah ada:
+>
+> - Password buat unlock = **password akun user sendiri** (bukan 1
+>   secret bersama) — dicek server-side sama pola `Hash::check` yang
+>   udah dipakai `UpdatePasswordRequest`.
+> - Berlaku buat **siapa aja yang masuk `layouts.app`** (Owner, Manajer,
+>   HRD) — bukan cuma Owner kayak prototype, karena di web resmi
+>   ketiganya sama-sama lewat sidebar itu (prototype cuma punya 1
+>   role "Management" di dashboard-nya, web resmi pecah jadi 3 role).
+> - Session-based (`session('dashboard_locked')`), dicek middleware
+>   sebelum masuk grup route `layouts.app` — bukan `sessionStorage`
+>   client-side yang bisa diakalin dari browser.
+> - Tombol "Kunci Dashboard" nempatin posisi yang sama kayak prototype
+>   (footer sidebar, di atas kartu profil + "Keluar").
+> - Tombol "Kembali"/batal di layar unlock → balik ke halaman
+>   `employee.home` (padanan "balik ke account picker" versi web resmi
+>   yang per-user), bukan logout paksa.
+>
+> Spek di atas dianggap **final, siap dikerjain** — gak perlu rapat
+> lagi soal ini, tinggal dieksekusi kalau ada waktu (lihat
+> [Langkah Selanjutnya](#langkah-selanjutnya)).
+>
+> **Update (2026-09-06, eksekusi):** Lock Dashboard **sudah dikerjain**
+> persis sesuai spek di atas:
+>
+> - `App\Http\Middleware\EnsureDashboardUnlocked` (alias
+>   `dashboard.unlocked`) — dipasang ke SEMUA grup route yang nempatin
+>   user di `layouts.app`: `manajer.*`, `owner.*`, `recruitment.*`,
+>   `attendance.recap.*`, `approval.leave.*`, `approval.overtime.*`,
+>   `dashboard.*`. SENGAJA tidak dipasang ke grup `employee.*`
+>   (app-mobile) dan ke grup `dashboard.lock.*` sendiri (biar gak
+>   infinite redirect pas lagi kekunci).
+> - `App\Http\Controllers\Dashboard\DashboardLockController` — 4 aksi:
+>   `lock` (POST, dari tombol sidebar), `show` (GET, layar unlock),
+>   `unlock` (POST, cek password akun sendiri lewat
+>   `UnlockDashboardRequest`), `cancel` (POST, tombol "Kembali" →
+>   balik ke `employee.home`, BUKAN logout paksa).
+> - `resources/views/dashboard/locked.blade.php` — layar unlock,
+>   gaya disamain sama `auth/login.blade.php`.
+> - Tombol "🔒 Kunci Dashboard" nempatin posisi sama kayak prototype:
+>   footer sidebar `layouts.app`, di atas kartu profil + tombol
+>   Keluar, ada konfirmasi SweetAlert kayak logout.
+>
+> **Belum dites** (sandbox nulis kode ini gak ada PHP/composer buat
+> jalanin server) — checklist lengkap di
+> [Langkah Selanjutnya](#langkah-selanjutnya) poin 11.
 
 ## 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
 
@@ -611,6 +693,16 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 
 ## Langkah Selanjutnya
 
+> **Prinsip tetap buat semua kerjaan mulai sekarang (2026-09-06):**
+> sisi web resmi dibuat **semirip mungkin sama prototype v18**,
+> satu-satunya pembeda yang disengaja adalah landing page publik +
+> rekrutmen (Fase 0–3). Kalau nemu prototype punya perilaku/posisi UI
+> yang belum ada di web resmi dan gak ada alasan teknis kuat buat beda
+> (kayak kasus Lock Dashboard di atas — mekanismenya diadaptasi ke
+> arsitektur auth per-user, tapi semangat & posisinya tetap disamain),
+> langsung anggap itu spek yang harus diikuti, gak perlu nunggu
+> ditanya dulu — biar gak ada rombak besar-besaran lagi ke depannya.
+
 Fase 0–6 sudah selesai di sisi kode. Fase 0–5 sudah dikonfirmasi jalan di
 environment asli (Laragon). **Fase 6 (a & b) belum sempat dites
 end-to-end** — sandbox yang dipakai nulis kode ini gak punya PHP sama
@@ -670,6 +762,24 @@ belum pernah dijalankan beneran. Checklist:
     error "Password saat ini salah") lalu yang benar (harus redirect
     balik + toast sukses) → logout → login ulang pakai password baru
     buat mastiin `Hash::make` kesimpen bener.
+11. **Belum dites juga**: Lock Dashboard (2026-09-06) — login sebagai
+    Manajer/HRD/Owner → masuk sisi `layouts.app` mana aja → klik
+    "🔒 Kunci Dashboard" di footer sidebar → harus muncul konfirmasi
+    SweetAlert dulu → confirm → harus kelempar ke app-mobile
+    (`employee.home`) + toast "Dashboard dikunci." → coba akses
+    langsung salah satu URL manajemen (mis. `/owner/dashboard` atau
+    `/absensi`, ketik manual di address bar) → harus KEPENTAL ke layar
+    "Dashboard Terkunci" (`/dashboard-lock`), bukan malah kebuka. Di
+    layar itu: coba password salah dulu (harus muncul error "Password
+    salah"), baru password bener → harus balik PERSIS ke URL yang tadi
+    dituju (bukan ke `/dashboard` doang). Ulangi sekali lagi tapi kali
+    ini klik "Kembali" (bukan isi password) → harus ke `employee.home`
+    tanpa logout (masih tetep login, coba buka tab baru ke salah satu
+    URL manajemen, harus masih kepental — berarti sesi login gak
+    kepengaruh, cuma flag lock-nya doang). Terakhir, login sebagai
+    Karyawan biasa (bukan Manajer/HRD/Owner) → tombol "🔒 Kunci
+    Dashboard" TIDAK BOLEH muncul sama sekali (dia gak pernah masuk
+    `layouts.app`).
 
 ### Peta Fase 7–18 (rombak total, lihat Rombak Rencana di atas)
 
@@ -716,4 +826,4 @@ Belum ada keputusan final urutan Fase 10–13 (KPI/Kontrak/Payroll/
 Budgeting & Royalty) — sama seperti rencana lama, itu masih perlu
 didiskusikan tim sebelum mulai ngoding, cuma Fase 14 (Legal) & Fase 15
 (IT) yang baru ketauan urutannya wajar diletakkan setelah modul
-finance karena sama-sama grup "terbatas" di sidebar CEO v18.
+finance karena sama-sama grup "terbatas" di sidebar CEO v18.X

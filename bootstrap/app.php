@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureDashboardUnlocked;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
             'module' => EnsureModuleAccess::class,
+            'dashboard.unlocked' => EnsureDashboardUnlocked::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

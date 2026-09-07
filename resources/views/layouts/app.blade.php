@@ -102,6 +102,20 @@
             </nav>
 
             <div class="mt-auto border-t border-line pt-3.5">
+                {{-- "Kunci Dashboard" — padanan tombol merah footer sidebar
+                     Owner di prototype (lockOwner()), diadaptasi ke password
+                     akun sendiri. Cuma role yang beneran masuk layouts.app
+                     yang lihat tombol ini (samain sama grup role rute
+                     dashboard.lock.*). --}}
+                <form method="POST" action="{{ route('dashboard.lock.lock') }}" class="mb-2.5"
+                    data-confirm="Kamu perlu masukin password buat buka lagi." data-confirm-title="Kunci dashboard?"
+                    data-confirm-button="Ya, kunci">
+                    @csrf
+                    <button
+                        class="w-full rounded-2xl border border-[#f1c7c2] bg-[#fff0ee] py-2.5 text-xs font-extrabold text-[#a83d35]">
+                        🔒 Kunci Dashboard
+                    </button>
+                </form>
                 <div class="flex items-center gap-2.5 px-1 pb-3">
                     <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#ece7dd] text-xs font-black">
                         {{ strtoupper(substr(auth()->user()->name ?? '?', 0, 1)) }}

@@ -12,6 +12,7 @@ use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequest
 use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
+use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
@@ -66,15 +67,30 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
+// --- Lock Dashboard (2026-09-06) ---
+// SENGAJA middleware-nya cuma ['auth', 'role:...'] — TANPA
+// 'dashboard.unlocked' — karena rute inilah yang jadi jalan keluar
+// pas lagi ke-lock. Kalau ikut dipasangi 'dashboard.unlocked', orang
+// yang lagi terkunci gak akan pernah bisa buka layar unlock-nya
+// sendiri (infinite redirect). Role dibatasin manajer,owner,hrd —
+// samain sama siapa aja yang beneran bisa masuk layouts.app (tombol
+// "Kunci Dashboard" di sidebar juga cuma muncul buat role ini).
+Route::middleware(['auth', 'role:manajer,owner,hrd'])->prefix('dashboard-lock')->name('dashboard.lock.')->group(function () {
+    Route::post('/kunci', [DashboardLockController::class, 'lock'])->name('lock');
+    Route::get('/', [DashboardLockController::class, 'show'])->name('show');
+    Route::post('/buka', [DashboardLockController::class, 'unlock'])->middleware('throttle:10,1')->name('unlock');
+    Route::post('/batal', [DashboardLockController::class, 'cancel'])->name('cancel');
+});
+
 // --- Manajer only ---
-Route::middleware(['auth', 'role:manajer,owner'])->prefix('manajer')->name('manajer.')->group(function () {
+Route::middleware(['auth', 'role:manajer,owner', 'dashboard.unlocked'])->prefix('manajer')->name('manajer.')->group(function () {
     // Approval izin/cuti & lembur ada di grup 'approval.leave.'/'approval.overtime.'
     // (prefix /persetujuan) di bawah, bareng Owner — bukan di sini.
     // TODO Fase 1: team-overview
 });
 
 // --- Owner only ---
-Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->group(function () {
+Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')->name('owner.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // --- Fase 2: Manajemen Karyawan & Struktur Organisasi ---
@@ -109,7 +125,7 @@ Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->grou
 // ini, bukan cuma Owner. Kalau nanti Manajer ikut butuh (mis. lihat
 // pelamar divisinya sendiri), tambah role baru di sini, jangan taruh
 // duplikat rute di grup manajer.
-Route::middleware(['auth', 'role:hrd,owner'])->prefix('rekrutmen')->name('recruitment.')->group(function () {
+Route::middleware(['auth', 'role:hrd,owner', 'dashboard.unlocked'])->prefix('rekrutmen')->name('recruitment.')->group(function () {
     Route::resource('lowongan', JobOpeningController::class)->except(['show', 'destroy'])->parameters(['lowongan' => 'opening'])->names('openings');
 
     Route::get('/pelamar', [JobApplicationController::class, 'index'])->name('applications.index');
@@ -123,7 +139,7 @@ Route::middleware(['auth', 'role:hrd,owner'])->prefix('rekrutmen')->name('recrui
 // Dipisah dari grup 'owner'/'manajer' karena dipakai bareng 3 role
 // sekaligus (sama seperti pola rekrutmen di atas), dengan scope data
 // berbeda per role (lihat RecapController::scopedUsers()).
-Route::middleware(['auth', 'role:manajer,owner,hrd'])->prefix('absensi')->name('attendance.recap.')->group(function () {
+Route::middleware(['auth', 'role:manajer,owner,hrd', 'dashboard.unlocked'])->prefix('absensi')->name('attendance.recap.')->group(function () {
     Route::get('/', [RecapController::class, 'index'])->name('index');
     Route::get('/{user}', [RecapController::class, 'show'])->name('show');
     Route::post('/{attendance}/koreksi', [RecapController::class, 'correct'])->name('correct');
@@ -132,7 +148,7 @@ Route::middleware(['auth', 'role:manajer,owner,hrd'])->prefix('absensi')->name('
 // --- Manajer & Owner (Persetujuan Izin/Cuti, Fase 5) ---
 // HRD SENGAJA nggak dikasih akses di sini (kesepakatan Fase 5: cuma
 // Manajer & Owner yang approve/reject/cancel izin-cuti).
-Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan')->name('approval.leave.')->group(function () {
+Route::middleware(['auth', 'role:manajer,owner', 'dashboard.unlocked'])->prefix('persetujuan')->name('approval.leave.')->group(function () {
     Route::get('/', [ApprovalLeaveRequestController::class, 'index'])->name('index');
     Route::post('/{leave}/setujui', [ApprovalLeaveRequestController::class, 'approve'])->name('approve');
     Route::post('/{leave}/tolak', [ApprovalLeaveRequestController::class, 'reject'])->name('reject');
@@ -142,7 +158,7 @@ Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan')->name('
 // --- Manajer & Owner (Persetujuan Lembur, Fase 7) ---
 // Scope & alasan HRD-dikecualikan SAMA PERSIS grup 'approval.leave.'
 // di atas — lihat Approval\OvertimeRequestController.
-Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan-lembur')->name('approval.overtime.')->group(function () {
+Route::middleware(['auth', 'role:manajer,owner', 'dashboard.unlocked'])->prefix('persetujuan-lembur')->name('approval.overtime.')->group(function () {
     Route::get('/', [ApprovalOvertimeRequestController::class, 'index'])->name('index');
     Route::post('/{overtime}/setujui', [ApprovalOvertimeRequestController::class, 'approve'])->name('approve');
     Route::post('/{overtime}/tolak', [ApprovalOvertimeRequestController::class, 'reject'])->name('reject');
@@ -155,7 +171,7 @@ Route::middleware(['auth', 'role:manajer,owner'])->prefix('persetujuan-lembur')-
 // User::canViewModule(), bukan lewat middleware role di sini. Jadi
 // karyawan biasa yang di-assign akses ke 1 modul saja tetap bisa
 // masuk /dashboard, cuma modul itu doang yang kelihatan.
-Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('dashboard')->name('dashboard.')->group(function () {
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocked'])->prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [ModuleDashboardController::class, 'index'])->name('index');
 
     // --- Fase 6b: Work Control -> MoM & Memo ---
