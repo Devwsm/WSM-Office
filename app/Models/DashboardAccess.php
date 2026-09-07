@@ -34,7 +34,7 @@ class DashboardAccess extends Model
         'budget' => [
             'label' => 'Project Budgeting',
             'desc' => 'Budget vs actual per project',
-            'icon' => 'Rp',
+            'icon' => '▦',
         ],
         'royalty' => [
             'label' => 'Royalty Dashboard',
@@ -59,7 +59,7 @@ class DashboardAccess extends Model
         'payroll' => [
             'label' => 'Payroll Overview',
             'desc' => 'Payroll & take home pay',
-            'icon' => '🧾',
+            'icon' => '$',
         ],
     ];
 
