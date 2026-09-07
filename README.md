@@ -20,14 +20,27 @@ lanjut ngerjain.
 - [x] Profil akun sendiri (ganti password) & tombol "Kunci Dashboard" buat jaga-jaga kalau HP/laptop ditinggal
 - [x] Halaman error rapi (gak ada tampilan error mentah Laravel)
 
-**Yang belum ada:**
+**Yang sudah disiapkan sebagai fondasi, tetapi belum menjadi fitur user-facing:**
+
+- [~] **Data Layer Fase 9 — Work Control**: Projects, Work Items/Tracker, Meetings, Attendees, Meeting Action Items + relasi action item ke tracker
+- [~] **Data Layer Fase 10 — KPI & Performance**: tabel KPI + relasi karyawan/pembuat + perhitungan achievement
+- [~] **Data Layer Fase 11 — Kontrak Karyawan**: penyimpanan metadata/file kontrak + relasi karyawan/uploader
+- [~] **Data Layer Fase 12 — Payroll**: field payroll di `users` + histori payroll bulanan
+- [~] **Data Layer Fase 13 — Budget & Royalty**: budget project + actual/variance + royalty/share/recoupment
+- [~] **Data Layer Fase 14 — Legal**: dokumen kontrak album & perjanjian royalti
+- [~] **Data Layer Fase 15 — IT**: Audit Log + System Change Log
+- [~] **Data Layer Fase 16 — Settings & Dashboard IA**: warna aksen CEO/Work Control + modul `legal`/`it` pada Dashboard Access
+
+**Yang belum selesai end-to-end:**
 
 - [ ] Lembur & absensi lanjutan (mode kerja lapangan/gigs)
-- [ ] Papan kerja tim (Tracker) & kalender jadwal
-- [ ] Modul KPI, Kontrak Karyawan, Payroll (gaji), Budget Project, Royalti
-- [ ] Modul Legal (kontrak album/royalti) & Audit Log
+- [ ] Papan kerja tim (Tracker) & kalender jadwal sebagai UI/fitur aktif
+- [ ] UI & Controller untuk KPI, Kontrak Karyawan, Payroll, Budget Project, Royalty
+- [ ] UI & Controller untuk Legal, Audit Log, dan System Change Log
 - [ ] Tampilan menu Owner versi rapi berkelompok (masih daftar biasa)
 - [ ] Owner bisa edit isi website publik sendiri tanpa minta bantuan (CMS)
+
+> `~` berarti **fondasi database/model sudah dibuat**, bukan berarti modulnya sudah bisa dipakai dari UI. Migration tetap perlu dijalankan dan divalidasi di project sebelum dianggap aktif.
 
 > 📖 Rincian teknis tiap bagian (kenapa dibikin gini, apa yang dicoba,
 > dsb) ada di bagian **"Detail Lengkap (Arsip Teknis)"** di paling bawah
@@ -35,17 +48,24 @@ lanjut ngerjain.
 
 ## 👉 Langkah Selanjutnya
 
-1. **Perlu dicoba dulu (belum sempat dites langsung):** fitur Profil,
-   Kunci Dashboard, dan Pengumuman/Memo yang baru ditambah. Kalau ada
-   yang aneh/error pas dicoba, laporin aja.
-2. **Sebelum absensi dipakai beneran:** titik lokasi kantor di sistem
+1. **WAJIB validasi Data Layer Fase 9–16:** jalankan `php artisan migrate`
+   di database development dan pastikan seluruh migration baru lolos,
+   terutama foreign key, enum `dashboard_access.module`, dan migration
+   raw SQL untuk MySQL.
+2. Setelah migration lolos, **cek model/relation** lewat Tinker atau flow
+   CRUD sederhana supaya relasi Project → Work Item → Meeting/Action Item,
+   User → KPI/Contract/Payroll, Project → Budget, serta Legal/IT tidak
+   punya error.
+3. **Fase 7 tetap menjadi pekerjaan user-facing yang perlu diselesaikan**
+   (Lembur, auto-close, shortage, Lapangan/Gigs, geo settings UI), karena
+   Payroll bergantung pada data Lembur/potongan jam tersebut.
+4. Setelah fondasi tervalidasi, lanjutkan UI + Controller **Fase 9 Work
+   Control**, kemudian isi modul Fase 10–16 satu per satu sesuai prototype
+   v18. Data Layer boleh sudah disiapkan lebih awal, tetapi jangan dianggap
+   modul selesai sebelum flow end-to-end tersedia.
+5. **Sebelum absensi dipakai beneran:** titik lokasi kantor di sistem
    masih contoh (bukan lokasi WSM asli) — perlu diganti dulu, caranya
    ada di bagian "Cara Menjalankan" di bawah.
-3. **Kerjaan berikutnya:** papan kerja tim (Tracker) & kalender jadwal —
-   tinggal bilang "lanjut" kalau mau mulai.
-4. Urutan kerjaan berikutnya udah direncanain sampai modul terakhir
-   (Payroll, Legal, dst) — daftar lengkapnya ada di bagian arsip teknis
-   kalau mau intip.
 
 ## 🚀 Cara Menjalankan (Setup)
 
@@ -364,6 +384,49 @@ migrate`) — 2 tabel baru di atas belum ada di database manapun.
 > **Belum dites end-to-end** (sandbox nulis kode ini gak ada PHP) —
 > checklist lengkap di [Langkah Selanjutnya](#langkah-selanjutnya)
 > poin 12.
+
+**Update (2026-09-07, Data Layer Fase 9–16):** fondasi database dan Eloquent
+Model untuk roadmap Fase 9 sampai Fase 16 sudah disiapkan lebih awal agar
+UI/Controller berikutnya punya struktur data yang jelas. Ini **belum berarti
+Fase 9–16 selesai secara fitur** — yang selesai pada update ini adalah layer
+migration + model/relation dan penyesuaian data pendukung.
+
+- **Fase 9 — Work Control:** `projects`, `work_items`, `meetings`,
+  `meeting_attendees`, `meeting_action_items`, serta relasi
+  `meeting_action_item_id` pada `work_items`. `Project` terhubung ke lead,
+  creator, work items, meetings, dan budgets. `WorkItem` terhubung ke
+  project, PIC, creator, dan meeting action item.
+- **Fase 10 — KPI:** tabel `kpis` + model `Kpi`, termasuk target/current,
+  weight, status, periode, relasi employee/creator, dan helper
+  `achievementPct()`.
+- **Fase 11 — Kontrak Karyawan:** tabel `employee_contracts` + model
+  `EmployeeContract`, menyimpan metadata file, periode kontrak, catatan,
+  employee, dan uploader, termasuk helper `isExpiringSoon()`.
+- **Fase 12 — Payroll:** `users` mendapat `salary_base`,
+  `target_hours_per_day`, dan `flat_overtime_rate`. Tabel
+  `payroll_records` menyimpan payroll unik per karyawan/periode dengan
+  base salary, overtime, shortage deduction, adjustment, total, dan status.
+- **Fase 13 — Budget & Royalty:** `project_budgets` untuk budget vs actual
+  per project + helper variance; `royalty_entries` untuk gross, share,
+  recoupment, net, source, periode, dan status pembayaran.
+- **Fase 14 — Legal:** tabel `legal_documents` + model `LegalDocument`.
+  Satu modul `legal` dipakai untuk kategori `album` dan `royalty`, sehingga
+  kontrak album/perjanjian royalti tetap dipisahkan dari Kontrak Karyawan.
+- **Fase 15 — IT:** tabel `audit_logs` + `system_changelogs` beserta modelnya.
+  Audit Log menyimpan actor/action/detail/timestamp, sedangkan Change Log
+  menyimpan version, release date, status, modules, title, dan changes.
+- **Fase 16 — Dashboard IA & Settings:** `office_settings` mendapat
+  `ceo_accent_color` dan `work_accent_color`. `DashboardAccess` sekarang
+  mendukung total 9 modul dengan penambahan `legal` dan `it`; daftar modul
+  menjadi sumber kebenaran untuk label, deskripsi, dan icon.
+- **User model diperluas:** relasi baru untuk Project Lead, Work Item, KPI,
+  Contract, dan Payroll, serta field payroll sudah masuk ke `$fillable` dan
+  casts.
+
+**Catatan status:** file-file ini adalah **Data Layer Fase 9–16**. Belum ada
+Controller/View/flow end-to-end untuk modul-modul tersebut pada update ini.
+Migration harus dijalankan di development sebelum testing, dan deployment
+production jangan dilakukan sebelum migration + relation + flow diuji.
 
 ### 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
 
@@ -892,43 +955,35 @@ belum pernah dijalankan beneran. Checklist:
     baru (`memo_reads`, `memo_thread_messages`) belum ada di database
     manapun. Setelah itu, jalanin ulang `php artisan db:seed
 --class=DemoSeeder` kalau mau langsung ada contoh data (atau tes
-    manual dari nol juga bisa). Checklist:
-    - Login **Karyawan/Manajer/HRD non-manage** apa aja → buka Home →
-      hero harus nampilin job title + divisi di bawah tanggal (kalau
-      user itu punya keduanya) → kalau Gepeng baru di-seed dalam bulan
-      berjalan, banner "Cuti Tim Bulan Ini" harus muncul di atas kartu
-      absensi.
-    - Di kartu "Info dari Owner": memo yang belum pernah disentuh harus
-      berstatus **UNREAD** (chip biru) → klik "Tandai Sudah Dibaca" →
-      chip berubah jadi **READ** (abu-abu) tanpa reload halaman terasa
-      aneh (submit form biasa, boleh ada reload, yang penting state-nya
-      berubah). Klik lagi → balik ke UNREAD.
-    - Klik "Sembunyikan" di salah satu memo → memo itu HILANG dari
-      daftar utama, muncul tombol "N disembunyikan" di pojok kanan atas
-      kartu → klik tombol itu → memo yang disembunyikan muncul lagi
-      (opacity redup) dengan tombol "Tampilkan Lagi" → klik → balik ke
-      daftar utama.
-    - Ketik reply di form bawah salah satu memo (mis. memo "Selamat
-      datang") → submit → pesan baru harus muncul di thread, RATA KANAN
-      & warna gelap (bubble "mine") kalau itu punya sendiri.
-    - Login **beda user** (mis. login Gepeng abis reply pakai Aldora) →
-      buka memo yang sama → HARUS kelihatan reply dari Aldora juga
-      (bukti thread-nya dibagi bareng, bukan privat per-orang).
-    - Login **Aldora** (manage-level modul Work di seed) → buka sidebar
-      → item "Work Control" harus ada badge merah angka **1** (dari
-      reply seed Aldora sendiri yang belum ke-mark — kalau udah pernah
-      buka `/dashboard/work` sebelumnya di sesi manapun, badge-nya
-      bakal 0, itu normal). Buka `/dashboard/work` → badge di sidebar
-      HARUS HILANG (jadi 0) setelah halaman itu selesai dimuat, gak
-      perlu refresh manual.
-    - Di `/dashboard/work`, coba reply dari sisi manajemen di salah
-      satu memo → cek bubble-nya kelabel "· Manajemen" (bukan "mine",
-      soalnya ini akun berbeda dari yang reply duluan) kalau dilihat
-      dari akun lain.
-    - Login **Karyawan biasa TANPA akses modul work** (mis. Gepeng,
-      cuma 'view') → sidebar Modul: semua 7 item HARUS ada ikonnya
-      (☷/Rp/♪/◎/◉/▤/🧾) di depan label, bukan cuma teks polos kayak
-      sebelumnya.
+    manual dari nol juga bisa). Checklist: - Login **Karyawan/Manajer/HRD non-manage** apa aja → buka Home →
+    hero harus nampilin job title + divisi di bawah tanggal (kalau
+    user itu punya keduanya) → kalau Gepeng baru di-seed dalam bulan
+    berjalan, banner "Cuti Tim Bulan Ini" harus muncul di atas kartu
+    absensi. - Di kartu "Info dari Owner": memo yang belum pernah disentuh harus
+    berstatus **UNREAD** (chip biru) → klik "Tandai Sudah Dibaca" →
+    chip berubah jadi **READ** (abu-abu) tanpa reload halaman terasa
+    aneh (submit form biasa, boleh ada reload, yang penting state-nya
+    berubah). Klik lagi → balik ke UNREAD. - Klik "Sembunyikan" di salah satu memo → memo itu HILANG dari
+    daftar utama, muncul tombol "N disembunyikan" di pojok kanan atas
+    kartu → klik tombol itu → memo yang disembunyikan muncul lagi
+    (opacity redup) dengan tombol "Tampilkan Lagi" → klik → balik ke
+    daftar utama. - Ketik reply di form bawah salah satu memo (mis. memo "Selamat
+    datang") → submit → pesan baru harus muncul di thread, RATA KANAN
+    & warna gelap (bubble "mine") kalau itu punya sendiri. - Login **beda user** (mis. login Gepeng abis reply pakai Aldora) →
+    buka memo yang sama → HARUS kelihatan reply dari Aldora juga
+    (bukti thread-nya dibagi bareng, bukan privat per-orang). - Login **Aldora** (manage-level modul Work di seed) → buka sidebar
+    → item "Work Control" harus ada badge merah angka **1** (dari
+    reply seed Aldora sendiri yang belum ke-mark — kalau udah pernah
+    buka `/dashboard/work` sebelumnya di sesi manapun, badge-nya
+    bakal 0, itu normal). Buka `/dashboard/work` → badge di sidebar
+    HARUS HILANG (jadi 0) setelah halaman itu selesai dimuat, gak
+    perlu refresh manual. - Di `/dashboard/work`, coba reply dari sisi manajemen di salah
+    satu memo → cek bubble-nya kelabel "· Manajemen" (bukan "mine",
+    soalnya ini akun berbeda dari yang reply duluan) kalau dilihat
+    dari akun lain. - Login **Karyawan biasa TANPA akses modul work** (mis. Gepeng,
+    cuma 'view') → sidebar Modul: semua 7 item HARUS ada ikonnya
+    (☷/Rp/♪/◎/◉/▤/🧾) di depan label, bukan cuma teks polos kayak
+    sebelumnya.
 
 ### Ceklis Parity UI/UX vs Prototype v18 (2026-09-07)
 
@@ -957,7 +1012,12 @@ elemen & fungsinya harus tetap ada, jangan dihilangin.
 
 - **Fase 7 (Absensi Lanjutan)** — badge status WFO (Hadir/Terlambat/Auto-close) di kartu absensi Home & Riwayat, posisi & warna badge ikut prototype; form pengajuan Lembur (flat rate) posisinya nempel di halaman Lembur yang udah ada (`employee/overtime`), bukan halaman baru.
 - **Fase 9 (Work Control Lanjutan)** — Tracker pakai board (kolom Todo/In Progress/Done, drag-drop), Timeline Calendar pakai grid kalender bulanan — dua-duanya UI BARU (belum ada padanan lama sama sekali di web resmi), jadi bebas ambil struktur HTML/CSS-nya dari prototype (bukan kode JS-nya, itu di-porting jadi Blade+Livewire/Alpine sesuai stack yang udah dipakai).
-- **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** — semua modul ini masih placeholder generik (`dashboard/module.blade.php`), jadi UI-nya 100% belum ada — tiap mulai salah satu, cek dulu halaman `data-opage` yang sepadan di prototype (lihat daftar di bagian atas README kalau perlu) buat contoh layout kartu/tabelnya sebelum desain dari nol.
+- **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** —
+  UI masih placeholder generik (`dashboard/module.blade.php`), jadi belum ada
+  flow user-facing. Namun **Data Layer Fase 10–15 sudah disiapkan**:
+  migration + model untuk KPI, kontrak, payroll, budget, royalty, legal, dan
+  IT. Saat mulai UI, tetap cek halaman `data-opage` yang sepadan di prototype
+  v18 sebelum desain dari nol.
 - **Fase 16 (CEO Dashboard IA Restructure)** — perubahan UI paling besar:
     - Sidebar dipecah jadi section berlabel angka: `1·PEOPLE`, `2·WORK CONTROL`, `3·FINANCE`, `4·ROYALTY`, `5·HR ADMIN`, `6·LEGAL`, `7·IT` (label persis, posisi di atas grupnya masing-masing, style `.sidebar-group-label`).
     - Section yang dibatasin (mis. Finance/Royalty kalau user gak punya akses) dikasih badge "LIMITED" (`.sidebar-lock`) di ujung kanan label grup, BUKAN grup itu disembunyikan total — beda dari cara `canViewModule()` sekarang yang nyembunyiin modul kalau gak ada akses.

@@ -33,6 +33,9 @@ use Illuminate\Notifications\Notifiable;
     'join_date',
     'annual_leave_entitlement',
     'birth_date',
+    'salary_base',
+    'target_hours_per_day',
+    'flat_overtime_rate',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -47,6 +50,11 @@ class User extends Authenticatable
             'join_date' => 'date',
             'birth_date' => 'date',
             'password' => 'hashed',
+            // Fase 12 — field payroll (Gaji Pokok/Target Jam/Flat Overtime
+            // Rate), ditunda dari Fase 7 sesuai keputusan README.
+            'salary_base' => 'float',
+            'target_hours_per_day' => 'integer',
+            'flat_overtime_rate' => 'float',
         ];
     }
 
@@ -65,6 +73,36 @@ class User extends Authenticatable
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class);
+    }
+
+    /** Fase 9 — project yang user ini jadi Project Lead-nya. */
+    public function leadProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'lead_employee_id');
+    }
+
+    /** Fase 9 — item tracker yang PIC-nya user ini. */
+    public function workItems(): HasMany
+    {
+        return $this->hasMany(WorkItem::class, 'pic_employee_id');
+    }
+
+    /** Fase 10 — KPI milik user ini. */
+    public function kpis(): HasMany
+    {
+        return $this->hasMany(Kpi::class, 'employee_id');
+    }
+
+    /** Fase 11 — dokumen kontrak kerja user ini. */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(EmployeeContract::class, 'employee_id');
+    }
+
+    /** Fase 12 — histori payroll user ini per bulan. */
+    public function payrollRecords(): HasMany
+    {
+        return $this->hasMany(PayrollRecord::class);
     }
 
     /** Baris dashboard_access milik user ini (kosong buat Owner — lihat accessLevel()). */

@@ -14,6 +14,9 @@ use Illuminate\Support\Carbon;
  * WFO v18 (Fase 7 — jam normal 09:30–20:00, auto-close, toggle geo).
  * Diisi lewat OfficeSettingSeeder; UI edit dari Owner sejak Fase 7
  * (`Owner\OfficeSettingController`) — sebelumnya cuma lewat seeder.
+ * `ceo_accent_color`/`work_accent_color` (Fase 16) numpang di tabel
+ * yang sama karena sama-sama "pengaturan global sistem" — gak dibikin
+ * tabel `settings` baru cuma buat 2 kolom warna.
  * ---------------------------------------------------------------------
  */
 #[Fillable([
@@ -28,6 +31,8 @@ use Illuminate\Support\Carbon;
     'normal_end_time',
     'late_tolerance_minutes',
     'required_work_minutes',
+    'ceo_accent_color',
+    'work_accent_color',
 ])]
 class OfficeSetting extends Model
 {
@@ -60,6 +65,8 @@ class OfficeSetting extends Model
             'normal_end_time' => '20:00:00',
             'late_tolerance_minutes' => 15,
             'required_work_minutes' => 480,
+            'ceo_accent_color' => '#111111',
+            'work_accent_color' => '#3558f4',
         ]);
     }
 
