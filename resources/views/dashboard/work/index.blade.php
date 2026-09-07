@@ -68,6 +68,14 @@
                             </form>
                         </div>
                     @endif
+
+                    {{-- Fase 8: thread reply — sisi manajemen liat & bisa
+                            balas SEMUA reply karyawan di sini (bukan cuma
+                            punya sendiri, thread-nya satu dibagi bareng). --}}
+                    @include('memo._thread', [
+                        'memo' => $memo,
+                        'replyRoute' => route('dashboard.work.reply', $memo),
+                    ])
                 </div>
             @endforeach
         </div>

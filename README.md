@@ -1,10 +1,98 @@
 # WSM Office System
 
 Sistem internal untuk **Whisnu Santika Music (WSM)** — absensi, cuti/izin,
-manajemen karyawan, project & KPI, kontrak kerja, payroll, hingga rekrutmen
-(landing page publik + karir). Dibangun dengan Laravel + Tailwind CSS v4 +
-Alpine.js, mengikuti konvensi stack yang sama dengan project lain (Mavnus,
-Map of Feelings).
+data karyawan, rekrutmen, dan modul kerja tim, semuanya di 1 tempat.
+Dokumen ini isinya status progres (buat dipantau) + panduan buat yang
+lanjut ngerjain.
+
+## ✅ Progres Sekarang
+
+**Yang udah bisa dipakai:**
+
+- [x] Website publik (Beranda, Tentang Kami, Layanan, Kontak)
+- [x] Halaman Karir + form lamaran kerja publik
+- [x] Login & data karyawan (tambah/edit/nonaktifkan, struktur atasan-bawahan)
+- [x] Rekrutmen — HRD kelola lowongan, lihat pelamar, terima jadi karyawan
+- [x] Absensi — absen masuk/pulang pakai lokasi HP, riwayat, rekap tim
+- [x] Izin & Cuti — ajukan, disetujui atasan, saldo cuti otomatis kepotong
+- [x] Akses modul per-orang — Owner atur siapa boleh lihat/kelola modul apa
+- [x] Pengumuman/Memo — bisa ditandai dibaca, disembunyikan, dan dibalas (kayak forum kecil)
+- [x] Profil akun sendiri (ganti password) & tombol "Kunci Dashboard" buat jaga-jaga kalau HP/laptop ditinggal
+- [x] Halaman error rapi (gak ada tampilan error mentah Laravel)
+
+**Yang belum ada:**
+
+- [ ] Lembur & absensi lanjutan (mode kerja lapangan/gigs)
+- [ ] Papan kerja tim (Tracker) & kalender jadwal
+- [ ] Modul KPI, Kontrak Karyawan, Payroll (gaji), Budget Project, Royalti
+- [ ] Modul Legal (kontrak album/royalti) & Audit Log
+- [ ] Tampilan menu Owner versi rapi berkelompok (masih daftar biasa)
+- [ ] Owner bisa edit isi website publik sendiri tanpa minta bantuan (CMS)
+
+> 📖 Rincian teknis tiap bagian (kenapa dibikin gini, apa yang dicoba,
+> dsb) ada di bagian **"Detail Lengkap (Arsip Teknis)"** di paling bawah
+> dokumen ini — gak perlu dibaca kalau cuma mau pantau progres.
+
+## 👉 Langkah Selanjutnya
+
+1. **Perlu dicoba dulu (belum sempat dites langsung):** fitur Profil,
+   Kunci Dashboard, dan Pengumuman/Memo yang baru ditambah. Kalau ada
+   yang aneh/error pas dicoba, laporin aja.
+2. **Sebelum absensi dipakai beneran:** titik lokasi kantor di sistem
+   masih contoh (bukan lokasi WSM asli) — perlu diganti dulu, caranya
+   ada di bagian "Cara Menjalankan" di bawah.
+3. **Kerjaan berikutnya:** papan kerja tim (Tracker) & kalender jadwal —
+   tinggal bilang "lanjut" kalau mau mulai.
+4. Urutan kerjaan berikutnya udah direncanain sampai modul terakhir
+   (Payroll, Legal, dst) — daftar lengkapnya ada di bagian arsip teknis
+   kalau mau intip.
+
+## 🚀 Cara Menjalankan (Setup)
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan db:seed --class=OfficeSettingSeeder   # WAJIB — isi office_settings (lokasi kantor, radius, jam kerja)
+php artisan db:seed --class=DemoSeeder   # opsional: isi 1 Owner, 1 Manajer, 1 HRD, 2 Karyawan buat testing
+php artisan storage:link   # wajib buat Fase 4 — foto selfie absen disimpan di storage/app/public
+npm install
+npm run dev   # atau: npm run build
+```
+
+> ⚠️ **Sebelum absen bisa dipakai beneran**, buka
+> `database/seeders/OfficeSettingSeeder.php` dan ganti `latitude`,
+> `longitude`, `address`, `office_name` sesuai lokasi kantor WSM yang
+> sebenarnya (nilai sekarang masih placeholder titik Monas), lalu
+> jalankan ulang `php artisan db:seed --class=OfficeSettingSeeder`.
+> `radius_meters`/`work_start_time`/`late_tolerance_minutes` juga bisa
+> disesuaikan di file yang sama.
+
+Akun demo dari `DemoSeeder` (password semua `password`, **ganti sebelum
+pakai beneran**):
+
+| Role     | Email              | Nama           |
+| -------- | ------------------ | -------------- |
+| Owner    | `owner@wsm.local`  | Whisnu Santika |
+| Manajer  | `kanaya@wsm.local` | Kanaya         |
+| HRD      | `rania@wsm.local`  | Rania          |
+| Karyawan | `aldora@wsm.local` | Aldora         |
+| Karyawan | `gepeng@wsm.local` | Gepeng         |
+
+Local dev pakai Laragon (Windows) + SQLite. Sebelum deploy ke cPanel,
+jalankan `npm run build` lalu upload file yang berubah + folder
+`public/build/` — jangan pernah sentuh database live secara langsung.
+
+## 📖 Detail Lengkap (Arsip Teknis)
+
+> Bagian di bawah ini buat yang lanjut ngerjain/develop —
+> penjelasan teknis kenapa tiap keputusan diambil, detail per fase,
+> dan checklist testing lengkap. **Gak perlu dibaca kalau cuma mau
+> pantau progres** — cukup lihat bagian ✅ Progres Sekarang di paling
+> atas.
+
+### Riwayat Perubahan Detail
 
 > Status saat ini: **Fase 0 (Fondasi) selesai**, **Fase 1 (Landing Page &
 > Company Profile) selesai** — Beranda, Tentang Kami, Layanan, Karir,
@@ -220,8 +308,64 @@ Map of Feelings).
 > **Belum dites** (sandbox nulis kode ini gak ada PHP/composer buat
 > jalanin server) — checklist lengkap di
 > [Langkah Selanjutnya](#langkah-selanjutnya) poin 11.
+>
+> **Update (2026-09-07, Fase 8 — Memo Forum & Home Personalization):**
+> **sudah dikerjain semua**, mengikuti fungsi FINAL prototype v18
+> (`memoThreadForV18`/`employeeMemoMarkup`/`v18OwnerNav`) — sempat ada
+> fungsi lebih lama (`memoReplies`) yang keliatan mirip tapi ternyata
+> beda konsep (thread privat per-karyawan, bukan dibagi bareng), sudah
+> dites cek fungsi mana yang beneran dipakai di render terakhir sebelum
+> mulai nulis kode.
+>
+> - **Migration baru**: `memo_reads` (baca/sembunyi per-user per-memo,
+>   pola "gak ada baris = default", sama kayak `dashboard_access`) &
+>   `memo_thread_messages` (1 thread FLAT dibagi bareng semua yang bisa
+>   lihat memo itu — BUKAN channel privat per-karyawan).
+> - **Model baru**: `MemoRead`, `MemoThreadMessage`. `Memo` nambah
+>   relasi `reads()`/`threadMessages()` + helper `isReadBy()`/
+>   `isHiddenBy()`.
+> - **Controller baru**: `Employee\MemoInteractionController`
+>   (toggleRead/toggleHidden/reply, dari kartu Home — SEMUA role
+>   internal, sama kayak `$memos` di HomeController yang emang gak
+>   dicek dashboard_access). `Dashboard\Work\MemoController` nambah
+>   `reply()` (sisi manajemen, butuh `module:work,manage`) + auto-mark
+>   `read_by_management_at` pas `index()` dibuka.
+> - **View baru**: `memo/_thread.blade.php` — partial reusable, dipakai
+>   di Home (karyawan) & `/dashboard/work` (manajemen) lewat variabel
+>   `$replyRoute`, biar gak dobel kode buat 2 konteks yang beda action
+>   URL-nya doang.
+> - `employee/home.blade.php`: kartu "Info dari Owner" sekarang
+>   interaktif penuh — chip READ/UNREAD, tombol tandai-baca +
+>   sembunyikan, thread + form reply, toggle "N disembunyikan" (Alpine,
+>   client-side, semua memo udah di-render duluan di DOM — wajar buat
+>   volume kecil kayak sekarang, lihat catatan di kode kalau nanti
+>   perlu diubah jadi request terpisah). Job title/divisi di bawah
+>   tanggal, banner "Cuti Tim Bulan Ini" (`cuti_tahunan` &
+>   `izin_pribadi` doang, `izin_sakit` sengaja gak diumumin — privat).
+> - `DashboardAccess::MODULES` nambah field `icon` buat SEMUA 7 modul
+>   (bukan cuma Memo/Work) — dipakai di `layouts/app.blade.php`.
+> - **1 deviasi disengaja dari prototype**: badge unread di prototype
+>   itung SEMUA pesan karyawan dari awal waktu dan **gak pernah
+>   reset/berkurang** (`unreadThreads=(state.memoThreads||[]).
+filter(x=>x.authorType==='employee').length` — dihitung ulang tiap
+>   render, gak ada flag "udah dibaca" sama sekali di struktur data
+>   `memoThreads`). Itu jelas bukan UX yang benar buat sesuatu yang
+>   dilabelin "unread" — masuk kategori "berantakan", jadi diadaptasi:
+>   badge di sini itung `read_by_management_at IS NULL`, ke-reset
+>   begitu ada manage-level user buka `/dashboard/work` (semua thread
+>   emang udah kelihatan penuh di situ).
+> - `DemoSeeder` ditambah 1 contoh reply (Aldora) + 1 contoh status
+>   baca (Gepeng) + 1 contoh cuti bulan berjalan (Gepeng, buat demo
+>   banner) — biar Fase 8 langsung kelihatan hasilnya abis
+>   `db:seed --class=DemoSeeder`, sama pola kayak Fase 6a/6b.
+>
+> **Migration WAJIB dijalanin dulu** sebelum dites (`php artisan
+migrate`) — 2 tabel baru di atas belum ada di database manapun.
+> **Belum dites end-to-end** (sandbox nulis kode ini gak ada PHP) —
+> checklist lengkap di [Langkah Selanjutnya](#langkah-selanjutnya)
+> poin 12.
 
-## 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
+### 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
 
 Acuan desain & sistem sebelumnya adalah prototype **W.O.S 2.0 v13**
 (`WOS_2_0_STANDALONE_v13.html`). Prototype itu sudah berkembang jauh
@@ -271,7 +415,7 @@ sudah ditulis ulang total mengikuti temuan di atas — jangan pakai lagi
 peta fase lama (Fase 7–13 versi sebelumnya, kalau ketemu referensinya
 di riwayat commit/dokumen breakdown lama, itu sudah tidak berlaku).
 
-## Tech Stack
+### Tech Stack
 
 - Laravel (latest) + PHP
 - Tailwind CSS v4 (CSS-first config via `@theme` di `resources/css/app.css`, tanpa `tailwind.config.js`)
@@ -281,7 +425,7 @@ di riwayat commit/dokumen breakdown lama, itu sudah tidak berlaku).
 - MySQL
 - Deploy target: shared hosting cPanel/Rumahweb tanpa akses terminal — sama seperti Mavnus & Map of Feelings, jadi hindari dependency yang butuh compile/CLI di server.
 
-## Desain — Disamakan dengan Prototype W.O.S 2.0
+### Desain — Disamakan dengan Prototype W.O.S 2.0
 
 Tampilan lama (default Tailwind gray/putih polos) sudah diganti supaya
 konsisten dengan prototype desain **W.O.S 2.0**. Acuan sekarang naik ke
@@ -351,7 +495,7 @@ Halaman lain yang belum dibuat (Fase 6 ke atas) tinggal pakai class-class
 di atas supaya konsisten — jangan balik pakai `bg-white border
 rounded-xl` polos lagi.
 
-## Roadmap Modul & Role
+### Roadmap Modul & Role
 
 Sistem punya bagian **publik** (landing page + karir, tanpa login) dan
 **internal** (4 role dengan akun: Karyawan, Manajer, HRD, Owner). Awalnya
@@ -406,15 +550,16 @@ Urutan fase development:
     > **Geo settings pindah dari seeder ke UI**: Owner/HR bisa atur nama
     > kantor, lat/lng, radius (default 200m, bukan 150m), toggle
     > enable/disable geo attendance, toggle enforce/disable radius.
-8. **Memo Forum & Home Personalization** — revisi Fase 6b, BUKAN modul
-   baru. `Memo` yang sekarang cuma broadcast satu arah dirombak jadi
-   forum: status read/unread & hide/unhide per-karyawan (butuh tabel
-   baru, mis. `memo_reads`), balasan berthread (`memo_replies` atau
-   `memo_threads`) — CEO/Manajer bisa reply balik, ada badge jumlah
-   balasan belum dibaca di sidebar (samain konsep `unreadMemoReplies()`
-   di prototype). Home dashboard: sapaan tampil nama + job title +
-   divisi (bukan cuma nama depan), banner cuti nambah info "cuti tim
-   yang disetujui bulan ini" di bawah banner cuti pribadi.
+8. **Memo Forum & Home Personalization** ✅ _(revisi Fase 6b, bukan
+   modul baru. `Memo` yang tadinya broadcast satu arah sekarang forum:
+   status baca/sembunyi per-karyawan (tabel `memo_reads`), balasan
+   berthread dibagi bareng (tabel `memo_thread_messages`, BUKAN privat
+   per-karyawan), badge jumlah balasan belum dibaca manajemen di
+   sidebar "Work Control" (beda dari prototype: badge di sini beneran
+   reset pas dibaca, prototype-nya gak pernah reset — lihat Riwayat
+   Perubahan Detail buat alasannya). Home: sapaan tampil job title +
+   divisi, banner "Cuti Tim Bulan Ini". Belum dites end-to-end,
+   checklist ada di Checklist Testing Teknis.)_
 9. **Work Control Lanjutan** — Projects, Work Tracker (papan
    status/board), Timeline Calendar, dan MoM (Minutes of Meeting)
    sebagai fitur-fitur terpisah di modul `work` yang sama (bukan cuma
@@ -465,7 +610,7 @@ Rate` per karyawan (di form Karyawan, `users` table) — baru
 Detail lengkap tiap fase dan peta halaman per role ada di dokumen breakdown
 project (dibagikan terpisah oleh tim, bukan bagian repo ini).
 
-## Flow yang Sudah Berjalan (per Role)
+### Flow yang Sudah Berjalan (per Role)
 
 Ringkasan yang bisa langsung dicoba klik-klik per role, bukan cuma daftar
 fitur — biar gampang dites urut dari login sampai selesai.
@@ -565,7 +710,7 @@ bukan cuma role tertentu
   Contract Monitoring, Payroll) — masih placeholder "belum dibangun",
   levelnya udah bisa di-assign tapi isinya kosong
 
-## Alert & Konfirmasi (SweetAlert)
+### Alert & Konfirmasi (SweetAlert)
 
 Semua notifikasi (flash message sukses/gagal, ringkasan error validasi)
 dan semua konfirmasi sebelum aksi destruktif sekarang pakai
@@ -614,7 +759,7 @@ Untuk manggil dari JS langsung (mis. dalam Alpine `@click`), ada
 `validationSummary(messages)`, dan `confirm({ title, text, ... })`
 (return Promise, lihat isi `alerts.js` untuk detail).
 
-## Halaman Error Custom
+### Halaman Error Custom
 
 Ada di `resources/views/errors/` (`404`, `403`, `500`, `503`) + layout
 mandiri `resources/views/layouts/error.blade.php` (tidak `extends
@@ -654,44 +799,7 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 - **Scope "bawahan Manajer" BEDA-BEDA per modul, ini sengaja bukan bug**: rekap absensi (`Attendance\RecapController::scopedUsers()`) pakai bawahan TURUNAN (rekursif, ikut cucu-cicit di org-chart), sedangkan approval izin/cuti (`Approval\LeaveRequestController::canDecide()`) pakai bawahan LANGSUNG doang (`manager_id` persis Manajer tsb). Dua keputusan beda yang diambil terpisah pas breakdown fase — kalau nambah modul baru yang ada konsep "scope Manajer", jangan asumsikan otomatis sama, konfirmasi dulu mana yang dimaksud
 - State transition (approve/reject/cancel di `LeaveRequest`, dst.) ditaruh sebagai method di model (`approveBy()`, `rejectBy()`, `cancelBy()`), bukan logic mentah di controller — biar gak keulang nulis hal yang sama pas dipanggil dari 2 controller berbeda (Employee & Approval)
 
-## Setup Lokal
-
-```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan db:seed --class=OfficeSettingSeeder   # WAJIB — isi office_settings (lokasi kantor, radius, jam kerja)
-php artisan db:seed --class=DemoSeeder   # opsional: isi 1 Owner, 1 Manajer, 1 HRD, 2 Karyawan buat testing
-php artisan storage:link   # wajib buat Fase 4 — foto selfie absen disimpan di storage/app/public
-npm install
-npm run dev   # atau: npm run build
-```
-
-> ⚠️ **Sebelum absen bisa dipakai beneran**, buka
-> `database/seeders/OfficeSettingSeeder.php` dan ganti `latitude`,
-> `longitude`, `address`, `office_name` sesuai lokasi kantor WSM yang
-> sebenarnya (nilai sekarang masih placeholder titik Monas), lalu
-> jalankan ulang `php artisan db:seed --class=OfficeSettingSeeder`.
-> `radius_meters`/`work_start_time`/`late_tolerance_minutes` juga bisa
-> disesuaikan di file yang sama.
-
-Akun demo dari `DemoSeeder` (password semua `password`, **ganti sebelum
-pakai beneran**):
-
-| Role     | Email              | Nama           |
-| -------- | ------------------ | -------------- |
-| Owner    | `owner@wsm.local`  | Whisnu Santika |
-| Manajer  | `kanaya@wsm.local` | Kanaya         |
-| HRD      | `rania@wsm.local`  | Rania          |
-| Karyawan | `aldora@wsm.local` | Aldora         |
-| Karyawan | `gepeng@wsm.local` | Gepeng         |
-
-Local dev pakai Laragon (Windows) + SQLite. Sebelum deploy ke cPanel,
-jalankan `npm run build` lalu upload file yang berubah + folder
-`public/build/` — jangan pernah sentuh database live secara langsung.
-
-## Langkah Selanjutnya
+### Checklist Testing Teknis (belum semua dicoba langsung)
 
 > **Prinsip tetap buat semua kerjaan mulai sekarang (2026-09-06):**
 > sisi web resmi dibuat **semirip mungkin sama prototype v18**,
@@ -780,6 +888,47 @@ belum pernah dijalankan beneran. Checklist:
     Karyawan biasa (bukan Manajer/HRD/Owner) → tombol "🔒 Kunci
     Dashboard" TIDAK BOLEH muncul sama sekali (dia gak pernah masuk
     `layouts.app`).
+12. **WAJIB `php artisan migrate` dulu** sebelum tes Fase 8 — 2 tabel
+    baru (`memo_reads`, `memo_thread_messages`) belum ada di database
+    manapun. Setelah itu, jalanin ulang `php artisan db:seed
+--class=DemoSeeder` kalau mau langsung ada contoh data (atau tes
+    manual dari nol juga bisa). Checklist:
+    - Login **Karyawan/Manajer/HRD non-manage** apa aja → buka Home →
+      hero harus nampilin job title + divisi di bawah tanggal (kalau
+      user itu punya keduanya) → kalau Gepeng baru di-seed dalam bulan
+      berjalan, banner "Cuti Tim Bulan Ini" harus muncul di atas kartu
+      absensi.
+    - Di kartu "Info dari Owner": memo yang belum pernah disentuh harus
+      berstatus **UNREAD** (chip biru) → klik "Tandai Sudah Dibaca" →
+      chip berubah jadi **READ** (abu-abu) tanpa reload halaman terasa
+      aneh (submit form biasa, boleh ada reload, yang penting state-nya
+      berubah). Klik lagi → balik ke UNREAD.
+    - Klik "Sembunyikan" di salah satu memo → memo itu HILANG dari
+      daftar utama, muncul tombol "N disembunyikan" di pojok kanan atas
+      kartu → klik tombol itu → memo yang disembunyikan muncul lagi
+      (opacity redup) dengan tombol "Tampilkan Lagi" → klik → balik ke
+      daftar utama.
+    - Ketik reply di form bawah salah satu memo (mis. memo "Selamat
+      datang") → submit → pesan baru harus muncul di thread, RATA KANAN
+      & warna gelap (bubble "mine") kalau itu punya sendiri.
+    - Login **beda user** (mis. login Gepeng abis reply pakai Aldora) →
+      buka memo yang sama → HARUS kelihatan reply dari Aldora juga
+      (bukti thread-nya dibagi bareng, bukan privat per-orang).
+    - Login **Aldora** (manage-level modul Work di seed) → buka sidebar
+      → item "Work Control" harus ada badge merah angka **1** (dari
+      reply seed Aldora sendiri yang belum ke-mark — kalau udah pernah
+      buka `/dashboard/work` sebelumnya di sesi manapun, badge-nya
+      bakal 0, itu normal). Buka `/dashboard/work` → badge di sidebar
+      HARUS HILANG (jadi 0) setelah halaman itu selesai dimuat, gak
+      perlu refresh manual.
+    - Di `/dashboard/work`, coba reply dari sisi manajemen di salah
+      satu memo → cek bubble-nya kelabel "· Manajemen" (bukan "mine",
+      soalnya ini akun berbeda dari yang reply duluan) kalau dilihat
+      dari akun lain.
+    - Login **Karyawan biasa TANPA akses modul work** (mis. Gepeng,
+      cuma 'view') → sidebar Modul: semua 7 item HARUS ada ikonnya
+      (☷/Rp/♪/◎/◉/▤/🧾) di depan label, bukan cuma teks polos kayak
+      sebelumnya.
 
 ### Ceklis Parity UI/UX vs Prototype v18 (2026-09-07)
 
@@ -802,15 +951,11 @@ elemen & fungsinya harus tetap ada, jangan dihilangin.
 - [x] Split "Kelola Tim" + "Dashboard" di header app-mobile (deviasi disengaja, alasannya di atas)
 - [x] Halaman error custom (404/403/500/503) — gaya brand mark disamain
 - [x] SweetAlert buat semua konfirmasi/alert (termasuk logout & kunci dashboard)
+- [x] **Fase 8 (Memo Forum & Home Personalization)** — badge unread di sidebar "Work Control" (dihitung ulang biar beneran reset pas dibaca, bukan numpuk terus kayak prototype — lihat catatan di bawah), icon per-item buat semua 7 modul, reply jadi thread (dibagi bareng, bukan flat/privat), tombol tandai-baca + sembunyikan per-memo, job title/divisi di Home, banner cuti tim bulan ini.
 
 **Belum, per fase (urutan sama kayak [Peta Fase 7–18](#peta-fase-718-rombak-total-lihat-rombak-rencana-di-atas) di bawah, sekarang tiap fase ada catatan UI/UX-nya sendiri):**
 
 - **Fase 7 (Absensi Lanjutan)** — badge status WFO (Hadir/Terlambat/Auto-close) di kartu absensi Home & Riwayat, posisi & warna badge ikut prototype; form pengajuan Lembur (flat rate) posisinya nempel di halaman Lembur yang udah ada (`employee/overtime`), bukan halaman baru.
-- **Fase 8 (Memo Forum)** — ini yang paling banyak elemen baru:
-    - Badge unread (`.ceo-response-badge`, lingkaran kecil angka) nempel di item nav sidebar "Work Control", BUKAN cuma di dalam halaman.
-    - Icon "✦" di depan label nav (prototype pakai icon per-item, web resmi sekarang belum ada icon di item Modul sama sekali — perlu ditambah buat semua 7 modul, bukan cuma Memo).
-    - Reply dibuat thread (nested), BUKAN flat list kayak sekarang.
-    - Tombol hide/pin per-memo di pojok kanan card (posisi sama kayak card Memo yang sudah ada, cuma nambah 2 aksi).
 - **Fase 9 (Work Control Lanjutan)** — Tracker pakai board (kolom Todo/In Progress/Done, drag-drop), Timeline Calendar pakai grid kalender bulanan — dua-duanya UI BARU (belum ada padanan lama sama sekali di web resmi), jadi bebas ambil struktur HTML/CSS-nya dari prototype (bukan kode JS-nya, itu di-porting jadi Blade+Livewire/Alpine sesuai stack yang udah dipakai).
 - **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** — semua modul ini masih placeholder generik (`dashboard/module.blade.php`), jadi UI-nya 100% belum ada — tiap mulai salah satu, cek dulu halaman `data-opage` yang sepadan di prototype (lihat daftar di bagian atas README kalau perlu) buat contoh layout kartu/tabelnya sebelum desain dari nol.
 - **Fase 16 (CEO Dashboard IA Restructure)** — perubahan UI paling besar:

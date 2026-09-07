@@ -22,7 +22,34 @@
         <h1 class="text-[44px] font-black leading-[0.98] tracking-tight">Halo, {{ explode(' ', auth()->user()->name)[0] }} 👋
         </h1>
         <p class="mt-1 text-[15px] text-muted">{{ now()->translatedFormat('l, d F Y') }}</p>
+        {{-- Fase 8: job title + divisi di bawah tanggal, cuma muncul kalau
+             dua-duanya keisi (kolomnya udah ada dari Fase 2, sebelumnya
+             cuma dipakai di halaman Karyawan Owner & kartu Profile). --}}
+        @if (auth()->user()->job_title || auth()->user()->division)
+            <p class="mt-1 text-[12px] font-semibold text-[#8c8578]">
+                {{ auth()->user()->job_title }}{{ auth()->user()->job_title && auth()->user()->division ? ' · ' : '' }}{{ auth()->user()->division }}
+            </p>
+        @endif
     </div>
+
+    {{-- Fase 8: banner cuti tim bulan ini — cuti_tahunan & izin_pribadi
+         doang (izin_sakit privat, sengaja gak diumumin). --}}
+    @if ($teamLeavesThisMonth->isNotEmpty())
+        <div class="mb-3.5 rounded-wsm-lg border border-line bg-white p-4">
+            <p class="text-[11px] font-extrabold uppercase tracking-wide text-[#5e5952]">Cuti Tim Bulan Ini</p>
+            <div class="mt-2 grid gap-1.5">
+                @foreach ($teamLeavesThisMonth as $leave)
+                    <p class="text-xs text-muted">
+                        <strong class="text-ink">{{ $leave->user->name }}</strong> — {{ $leave->typeLabel() }},
+                        {{ $leave->start_date->translatedFormat('d M') }}
+                        @if (!$leave->start_date->isSameDay($leave->end_date))
+                            – {{ $leave->end_date->translatedFormat('d M') }}
+                        @endif
+                    </p>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     @if ($forgottenAttendance)
         <div class="mb-3.5 rounded-wsm-lg border border-[#f1c7c2] bg-[#fff0ee] p-4 text-[#a83d35]">
@@ -270,26 +297,97 @@
         </div>
     @endif
 
-    <div class="card-wsm-white">
-        <p class="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Info dari Owner</p>
+    @php
+        $me = auth()->user();
+        $visibleMemos = $memos->reject(fn($m) => $m->isHiddenBy($me))->take(4);
+        $hiddenMemoCount = $memos->filter(fn($m) => $m->isHiddenBy($me))->count();
+    @endphp
+    <div x-data="{ showHidden: false }" class="card-wsm-white">
+        <div class="mb-1.5 flex items-center justify-between gap-3">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Info dari Owner</p>
+            @if ($hiddenMemoCount > 0)
+                <button type="button" @click="showHidden = !showHidden"
+                    class="text-[10px] font-extrabold text-muted underline decoration-dotted"
+                    x-text="showHidden ? 'Sembunyikan lagi' : '{{ $hiddenMemoCount }} disembunyikan'"></button>
+            @endif
+        </div>
+
         @if ($memos->isEmpty())
             <p class="text-xs text-muted">Belum ada memo.</p>
         @else
             <div class="grid gap-3">
-                @foreach ($memos as $memo)
+                @foreach ($visibleMemos as $memo)
                     <div class="{{ !$loop->last ? 'border-b border-[#eee8df] pb-3' : '' }}">
-                        <div class="flex items-center gap-1.5">
-                            @if ($memo->pinned)
-                                <span class="text-[10px] font-extrabold text-[#a8873d]">📌</span>
-                            @endif
-                            <strong class="text-xs">{{ $memo->title }}</strong>
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    @if ($memo->pinned)
+                                        <span class="text-[10px] font-extrabold text-[#a8873d]">📌</span>
+                                    @endif
+                                    <strong class="text-xs">{{ $memo->title }}</strong>
+                                </div>
+                                <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
+                                    {{ $memo->created_at->translatedFormat('d M Y') }}</span>
+                            </div>
+                            <span
+                                class="flex-none rounded-full px-2 py-0.5 text-[9px] font-extrabold {{ $memo->isReadBy($me) ? 'bg-[#eee8df] text-muted' : 'bg-brand-blue text-white' }}">
+                                {{ $memo->isReadBy($me) ? 'READ' : 'UNREAD' }}
+                            </span>
                         </div>
-                        <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
-                            {{ $memo->created_at->translatedFormat('d M Y') }}</span>
-                        <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $memo->content }}</p>
+                        <p class="mt-1.5 whitespace-pre-line text-xs text-muted">{{ $memo->content }}</p>
+
+                        <div class="mt-2 flex gap-3.5">
+                            <form method="POST" action="{{ route('employee.memo.toggleRead', $memo) }}">
+                                @csrf
+                                <button type="submit"
+                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
+                                    {{ $memo->isReadBy($me) ? 'Tandai Belum Dibaca' : 'Tandai Sudah Dibaca' }}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
+                                @csrf
+                                <button type="submit"
+                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
+                                    Sembunyikan
+                                </button>
+                            </form>
+                        </div>
+
+                        @include('memo._thread', [
+                            'memo' => $memo,
+                            'replyRoute' => route('employee.memo.reply', $memo),
+                        ])
                     </div>
                 @endforeach
             </div>
+
+            {{-- Memo yang disembunyikan — sengaja tetap di-render di DOM
+                 (bukan lewat request baru), toggle-nya murni CSS/Alpine.
+                 Wajar buat 3-4 item/bulan kayak konteks perusahaan ini,
+                 lihat README kalau volume memo-nya jauh lebih besar
+                 nanti (baru perlu pindah ke query terpisah). --}}
+            @if ($hiddenMemoCount > 0)
+                <div x-show="showHidden" x-cloak class="mt-3 grid gap-3 border-t border-[#eee8df] pt-3">
+                    @foreach ($memos->filter(fn($m) => $m->isHiddenBy($me)) as $memo)
+                        <div class="opacity-60">
+                            <div class="flex items-center gap-1.5">
+                                <strong class="text-xs">{{ $memo->title }}</strong>
+                            </div>
+                            <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
+                                {{ $memo->created_at->translatedFormat('d M Y') }}</span>
+                            <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $memo->content }}</p>
+                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}"
+                                class="mt-1.5">
+                                @csrf
+                                <button type="submit"
+                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
+                                    Tampilkan Lagi
+                                </button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         @endif
     </div>
 @endsection

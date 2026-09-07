@@ -3,7 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\DashboardAccess;
+use App\Models\LeaveRequest;
 use App\Models\Memo;
+use App\Models\MemoRead;
+use App\Models\MemoThreadMessage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -97,7 +100,7 @@ class DemoSeeder extends Seeder
         ]);
 
         // --- Fase 6b: contoh Memo & MoM ---
-        Memo::create([
+        $welcomeMemo = Memo::create([
             'type' => 'memo',
             'title' => 'Selamat datang di WSM Office System',
             'content' => "Halo tim! Mulai sekarang absensi, pengajuan izin/cuti, dan pengumuman internal dipusatkan di sini. Kalau ada kendala, hubungi HRD.",
@@ -112,5 +115,42 @@ class DemoSeeder extends Seeder
             'attendees' => 'Whisnu, Kanaya, Aldora',
             'created_by' => $manajer->id,
         ]);
+
+        // --- Fase 8: contoh thread reply & status baca, biar Memo Forum
+        // langsung kelihatan hasilnya abis seed (sama pola kayak
+        // dashboard_access di atas). Aldora reply ke memo welcome →
+        // muncul di badge unread sidebar "Work Control" (siapa pun yang
+        // manage-level, di seed ini cuma Owner & Aldora) SAMPAI Aldora
+        // sendiri (yang manage) buka /dashboard/work. Gepeng udah baca
+        // tapi belum reply. Rania (HRD, gak punya akses modul work sama
+        // sekali) SENGAJA gak disentuh di sini — dia tetap bisa lihat &
+        // reply dari Home walau gak punya dashboard_access modul work.
+        MemoThreadMessage::create([
+            'memo_id' => $welcomeMemo->id,
+            'user_id' => $aldora->id,
+            'message' => 'Siap, izin cuti kemarin juga udah kelihatan approve-nya di sini. Makasih!',
+        ]);
+        MemoRead::create([
+            'memo_id' => $welcomeMemo->id,
+            'user_id' => $gepeng->id,
+            'read_at' => now()->subDay(),
+        ]);
+
+        // --- Fase 8: contoh cuti tim bulan ini — buat demo banner Home.
+        // Cuma dibuat kalau tanggal seed-nya masih dalam bulan berjalan
+        // (biar gak numpuk cuti "basi" tiap kali db:seed diulang di
+        // bulan yang beda).
+        if (now()->day <= 25) {
+            $gepengLeave = LeaveRequest::create([
+                'user_id' => $gepeng->id,
+                'type' => 'cuti_tahunan',
+                'start_date' => now()->addDays(3)->toDateString(),
+                'end_date' => now()->addDays(4)->toDateString(),
+                'work_days' => 2,
+                'reason' => 'Acara keluarga',
+                'status' => 'pending',
+            ]);
+            $gepengLeave->approveBy($manajer);
+        }
     }
 }

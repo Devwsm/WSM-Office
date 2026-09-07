@@ -29,6 +29,17 @@ use Illuminate\Support\Facades\Auth;
  *   sekarang representasi "sesi yang relevan buat ditampilin" (sesi
  *   terbuka kalau ada, kalau enggak sesi terakhir hari ini), BUKAN
  *   lagi asumsi "1 baris = 1 hari" kayak Fase 4.
+ *
+ * Fase 8 nambah:
+ * - Kartu "Info dari Owner" jadi interaktif (baca/sembunyi/reply) —
+ *   sekarang muat SEMUA memo (bukan limit 3), soalnya kartunya sendiri
+ *   yang nentuin berapa yang ditampilin (padanan `employeeMemoMarkup`
+ *   di prototype: hitungan "N disembunyikan" butuh tau total, bukan
+ *   cuma yang lagi kelihatan).
+ * - `$teamLeavesThisMonth` — banner siapa aja yang cuti bulan ini
+ *   (selain diri sendiri).
+ * - Job title & divisi TIDAK dioper lewat sini — udah ada langsung di
+ *   `auth()->user()->job_title`/`->division`, dipakai langsung di view.
  * ---------------------------------------------------------------------
  */
 class HomeController extends Controller
@@ -65,10 +76,33 @@ class HomeController extends Controller
 
         $todayLeave = LeaveRequest::approvedFor((int) Auth::id(), $today);
 
+        // Fase 8: siapa aja yang cuti bulan ini (selain diri sendiri) —
+        // banner di Home, "team awareness" ringan. Cuma tipe cuti_tahunan
+        // & izin_pribadi yang ditampilin (izin_sakit sengaja dilewatin,
+        // itu privat, bukan buat diumumin ke tim).
+        $teamLeavesThisMonth = LeaveRequest::query()
+            ->with('user')
+            ->where('user_id', '!=', Auth::id())
+            ->where('status', 'disetujui')
+            ->whereIn('type', ['cuti_tahunan', 'izin_pribadi'])
+            ->whereYear('start_date', now()->year)
+            ->whereMonth('start_date', now()->month)
+            ->orderBy('start_date')
+            ->get();
+
         // Kartu "Info dari Owner" — sengaja kelihatan buat SEMUA role
         // internal terlepas dari dashboard_access (Fase 6a), karena ini
-        // pengumuman ke tim, bukan modul kerja yang butuh akses.
-        $memos = Memo::query()->with('creator')->latestFirst()->limit(3)->get();
+        // pengumuman ke tim, bukan modul kerja yang butuh akses. Fase 8:
+        // eager-load status baca/sembunyi MILIK USER INI SAJA (bukan
+        // semua user) + thread reply-nya.
+        $memos = Memo::query()
+            ->with([
+                'creator',
+                'threadMessages',
+                'reads' => fn($q) => $q->where('user_id', Auth::id()),
+            ])
+            ->latestFirst()
+            ->get();
 
         return view('employee.home', [
             'attendance' => $attendance,
@@ -78,6 +112,7 @@ class HomeController extends Controller
             'todayLeave' => $todayLeave,
             'officeSetting' => OfficeSetting::current(),
             'memos' => $memos,
+            'teamLeavesThisMonth' => $teamLeavesThisMonth,
         ]);
     }
 }

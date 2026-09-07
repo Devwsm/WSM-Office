@@ -29,30 +29,37 @@ class DashboardAccess extends Model
         'work' => [
             'label' => 'Work Control',
             'desc' => 'Project, tracker, timeline, MoM, memo',
+            'icon' => '☷',
         ],
         'budget' => [
             'label' => 'Project Budgeting',
             'desc' => 'Budget vs actual per project',
+            'icon' => 'Rp',
         ],
         'royalty' => [
             'label' => 'Royalty Dashboard',
             'desc' => 'Royalty, share, recoupment, payment status',
+            'icon' => '♪',
         ],
         'kpi' => [
             'label' => 'KPI & Performance',
             'desc' => 'KPI seluruh tim',
+            'icon' => '◎',
         ],
         'people' => [
             'label' => 'People & Leave',
             'desc' => 'People directory & leave monitoring',
+            'icon' => '◉',
         ],
         'contracts' => [
             'label' => 'Contract Monitoring',
             'desc' => 'Status & file kontrak',
+            'icon' => '▤',
         ],
         'payroll' => [
             'label' => 'Payroll Overview',
             'desc' => 'Payroll & take home pay',
+            'icon' => '🧾',
         ],
     ];
 

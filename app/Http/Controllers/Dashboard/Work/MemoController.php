@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Dashboard\Work;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\MemoRequest;
+use App\Http\Requests\Memo\ReplyMemoThreadRequest;
 use App\Models\Memo;
+use App\Models\MemoThreadMessage;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -12,16 +14,39 @@ use Illuminate\Support\Facades\Auth;
  * ---------------------------------------------------------------------
  * Fase 6b — modul pertama yang jalan di atas fondasi Fase 6a. Akses
  * dijaga per-route lewat middleware 'module:work,view' (index) dan
- * 'module:work,manage' (create/store/edit/update/destroy) di
+ * 'module:work,manage' (create/store/edit/update/destroy/reply) di
  * routes/web.php — bukan dicek manual di sini, biar konsisten sama
  * pola middleware 'role' yang sudah ada.
+ *
+ * Fase 8 nambah thread reply per memo + tanda-baca manajemen (badge
+ * unread di sidebar "Work Control"). BEDA dari prototype v18 (badge-nya
+ * itung SEMUA pesan employee dari awal waktu, gak pernah reset — lihat
+ * catatan di migration memo_thread_messages): di sini badge cuma
+ * itung yang BELUM ditandai `read_by_management_at`, dan ke-set
+ * otomatis pas index() ini dibuka.
  * ---------------------------------------------------------------------
  */
 class MemoController extends Controller
 {
     public function index()
     {
-        $memos = Memo::query()->with('creator')->latestFirst()->paginate(15);
+        $memos = Memo::query()
+            ->with(['creator', 'threadMessages', 'reads' => fn($q) => $q->where('user_id', Auth::id())])
+            ->latestFirst()
+            ->paginate(15);
+
+        // Tanda-baca manajemen: siapa pun yang manage-level modul 'work'
+        // dan buka halaman ini otomatis "menandai" semua reply karyawan
+        // yang masih belum dibaca — semua thread udah kelihatan penuh di
+        // sini, jadi wajar dianggap "udah dilihat manajemen" begitu
+        // halaman ini dimuat. Badge unread-nya sendiri dihitung lewat
+        // MemoThreadMessage::unreadForManagementCount(), dipanggil
+        // langsung dari layouts/app.blade.php (bukan lewat controller
+        // ini — itemnya nempel di sidebar, bukan di halaman ini).
+        MemoThreadMessage::query()
+            ->whereIn('memo_id', $memos->pluck('id'))
+            ->whereNull('read_by_management_at')
+            ->update(['read_by_management_at' => now()]);
 
         return view('dashboard.work.index', ['memos' => $memos]);
     }
@@ -62,5 +87,27 @@ class MemoController extends Controller
         $memo->delete();
 
         return back()->with('status', 'Memo/MoM berhasil dihapus.');
+    }
+
+    /**
+     * Reply thread dari sisi manajemen. Route-nya SENGAJA butuh
+     * 'module:work,manage' (bukan 'view') — beda dari
+     * Employee\MemoInteractionController::reply() yang kebuka buat
+     * SEMUA role internal (karena itu reply dari karyawan biasa,
+     * bukan balasan resmi manajemen).
+     */
+    public function reply(ReplyMemoThreadRequest $request, Memo $memo)
+    {
+        MemoThreadMessage::create([
+            'memo_id' => $memo->id,
+            'user_id' => Auth::id(),
+            'message' => $request->validated('message'),
+            // Balasan manajemen sendiri gak perlu nunggu "dibaca
+            // manajemen" — langsung ke-mark biar gak nambah badge
+            // unread ke diri sendiri.
+            'read_by_management_at' => now(),
+        ]);
+
+        return back()->with('status', 'Reply terkirim.');
     }
 }

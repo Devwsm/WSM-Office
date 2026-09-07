@@ -92,10 +92,28 @@
                                 $moduleKey === 'work'
                                     ? request()->routeIs('dashboard.work.*')
                                     : request()->routeIs('dashboard.show') && request()->route('module') === $moduleKey;
+                            // Fase 8: badge unread cuma di "Work Control" (Memo
+                            // Forum ada di situ) & cuma buat yang manage-level
+                            // (padanan badge ceo-response-badge di prototype,
+                            // yang cuma muncul buat Owner/CEO).
+                            $unreadBadge =
+                                $moduleKey === 'work' && auth()->user()->canManageModule('work')
+                                    ? \App\Models\MemoThreadMessage::unreadForManagementCount()
+                                    : 0;
                         @endphp
                         <a href="{{ $moduleKey === 'work' ? route('dashboard.work.index') : route('dashboard.show', $moduleKey) }}"
-                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                            {{ \App\Models\DashboardAccess::MODULES[$moduleKey]['label'] }}
+                            class="flex items-center justify-between gap-2 rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span>
+                                <span
+                                    class="mr-1.5 inline-block w-4 text-center">{{ \App\Models\DashboardAccess::MODULES[$moduleKey]['icon'] }}</span>
+                                {{ \App\Models\DashboardAccess::MODULES[$moduleKey]['label'] }}
+                            </span>
+                            @if ($unreadBadge > 0)
+                                <span
+                                    class="grid h-5 min-w-5 flex-none place-items-center rounded-full bg-[#a83d35] px-1 text-[10px] font-black text-white">
+                                    {{ $unreadBadge }}
+                                </span>
+                            @endif
                         </a>
                     @endforeach
                 @endif

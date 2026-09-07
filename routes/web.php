@@ -22,6 +22,7 @@ use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Employee\LeaveRequestController;
+use App\Http\Controllers\Employee\MemoInteractionController;
 use App\Http\Controllers\Employee\OvertimeRequestController;
 use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Public\PageController;
@@ -65,6 +66,15 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     // --- Tab Profile (bottom-nav) — sebelumnya placeholder "TODO Fase 1" ---
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // --- Fase 8: interaksi Memo Forum dari kartu "Info dari Owner" (Home) ---
+    // Sengaja di grup role yang sama kayak home/profile di atas (SEMUA
+    // role internal), bukan digabung ke middleware 'module:work,*' —
+    // memo ini pengumuman ke tim, bukan modul kerja (sama alasan kenapa
+    // $memos di HomeController gak dicek dashboard_access).
+    Route::post('/memo/{memo}/baca', [MemoInteractionController::class, 'toggleRead'])->name('memo.toggleRead');
+    Route::post('/memo/{memo}/sembunyikan', [MemoInteractionController::class, 'toggleHidden'])->name('memo.toggleHidden');
+    Route::post('/memo/{memo}/balas', [MemoInteractionController::class, 'reply'])->middleware('throttle:15,1')->name('memo.reply');
 });
 
 // --- Lock Dashboard (2026-09-06) ---
@@ -189,6 +199,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{memo}/edit', [MemoController::class, 'edit'])->middleware('module:work,manage')->name('edit');
         Route::patch('/{memo}', [MemoController::class, 'update'])->middleware('module:work,manage')->name('update');
         Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
+        Route::post('/{memo}/balas', [MemoController::class, 'reply'])->middleware(['module:work,manage', 'throttle:15,1'])->name('reply');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
