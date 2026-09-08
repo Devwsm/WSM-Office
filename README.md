@@ -48,40 +48,40 @@ lanjut ngerjain.
 
 ## 👉 Langkah Selanjutnya
 
-1. **🚨 WAJIB paling duluan, sebelum apapun lain di bawah ini: pastikan
-   PHP 8.4+ tersedia** di tempat development DAN di hosting
-   (cPanel/Rumahweb). Ini bukan sekadar rekomendasi — `vendor/` project
-   ini (Laravel 13 + komponen Symfony-nya) sudah kebukti gak bisa
-   di-parse sama sekali oleh PHP 8.3 ke bawah (syntax error langsung,
-   bukan cuma warning kompatibilitas), padahal `composer.json` masih
-   nulis `"php": "^8.3"` (perlu ikut dinaikkan biar konsisten). Cek
-   dulu di cPanel → MultiPHP Manager versi PHP tertinggi yang
-   disediakan hosting — kalau cuma sampai 8.3, situs bakal down total
-   begitu di-upload. Kalau hosting gak bisa 8.4, opsinya downgrade
-   `laravel/framework` ke versi yang kompatibel PHP 8.3 (butuh
-   `composer update` ulang + testing regresi penuh).
-2. **Konfirmasi manual: apakah alamat kantor di `OfficeSettingSeeder.php`
-   (Jl. Raya Tapos No.43, Depok) itu memang lokasi WSM yang sebenarnya?**
-   Catatan lama di README ini sempat bilang "masih placeholder titik
-   Monas" — itu udah gak akurat (sudah dikoreksi di bagian "Cara
-   Menjalankan" di bawah), tapi belum ada yang memastikan alamat Depok
-   itu beneran kantor WSM atau cuma placeholder lain yang belum
-   diverifikasi. Ini nentuin absensi berbasis geo bakal akurat atau
-   nggak begitu dipakai beneran.
-3. **WAJIB validasi Data Layer Fase 9–16:** setelah PHP 8.4 siap,
-   jalankan `php artisan migrate` di database development dan pastikan
-   seluruh migration baru lolos, terutama foreign key, enum
-   `dashboard_access.module`, dan migration raw SQL untuk MySQL.
+1. **🚨 WAJIB paling duluan: jalankan `composer update` di lokal (PHP
+   8.3) buat verifikasi fix pin Symfony di `composer.json` beneran
+   nyelesain masalah PHP 8.4.** `composer.json` sudah dipin ke
+   `symfony/*: ^7.3` (lihat detail di "🔍 Audit Ulang Menyeluruh ronde
+   4" di bawah) supaya Composer gak lagi resolve ke Symfony 8.x yang
+   butuh PHP 8.4 — tapi ini **belum sempat dicoba jalan beneran**
+   (sandbox audit gak ada akses Composer/packagist). Hapus `vendor/`
+   lama, `composer update`, cek `composer.lock` hasil baru semua paket
+   Symfony di garis `7.x` (bukan `8.x`), baru `php artisan --version`
+   buat mastiin gak fatal error lagi. Kalau ternyata masih ada paket
+   lain yang maksa Symfony 8 (`composer why-not symfony/http-foundation
+7.4` buat ngecek), baru pertimbangkan minta upgrade PHP ke hosting.
+   Belum ada domain/hosting yang dipilih buat WOS ini — jadi ini
+   momen paling murah buat beresin sebelum ada yang ke-deploy ke
+   lingkungan production.
+2. **Alamat kantor di `OfficeSettingSeeder.php` (Jl. Raya Tapos No.43,
+   Depok) sudah dikonfirmasi alamat WSM yang asli** — gak perlu
+   diganti lagi, poin ini beres.
+3. **WAJIB validasi Data Layer Fase 9–16:** setelah PHP terkonfirmasi
+   kompatibel, jalankan `php artisan migrate` di database development
+   dan pastikan seluruh migration baru lolos, terutama foreign key,
+   enum `dashboard_access.module`, dan migration raw SQL untuk MySQL.
+   _(Update: `php artisan migrate:fresh --seed` sudah dijalankan &
+   dilaporkan aman — tapi itu dites di PHP lokal yang kemungkinan udah
+   8.4/Laragon terupdate, bukan di PHP 8.3 target hosting. Ulangi lagi
+   setelah poin #1 beres, supaya yakin migration juga lolos di PHP
+   versi yang beneran bakal dipakai di server.)_
 4. Setelah migration lolos, **cek model/relation** lewat Tinker atau flow
    CRUD sederhana supaya relasi Project → Work Item → Meeting/Action Item,
    User → KPI/Contract/Payroll, Project → Budget, serta Legal/IT tidak
    punya error.
-5. **Jalankan checklist testing manual** yang sudah ditulis di
-   "🩹 Perbaikan Bug Fase 7" dan "🔍 Audit Ulang Menyeluruh ronde 2" di
-   atas (Edit Karyawan, Pengaturan Kantor, auto-close hari ini, Ajukan
-   Izin/Cuti, Ajukan Lembur) — semua itu baru lolos cek statis
-   (syntax/nama file/referensi), **belum ada satupun yang tervalidasi
-   jalan beneran end-to-end lewat browser**.
+5. **Checklist testing manual (Edit Karyawan, Pengaturan Kantor,
+   auto-close, Ajukan Izin/Cuti, Ajukan Lembur) sudah dicek & aman** —
+   beres, gak perlu diulang kecuali ada perubahan kode di area itu.
 6. **Fase 7 tetap menjadi pekerjaan user-facing yang perlu diselesaikan**
    (Lembur, auto-close, shortage, Lapangan/Gigs, geo settings UI), karena
    Payroll bergantung pada data Lembur/potongan jam tersebut.
@@ -1180,10 +1180,36 @@ sama persis kayak kemarin** di modul lain.
    yang tersedia di hosting itu berapa.** Kalau cuma sampai 8.3, situs
    bakal langsung down total (bukan cuma 1 fitur) begitu file di-upload
    — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
-   sempat kejalanin. Kalau hosting gak nyediain 8.4, opsinya: minta
-   Rumahweb upgrade versi PHP-nya, ATAU downgrade `laravel/framework`
-   ke versi yang komponen Symfony-nya masih kompatibel PHP 8.3 (butuh
-   `composer update` ulang + testing regresi, bukan perubahan kecil).
+   sempat kejalanin.
+
+    **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
+    sendiri, jadi gak perlu downgrade major version.** Laravel 13
+    ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
+    8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
+    Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
+    padahal constraint Laravel 13 sendiri ke paket itu masih
+    `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
+    memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
+    8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
+    (versi terbaru yang tersedia) karena constraint di `composer.json`
+    gak mengunci versi Symfony-nya secara eksplisit.
+
+    **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
+    eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
+"^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
+    mime, routing, http-kernel, dst.) semua ke `^7.3` — biar Composer
+    gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
+    diverifikasi jalan di sandbox ini** (Composer & akses ke
+    `packagist.org` gak tersedia di sini), jadi **WAJIB dijalankan &
+    dicek manual**: hapus folder `vendor/` lama, jalankan `composer
+update` di lokal (PHP 8.3), pastikan `composer.lock` yang baru
+    resolve semua paket Symfony ke garis `7.3.x`/`7.4.x` (bukan `8.x`
+    lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
+    halaman Home). Kalau masih ada 1-2 paket dependency lain yang
+    maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
+    bakal nunjukin kalau ada conflict), baru pertimbangkan opsi kedua:
+    minta Rumahweb upgrade PHP ke 8.4 (kalau hostingnya nanti nyediain).
+
 2. **Bug sama kayak kemarin, kejadian lagi di modul Izin/Cuti &
    Lembur.** `app/Http/Requests/Employee/StoreLeaveRequestRequest.php`
    ternyata isinya ketuker jadi isi class `StoreOvertimeRequestRequest`
