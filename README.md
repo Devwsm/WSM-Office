@@ -7,88 +7,105 @@ lanjut ngerjain.
 
 ## ✅ Progres Sekarang
 
-**Yang udah bisa dipakai:**
+**Status terbaru (2026-09-08): Fase 0–8 sudah dibangun. Fase 6, 7, dan 8
+sudah lolos pengecekan end-to-end secara manual. Review kode Fase 6–8 juga
+sudah dilakukan dan tidak ditemukan error sintaks PHP pada file aplikasi
+yang diperiksa.**
+
+### Sudah berjalan & sudah divalidasi
 
 - [x] Website publik (Beranda, Tentang Kami, Layanan, Kontak)
-- [x] Halaman Karir + form lamaran kerja publik
-- [x] Login & data karyawan (tambah/edit/nonaktifkan, struktur atasan-bawahan)
-- [x] Rekrutmen — HRD kelola lowongan, lihat pelamar, terima jadi karyawan
-- [x] Absensi — absen masuk/pulang pakai lokasi HP, riwayat, rekap tim
-- [x] Izin & Cuti — ajukan, disetujui atasan, saldo cuti otomatis kepotong
-- [x] Akses modul per-orang — Owner atur siapa boleh lihat/kelola modul apa
-- [x] Pengumuman/Memo — bisa ditandai dibaca, disembunyikan, dan dibalas (kayak forum kecil)
-- [x] Profil akun sendiri (ganti password) & tombol "Kunci Dashboard" buat jaga-jaga kalau HP/laptop ditinggal
-- [x] Halaman error rapi (gak ada tampilan error mentah Laravel)
+- [x] Karir + form lamaran kerja publik
+- [x] Login & data karyawan
+- [x] Struktur atasan-bawahan & organisasi
+- [x] Rekrutmen & pipeline pelamar
+- [x] Absensi dasar
+- [x] Izin & Cuti
+- [x] **Fase 6 — Dashboard Access + Memo/MoM**
+- [x] **Fase 7 — Absensi Lanjutan:** WFO 09:30–20:00, auto-close,
+      Lembur request/approval, Lapangan/Gigs multi-sesi, shortage blok
+      60 menit, dan pengaturan kantor dari UI Owner
+- [x] **Fase 8 — Memo Forum & Home Personalization:** read/unread,
+      hide/show, reply thread, badge management, job title/divisi, dan
+      banner cuti tim
+- [x] Profile & ganti password
+- [x] Lock Dashboard
+- [x] Custom error pages
+- [x] Data Layer Fase 9–16 sebagai fondasi database/model
 
-**Yang sudah disiapkan sebagai fondasi, tetapi belum menjadi fitur user-facing:**
+### Review kode Fase 6–8
 
-- [~] **Data Layer Fase 9 — Work Control**: Projects, Work Items/Tracker, Meetings, Attendees, Meeting Action Items + relasi action item ke tracker
-- [~] **Data Layer Fase 10 — KPI & Performance**: tabel KPI + relasi karyawan/pembuat + perhitungan achievement
-- [~] **Data Layer Fase 11 — Kontrak Karyawan**: penyimpanan metadata/file kontrak + relasi karyawan/uploader
-- [~] **Data Layer Fase 12 — Payroll**: field payroll di `users` + histori payroll bulanan
-- [~] **Data Layer Fase 13 — Budget & Royalty**: budget project + actual/variance + royalty/share/recoupment
-- [~] **Data Layer Fase 14 — Legal**: dokumen kontrak album & perjanjian royalti
-- [~] **Data Layer Fase 15 — IT**: Audit Log + System Change Log
-- [~] **Data Layer Fase 16 — Settings & Dashboard IA**: warna aksen CEO/Work Control + modul `legal`/`it` pada Dashboard Access
+**Kesimpulan: struktur kode sudah layak untuk lanjut ke fase berikutnya,
+tetapi belum dianggap final production-hardening.**
 
-**Yang belum selesai end-to-end:**
+Yang sudah dicek:
 
-- [ ] Lembur & absensi lanjutan (mode kerja lapangan/gigs)
-- [ ] Papan kerja tim (Tracker) & kalender jadwal sebagai UI/fitur aktif
-- [ ] UI & Controller untuk KPI, Kontrak Karyawan, Payroll, Budget Project, Royalty
-- [ ] UI & Controller untuk Legal, Audit Log, dan System Change Log
-- [ ] Tampilan menu Owner versi rapi berkelompok (masih daftar biasa)
-- [ ] Owner bisa edit isi website publik sendiri tanpa minta bantuan (CMS)
+- [x] PHP syntax lint untuk file `app/`, `routes/`, `database/`, dan
+      `config/` tidak menemukan syntax error.
+- [x] Middleware `module:{module},{level}` memisahkan hak `view` dan
+      `manage` di level route.
+- [x] Owner otomatis `manage` semua modul melalui `User::accessLevel()`.
+- [x] Perubahan Dashboard Access dilakukan dalam database transaction.
+- [x] Memo read/hide memakai relasi unik per user + memo.
+- [x] Reply memo memakai thread bersama dan foreign key ke memo/user.
+- [x] Lembur memakai state transition approve/reject/cancel di model.
+- [x] Attendance melakukan validasi ulang lokasi di server, bukan
+      mempercayai hasil browser.
+- [x] Auto-close dipisahkan ke `AttendanceReconciler` sehingga dipakai
+      dari beberapa flow.
+- [x] Perhitungan nominal lembur/shortage **tidak dicampur ke Fase 7**;
+      data Fase 7 disiapkan untuk Payroll Fase 12.
 
-> `~` berarti **fondasi database/model sudah dibuat**, bukan berarti modulnya sudah bisa dipakai dari UI. Migration tetap perlu dijalankan dan divalidasi di project sebelum dianggap aktif.
+### Catatan yang masih perlu dibereskan
 
-> 📖 Rincian teknis tiap bagian (kenapa dibikin gini, apa yang dicoba,
-> dsb) ada di bagian **"Detail Lengkap (Arsip Teknis)"** di paling bawah
-> dokumen ini — gak perlu dibaca kalau cuma mau pantau progres.
+- [ ] **Automated test belum tersedia secara bermakna.** Project masih
+      berisi `ExampleTest` bawaan Laravel. Saat audit, PHPUnit tidak bisa
+      dijalankan karena environment audit tidak memiliki extension PHP
+      `dom`, `mbstring`, dan `xmlwriter`.
+- [ ] `php artisan migrate:fresh --seed` belum bisa divalidasi di
+      environment audit karena driver MySQL PHP tidak tersedia. Validasi
+      migration tetap dilakukan di Laragon/development sebelum deployment.
+- [ ] **Lembur:** migration masih memakai `unique(user_id, date)`, sementara
+      validator mengizinkan pengajuan baru setelah status sebelumnya
+      `ditolak`/`dibatalkan`. Jika kebijakan memang mengizinkan submit ulang
+      pada tanggal yang sama, constraint database perlu diperbaiki sebelum
+      Fase 12. Jika memang tidak boleh submit ulang, validator/comment perlu
+      disesuaikan agar konsisten.
+- [ ] **Foto selfie absensi:** data URL divalidasi formatnya dan disimpan,
+      tetapi hardening produksi seperti batas ukuran payload dan validasi
+      image yang lebih ketat masih perlu dipastikan.
+- [ ] Badge unread management saat ini menandai pesan pada memo yang masuk
+      halaman yang sedang dibuka; jika jumlah memo > 15 dan pagination aktif,
+      perilaku badge perlu dipastikan kembali terhadap kebutuhan bisnis.
+
+> `~` berarti **fondasi database/model sudah dibuat**, bukan berarti modulnya
+> sudah bisa dipakai dari UI.
+
+> **Fase 7 → Fase 12:** Fase 7 menghasilkan data absensi, lembur, dan
+> shortage. Fase 12 yang menangani perhitungan nominal payroll, termasuk
+> lembur dan dampak shortage.
 
 ## 👉 Langkah Selanjutnya
 
-1. **🚨 WAJIB paling duluan: jalankan `composer update` di lokal (PHP
-   8.3) buat verifikasi fix pin Symfony di `composer.json` beneran
-   nyelesain masalah PHP 8.4.** `composer.json` sudah dipin ke
-   `symfony/*: ^7.3` (lihat detail di "🔍 Audit Ulang Menyeluruh ronde
-   4" di bawah) supaya Composer gak lagi resolve ke Symfony 8.x yang
-   butuh PHP 8.4 — tapi ini **belum sempat dicoba jalan beneran**
-   (sandbox audit gak ada akses Composer/packagist). Hapus `vendor/`
-   lama, `composer update`, cek `composer.lock` hasil baru semua paket
-   Symfony di garis `7.x` (bukan `8.x`), baru `php artisan --version`
-   buat mastiin gak fatal error lagi. Kalau ternyata masih ada paket
-   lain yang maksa Symfony 8 (`composer why-not symfony/http-foundation
-7.4` buat ngecek), baru pertimbangkan minta upgrade PHP ke hosting.
-   Belum ada domain/hosting yang dipilih buat WOS ini — jadi ini
-   momen paling murah buat beresin sebelum ada yang ke-deploy ke
-   lingkungan production.
-2. **Alamat kantor di `OfficeSettingSeeder.php` (Jl. Raya Tapos No.43,
-   Depok) sudah dikonfirmasi alamat WSM yang asli** — gak perlu
-   diganti lagi, poin ini beres.
-3. **WAJIB validasi Data Layer Fase 9–16:** setelah PHP terkonfirmasi
-   kompatibel, jalankan `php artisan migrate` di database development
-   dan pastikan seluruh migration baru lolos, terutama foreign key,
-   enum `dashboard_access.module`, dan migration raw SQL untuk MySQL.
-   _(Update: `php artisan migrate:fresh --seed` sudah dijalankan &
-   dilaporkan aman — tapi itu dites di PHP lokal yang kemungkinan udah
-   8.4/Laragon terupdate, bukan di PHP 8.3 target hosting. Ulangi lagi
-   setelah poin #1 beres, supaya yakin migration juga lolos di PHP
-   versi yang beneran bakal dipakai di server.)_
-4. Setelah migration lolos, **cek model/relation** lewat Tinker atau flow
-   CRUD sederhana supaya relasi Project → Work Item → Meeting/Action Item,
-   User → KPI/Contract/Payroll, Project → Budget, serta Legal/IT tidak
-   punya error.
-5. **Checklist testing manual (Edit Karyawan, Pengaturan Kantor,
-   auto-close, Ajukan Izin/Cuti, Ajukan Lembur) sudah dicek & aman** —
-   beres, gak perlu diulang kecuali ada perubahan kode di area itu.
-6. **Fase 7 tetap menjadi pekerjaan user-facing yang perlu diselesaikan**
-   (Lembur, auto-close, shortage, Lapangan/Gigs, geo settings UI), karena
-   Payroll bergantung pada data Lembur/potongan jam tersebut.
-7. Setelah fondasi tervalidasi, lanjutkan UI + Controller **Fase 9 Work
-   Control**, kemudian isi modul Fase 10–16 satu per satu sesuai prototype
-   v18. Data Layer boleh sudah disiapkan lebih awal, tetapi jangan dianggap
-   modul selesai sebelum flow end-to-end tersedia.
+1. **Step 0 — Foundation: SELESAI.**
+2. **Step 1 — Fase 6 & 8: SELESAI.** Sudah dicek end-to-end dan review kode
+   dasar sudah dilakukan.
+3. **Step 2 — Fase 7: SELESAI.** Sudah dicek end-to-end. Jangan tambahkan
+   perhitungan nominal payroll ke Fase 7; bagian tersebut masuk Fase 12.
+4. **Fase 9 — Work Control Lanjutan:** bangun Projects, Work Tracker,
+   Timeline Calendar, dan MoM lanjutan.
+5. **Fase 10 — KPI & Performance.**
+6. **Fase 11 — Kontrak Karyawan.**
+7. **Fase 12 — Payroll:** termasuk Gaji Pokok, Target Jam/Hari, Flat
+   Overtime Rate, perhitungan lembur, dan dampak shortage dari Fase 7.
+8. **Fase 13–17:** Budget/Royalty, Legal, IT, CEO Dashboard & Settings,
+   lalu CMS Landing Page.
+9. **Fase 18:** security hardening, automated testing, staging, deployment,
+   backup, monitoring, dan final acceptance.
+
+**Definisi selesai:** sebuah fase tidak cukup hanya punya migration/model.
+Fitur dianggap selesai setelah logic, UI, hak akses, validasi, flow
+end-to-end, dan pengujian yang relevan semuanya beres.
 
 ## 🚀 Cara Menjalankan (Setup)
 
@@ -891,7 +908,7 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 - **Scope "bawahan Manajer" BEDA-BEDA per modul, ini sengaja bukan bug**: rekap absensi (`Attendance\RecapController::scopedUsers()`) pakai bawahan TURUNAN (rekursif, ikut cucu-cicit di org-chart), sedangkan approval izin/cuti (`Approval\LeaveRequestController::canDecide()`) pakai bawahan LANGSUNG doang (`manager_id` persis Manajer tsb). Dua keputusan beda yang diambil terpisah pas breakdown fase — kalau nambah modul baru yang ada konsep "scope Manajer", jangan asumsikan otomatis sama, konfirmasi dulu mana yang dimaksud
 - State transition (approve/reject/cancel di `LeaveRequest`, dst.) ditaruh sebagai method di model (`approveBy()`, `rejectBy()`, `cancelBy()`), bukan logic mentah di controller — biar gak keulang nulis hal yang sama pas dipanggil dari 2 controller berbeda (Employee & Approval)
 
-### Checklist Testing Teknis (belum semua dicoba langsung)
+### Checklist Testing Teknis
 
 > **Prinsip tetap buat semua kerjaan mulai sekarang (2026-09-06):**
 > sisi web resmi dibuat **semirip mungkin sama prototype v18**,
@@ -903,11 +920,9 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 > langsung anggap itu spek yang harus diikuti, gak perlu nunggu
 > ditanya dulu — biar gak ada rombak besar-besaran lagi ke depannya.
 
-Fase 0–6 sudah selesai di sisi kode. Fase 0–5 sudah dikonfirmasi jalan di
-environment asli (Laragon). **Fase 6 (a & b) belum sempat dites
-end-to-end** — sandbox yang dipakai nulis kode ini gak punya PHP sama
-sekali, jadi migration/seeder/klik-klik alurnya murni ditulis manual,
-belum pernah dijalankan beneran. Checklist:
+Fase 0–8 sudah dibangun dan **Fase 6, 7, 8 sudah diuji end-to-end secara
+manual di environment development**. Bagian di bawah dipertahankan sebagai
+referensi pengujian/regresi jika ada perubahan kode di area tersebut.
 
 1. **Migrate dari nol**: `php artisan migrate:fresh --seed` (2 tabel
    baru: `dashboard_access` dan `memos`; `DemoSeeder` sekarang juga isi
@@ -950,8 +965,8 @@ belum pernah dijalankan beneran. Checklist:
    BUKAN ke halaman placeholder "belum dibangun". Kalau ternyata malah
    placeholder yang muncul, cek urutan route di `routes/web.php` — grup
    `work` harus terdaftar SEBELUM route `/{module}` generik.
-9. Kalau semua di atas beres, lanjut ke **Fase 7: Absensi Lanjutan
-   (Kebijakan WFO v18)** (lihat peta di bawah) — bukan lagi "Task &
+9. Setelah Fase 6 & 8 dinyatakan PASS, **Fase 7: Absensi Lanjutan
+   (Kebijakan WFO v18)** juga sudah divalidasi end-to-end. (lihat peta di bawah) — bukan lagi "Task &
    Project Tracker" seperti rencana lama, lihat
    [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
    di atas untuk alasan urutan berubah.
@@ -1039,7 +1054,7 @@ elemen & fungsinya harus tetap ada, jangan dihilangin.
 
 **Belum, per fase (urutan sama kayak [Peta Fase 7–18](#peta-fase-718-rombak-total-lihat-rombak-rencana-di-atas) di bawah, sekarang tiap fase ada catatan UI/UX-nya sendiri):**
 
-- **Fase 7 (Absensi Lanjutan)** — badge status WFO (Hadir/Terlambat/Auto-close) di kartu absensi Home & Riwayat, posisi & warna badge ikut prototype; form pengajuan Lembur (flat rate) posisinya nempel di halaman Lembur yang udah ada (`employee/overtime`), bukan halaman baru.
+- **Fase 7 (Absensi Lanjutan)** — fitur dan flow sudah dibangun serta sudah diuji end-to-end. Yang sengaja belum dikerjakan di fase ini adalah perhitungan nominal lembur/shortage; itu masuk Fase 12 Payroll.
 - **Fase 9 (Work Control Lanjutan)** — Tracker pakai board (kolom Todo/In Progress/Done, drag-drop), Timeline Calendar pakai grid kalender bulanan — dua-duanya UI BARU (belum ada padanan lama sama sekali di web resmi), jadi bebas ambil struktur HTML/CSS-nya dari prototype (bukan kode JS-nya, itu di-porting jadi Blade+Livewire/Alpine sesuai stack yang udah dipakai).
 - **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** —
   UI masih placeholder generik (`dashboard/module.blade.php`), jadi belum ada
@@ -1165,57 +1180,58 @@ sandbox terpisah) buat nyari masalah yang gak kelihatan cuma dari baca
 kode. Ketemu 1 masalah **kritis buat deployment** dan 1 lagi **bug
 sama persis kayak kemarin** di modul lain.
 
-1. **🚨 KRITIS — dependency project butuh PHP 8.4+, padahal
-   `composer.json` nulis `"php": "^8.3"`.** `vendor/` yang ke-upload
-   ternyata di-install pas lokal udah pakai PHP 8.4+ (kemungkinan
-   Laragon udah keupdate), dan beberapa komponen Symfony yang dipakai
-   Laravel 13 (`symfony/http-foundation`, `symfony/console`, dst.)
-   sekarang PAKAI SYNTAX PHP 8.4 (**property hooks**, contoh:
-   `public ParameterBag $attributes { set { ... } }` di
-   `vendor/symfony/http-foundation/Request.php`). Ini BUKAN cuma soal
-   compatibility yang "kemungkinan error" — kodenya secara harfiah gak
-   bisa di-parse PHP 8.3 ke bawah, langsung fatal `syntax error` di
-   baris paling awal request masuk. **Sebelum deploy ke Rumahweb,
-   WAJIB dicek dulu di cPanel → MultiPHP Manager, versi PHP tertinggi
-   yang tersedia di hosting itu berapa.** Kalau cuma sampai 8.3, situs
-   bakal langsung down total (bukan cuma 1 fitur) begitu file di-upload
-   — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
-   sempat kejalanin.
+1.  **🚨 KRITIS — dependency project butuh PHP 8.4+, padahal
+    `composer.json` nulis `"php": "^8.3"`.** `vendor/` yang ke-upload
+    ternyata di-install pas lokal udah pakai PHP 8.4+ (kemungkinan
+    Laragon udah keupdate), dan beberapa komponen Symfony yang dipakai
+    Laravel 13 (`symfony/http-foundation`, `symfony/console`, dst.)
+    sekarang PAKAI SYNTAX PHP 8.4 (**property hooks**, contoh:
+    `public ParameterBag $attributes { set { ... } }` di
+    `vendor/symfony/http-foundation/Request.php`). Ini BUKAN cuma soal
+    compatibility yang "kemungkinan error" — kodenya secara harfiah gak
+    bisa di-parse PHP 8.3 ke bawah, langsung fatal `syntax error` di
+    baris paling awal request masuk. **Sebelum deploy ke Rumahweb,
+    WAJIB dicek dulu di cPanel → MultiPHP Manager, versi PHP tertinggi
+    yang tersedia di hosting itu berapa.** Kalau cuma sampai 8.3, situs
+    bakal langsung down total (bukan cuma 1 fitur) begitu file di-upload
+    — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
+    sempat kejalanin.
 
-    **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
-    sendiri, jadi gak perlu downgrade major version.** Laravel 13
-    ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
-    8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
-    Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
-    padahal constraint Laravel 13 sendiri ke paket itu masih
-    `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
-    memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
-    8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
-    (versi terbaru yang tersedia) karena constraint di `composer.json`
-    gak mengunci versi Symfony-nya secara eksplisit.
+        **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
+        sendiri, jadi gak perlu downgrade major version.** Laravel 13
+        ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
+        8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
+        Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
+        padahal constraint Laravel 13 sendiri ke paket itu masih
+        `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
+        memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
+        8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
+        (versi terbaru yang tersedia) karena constraint di `composer.json`
+        gak mengunci versi Symfony-nya secara eksplisit.
 
-    **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
-    eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
-"^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
-    mime, routing, http-kernel, dst.) semua ke `^7.3` — biar Composer
+        **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
+        eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
+
+    "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
+    mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
     gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
     diverifikasi jalan di sandbox ini** (Composer & akses ke
-    `packagist.org` gak tersedia di sini), jadi **WAJIB dijalankan &
-    dicek manual**: hapus folder `vendor/` lama, jalankan `composer
-update` di lokal (PHP 8.3), pastikan `composer.lock` yang baru
-    resolve semua paket Symfony ke garis `7.3.x`/`7.4.x` (bukan `8.x`
+   `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
+    dicek manual**: hapus folder`vendor/`lama, jalankan`composer
+    update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
+    resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
     lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
     halaman Home). Kalau masih ada 1-2 paket dependency lain yang
     maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
     bakal nunjukin kalau ada conflict), baru pertimbangkan opsi kedua:
     minta Rumahweb upgrade PHP ke 8.4 (kalau hostingnya nanti nyediain).
 
-2. **Bug sama kayak kemarin, kejadian lagi di modul Izin/Cuti &
-   Lembur.** `app/Http/Requests/Employee/StoreLeaveRequestRequest.php`
-   ternyata isinya ketuker jadi isi class `StoreOvertimeRequestRequest`
-   — sama persis pola kejadiannya kayak `UpdateEmployeeRequest` kemarin
-   (file lama ke-overwrite pas nulis fitur baru Fase 7, harusnya bikin
-   file baru). Efeknya:
+2.  **Bug sama kayak kemarin, kejadian lagi di modul Izin/Cuti &
+    Lembur.** `app/Http/Requests/Employee/StoreLeaveRequestRequest.php`
+    ternyata isinya ketuker jadi isi class `StoreOvertimeRequestRequest`
+    — sama persis pola kejadiannya kayak `UpdateEmployeeRequest` kemarin
+    (file lama ke-overwrite pas nulis fitur baru Fase 7, harusnya bikin
+    file baru). Efeknya:
     - **Karyawan → Ajukan Izin/Cuti** (`LeaveRequestController::store()`)
       bakal `Class not found` — class `StoreLeaveRequestRequest` yang
       asli gak ada file-nya.
