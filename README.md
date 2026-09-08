@@ -1068,3 +1068,62 @@ Budgeting & Royalty) — sama seperti rencana lama, itu masih perlu
 didiskusikan tim sebelum mulai ngoding, cuma Fase 14 (Legal) & Fase 15
 (IT) yang baru ketauan urutannya wajar diletakkan setelah modul
 finance karena sama-sama grup "terbatas" di sidebar CEO v18.
+
+### 🩹 Perbaikan Bug Fase 7 (2026-09-08)
+
+Audit ulang parity Fase 7 vs prototype v18 nemuin 2 masalah, dua-duanya
+udah diperbaiki:
+
+1. **File request ketuker, dua fitur Owner sama-sama bakal fatal error.**
+   `app/Http/Requests/Owner/UpdateEmployeeRequest.php` ternyata isinya
+   ketuker jadi isi class `UpdateOfficeSettingRequest` (kemungkinan
+   ke-overwrite gak sengaja pas development Fase 7). Efeknya: class
+   `UpdateEmployeeRequest` yang asli gak pernah ada file-nya (autoload
+   Composer butuh nama file = nama class), jadi:
+    - **Owner → Karyawan → Edit** (`EmployeeController::update()`) bakal
+      `Class not found`.
+    - **Owner → Pengaturan Kantor → Simpan** (`OfficeSettingController::update()`)
+      juga bakal `Class not found`, karena class `UpdateOfficeSettingRequest`
+      yang bener gak pernah ada di file dengan nama yang cocok.
+
+    Diperbaiki dengan misahin ke 2 file yang benar:
+    - `app/Http/Requests/Owner/UpdateEmployeeRequest.php` — dibikin ulang
+      dari nol, rules-nya disamain sama `StoreEmployeeRequest` (Fase 2),
+      bedanya `password` jadi `nullable` (opsional pas edit) dan
+      `email` unique-nya ngecualiin baris user itu sendiri
+      (`Rule::unique(...)->ignore($this->route('employee'))`).
+    - `app/Http/Requests/Owner/UpdateOfficeSettingRequest.php` — file
+      baru, isinya yang sebelumnya ketuker taruh di file
+      `UpdateEmployeeRequest.php` (rules lokasi/radius/jam kerja +
+      validasi `normal_end_time > work_start_time` lewat `withValidator()`).
+
+2. **Auto-close cuma nutup sesi hari-hari sebelumnya, belum sesi hari ini.**
+   `AttendanceReconciler::reconcile()` sebelumnya query
+   `whereDate('date', '<', Carbon::today())` — sesi Kantor/WFH yang
+   lupa checkout HARI INI baru ketutup besok pas reconcile jalan lagi,
+   beda dari `ensureAutoCloseAttendance()` prototype yang nutup sesi
+   hari yang sama begitu app dibuka lewat `normal_end_time`. Diperbaiki:
+   query sekarang `whereDate('date', '<=', Carbon::today())`, lalu buat
+   baris hari ini di-skip (dibiarin terbuka) kalau mode-nya
+   Lapangan/Gigs, ATAU ada Lembur disetujui hari itu, ATAU belum lewat
+   `normal_end_time` — baru ditutup di `normal_end_time` hari itu juga
+   kalau ketiga syarat itu gak kepenuhi. Perilaku buat tanggal yang
+   sudah lewat (kemarin dst.) TIDAK berubah.
+
+**Belum sempat dites langsung** (sandbox nulis kode ini gak punya PHP),
+jadi sebelum dianggap kelar, jalanin manual:
+
+- **Edit Karyawan**: login Owner → Karyawan → Edit salah satu baris →
+  ubah nama/role/dll → Simpan → harus berhasil update tanpa error, dan
+  field `password` boleh dikosongin (gak ganti password lama).
+- **Pengaturan Kantor**: login Owner → buka `/pengaturan-kantor` → ubah
+  salah satu field → Simpan → harus muncul toast/status sukses, bukan
+  error. Coba juga isi `normal_end_time` lebih kecil/sama dari
+  `work_start_time` → harus muncul pesan validasi, bukan tersimpan.
+- **Auto-close hari ini**: set `normal_end_time` ke waktu yang udah
+  lewat dari jam sekarang (mis. kalau sekarang jam 14:00, set ke
+  13:00) → login sebagai karyawan yang lagi check-in mode Kantor tanpa
+  checkout → buka halaman Home/Riwayat lagi → sesi itu harus otomatis
+  ke-checkout dengan `auto_closed=true` di jam `normal_end_time` yang
+  baru di-set, TANPA nunggu ganti hari. Balikin lagi `normal_end_time`
+  ke jam normal setelah selesai tes.

@@ -3,18 +3,23 @@
 namespace App\Http\Requests\Owner;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
+use Illuminate\Validation\Rule;
 
 /**
- * UpdateOfficeSettingRequest
+ * UpdateEmployeeRequest
  * ---------------------------------------------------------------------
- * Fase 7 — validasi form Pengaturan Kantor (Owner). `normal_end_time`
- * harus lebih besar dari `work_start_time` (window kerja normal gak
- * mungkin kebalik) dicek lewat withValidator() karena butuh
- * bandingin 2 field, bukan aturan per-field biasa.
+ * Validasi form edit karyawan/manajer/HRD oleh Owner (Fase 2). Sama
+ * persis field-nya dengan StoreEmployeeRequest, cuma `password` jadi
+ * opsional (kosongin field itu di form kalau gak mau ganti password)
+ * dan `email` unique-nya ngecualiin baris user itu sendiri.
+ *
+ * (Dipulihkan 2026-09-08 — file ini sebelumnya kepakai buat nyimpen
+ * class `UpdateOfficeSettingRequest` secara gak sengaja, ketuker pas
+ * development Fase 7, jadi `UpdateEmployeeRequest` yang asli sempat
+ * hilang. Dua-duanya sekarang sudah dipisah ke file masing-masing.)
  * ---------------------------------------------------------------------
  */
-class UpdateOfficeSettingRequest extends FormRequest
+class UpdateEmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -24,39 +29,24 @@ class UpdateOfficeSettingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'office_name' => ['required', 'string', 'max:150'],
-            'address' => ['required', 'string', 'max:500'],
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'radius_meters' => ['required', 'integer', 'min:10', 'max:5000'],
-            'geo_attendance_enabled' => ['nullable', 'boolean'],
-            'enforce_radius' => ['nullable', 'boolean'],
-            'work_start_time' => ['required', 'date_format:H:i'],
-            'normal_end_time' => ['required', 'date_format:H:i'],
-            'late_tolerance_minutes' => ['required', 'integer', 'min:0', 'max:120'],
-            'required_work_minutes' => ['required', 'integer', 'min:60', 'max:960'],
+            'name' => ['required', 'string', 'max:150'],
+            'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($this->route('employee'))],
+            'password' => ['nullable', 'string', 'min:8'],
+            'role' => ['required', Rule::in(['owner', 'manajer', 'karyawan', 'hrd'])],
+            'manager_id' => ['nullable', 'exists:users,id'],
+            'division' => ['nullable', 'string', 'max:100'],
+            'job_title' => ['nullable', 'string', 'max:100'],
+            'join_date' => ['nullable', 'date'],
+            'annual_leave_entitlement' => ['nullable', 'integer', 'min:0', 'max:60'],
+            'birth_date' => ['nullable', 'date', 'before:today'],
         ];
     }
 
-    /** Checkbox yang gak dicentang gak dikirim browser sama sekali — normalisasi ke false eksplisit. */
-    protected function prepareForValidation(): void
+    public function messages(): array
     {
-        $this->merge([
-            'geo_attendance_enabled' => $this->boolean('geo_attendance_enabled'),
-            'enforce_radius' => $this->boolean('enforce_radius'),
-        ]);
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator) {
-            if (! $this->filled('work_start_time') || ! $this->filled('normal_end_time')) {
-                return;
-            }
-
-            if ($this->input('normal_end_time') <= $this->input('work_start_time')) {
-                $validator->errors()->add('normal_end_time', 'Jam selesai window kerja normal harus lebih besar dari jam mulai.');
-            }
-        });
+        return [
+            'email.unique' => 'Email ini sudah dipakai user lain.',
+            'manager_id.exists' => 'Atasan yang dipilih tidak valid.',
+        ];
     }
 }
