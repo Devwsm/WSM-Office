@@ -1127,3 +1127,90 @@ jadi sebelum dianggap kelar, jalanin manual:
   ke-checkout dengan `auto_closed=true` di jam `normal_end_time` yang
   baru di-set, TANPA nunggu ganti hari. Balikin lagi `normal_end_time`
   ke jam normal setelah selesai tes.
+
+### 🔍 Audit Ulang Menyeluruh (2026-09-08, ronde 2)
+
+Ronde audit sebelumnya cuma baca kode manual (sandbox penulisan gak
+ada PHP). Kali ini project beneran dijalanin (PHP 8.3 + SQLite di
+sandbox terpisah) buat nyari masalah yang gak kelihatan cuma dari baca
+kode. Ketemu 1 masalah **kritis buat deployment** dan 1 lagi **bug
+sama persis kayak kemarin** di modul lain.
+
+1. **🚨 KRITIS — dependency project butuh PHP 8.4+, padahal
+   `composer.json` nulis `"php": "^8.3"`.** `vendor/` yang ke-upload
+   ternyata di-install pas lokal udah pakai PHP 8.4+ (kemungkinan
+   Laragon udah keupdate), dan beberapa komponen Symfony yang dipakai
+   Laravel 13 (`symfony/http-foundation`, `symfony/console`, dst.)
+   sekarang PAKAI SYNTAX PHP 8.4 (**property hooks**, contoh:
+   `public ParameterBag $attributes { set { ... } }` di
+   `vendor/symfony/http-foundation/Request.php`). Ini BUKAN cuma soal
+   compatibility yang "kemungkinan error" — kodenya secara harfiah gak
+   bisa di-parse PHP 8.3 ke bawah, langsung fatal `syntax error` di
+   baris paling awal request masuk. **Sebelum deploy ke Rumahweb,
+   WAJIB dicek dulu di cPanel → MultiPHP Manager, versi PHP tertinggi
+   yang tersedia di hosting itu berapa.** Kalau cuma sampai 8.3, situs
+   bakal langsung down total (bukan cuma 1 fitur) begitu file di-upload
+   — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
+   sempat kejalanin. Kalau hosting gak nyediain 8.4, opsinya: minta
+   Rumahweb upgrade versi PHP-nya, ATAU downgrade `laravel/framework`
+   ke versi yang komponen Symfony-nya masih kompatibel PHP 8.3 (butuh
+   `composer update` ulang + testing regresi, bukan perubahan kecil).
+2. **Bug sama kayak kemarin, kejadian lagi di modul Izin/Cuti &
+   Lembur.** `app/Http/Requests/Employee/StoreLeaveRequestRequest.php`
+   ternyata isinya ketuker jadi isi class `StoreOvertimeRequestRequest`
+   — sama persis pola kejadiannya kayak `UpdateEmployeeRequest` kemarin
+   (file lama ke-overwrite pas nulis fitur baru Fase 7, harusnya bikin
+   file baru). Efeknya:
+    - **Karyawan → Ajukan Izin/Cuti** (`LeaveRequestController::store()`)
+      bakal `Class not found` — class `StoreLeaveRequestRequest` yang
+      asli gak ada file-nya.
+    - **Karyawan → Ajukan Lembur** (`OvertimeRequestController::store()`)
+      JUGA bakal `Class not found` — walau isinya textually ada, dia
+      nyangkut di file dengan nama yang salah, jadi autoload Composer
+      (yang cocokin nama file = nama class) gak nemuin.
+
+    Diperbaiki dengan cara yang sama: pisah ke 2 file yang benar.
+    Untung repo ini udah ada riwayat git, jadi `StoreLeaveRequestRequest`
+    dipulihkan PERSIS dari commit `937da89` (bukan ditulis ulang dari
+    nol) — termasuk validasi saldo cuti tahunan yang sempat ketinggalan
+    kalau direkonstruksi manual. `StoreOvertimeRequestRequest` dipindah
+    ke file `app/Http/Requests/Employee/StoreOvertimeRequestRequest.php`
+    sendiri.
+
+    **Bonus temuan dari cek ulang git history**: perbaikan
+    `UpdateEmployeeRequest` di ronde sebelumnya (2026-09-08 pagi) ternyata
+    kehilangan 1 aturan validasi asli — larangan `manager_id` nunjuk ke
+    diri sendiri (karyawan gak boleh jadi atasannya sendiri), yang ada
+    di versi asli commit `da33da5` tapi kelewat pas direkonstruksi manual
+    dari baca kode doang (bukan dari git). Udah ditambahin balik di file
+    yang sama.
+
+**Pengecekan otomatis tambahan yang udah lolos** (biar makin yakin gak
+ada bug sejenis yang kelewat):
+
+- Semua class `FormRequest`/Controller di `app/` dicek satu-satu, nama
+  class-nya harus sama persis nama file-nya (persis pola bug di atas)
+  — sekarang semua cocok, gak ada lagi yang ketuker.
+- Semua pemanggilan `view('...')` di seluruh Controller (35 pemanggilan
+  unik) dicek, file blade-nya harus ada — semua ketemu.
+- Semua route di `routes/web.php` yang nunjuk ke `[Controller::class,
+'method']` (62 referensi) dicek, class & method-nya harus ada —
+  semua ketemu, termasuk yang pakai `use ... as Alias`.
+- Semua file PHP di `app/`, `database/`, `routes/` lolos `php -l`
+  (syntax check) — gak ada typo penulisan PHP.
+
+**Belum bisa dites/divalidasi lebih lanjut di sandbox ini** (PHP 8.4
+gak tersedia buat diinstall): jalannya migration end-to-end
+(`php artisan migrate:fresh --seed`), dan smoke-test tiap alur lewat
+browser. Checklist testing manual yang udah ditulis di bagian
+"🩹 Perbaikan Bug Fase 7" di atas TETAP berlaku, ditambah 2 ini:
+
+- **Ajukan Izin/Cuti**: login karyawan mana aja → Izin/Cuti → isi form
+  → submit → harus berhasil (bukan error), muncul di riwayat status
+  Pending. Coba juga ajuin cuti tahunan yang jumlah harinya lebih dari
+  sisa saldo → harus ditolak validasi dengan pesan sisa saldo, bukan
+  malah kesimpen.
+- **Ajukan Lembur**: login karyawan mana aja → Lembur → isi tanggal +
+  alasan → submit → harus berhasil, muncul di riwayat status Pending.
+  Coba ajuin 2x tanggal yang sama sebelum yang pertama diputus →
+  yang kedua harus ditolak validasi ("sudah punya pengajuan aktif").

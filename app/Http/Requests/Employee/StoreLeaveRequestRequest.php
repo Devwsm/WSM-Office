@@ -2,24 +2,29 @@
 
 namespace App\Http\Requests\Employee;
 
-use App\Models\OvertimeRequest;
+use App\Models\LeaveRequest;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Validator;
 
 /**
- * StoreOvertimeRequestRequest
+ * StoreLeaveRequestRequest
  * ---------------------------------------------------------------------
- * Fase 7 — validasi pengajuan Lembur baru. `after_or_equal:today` sama
- * alasan kayak StoreLeaveRequestRequest (Fase 5): gak bisa ajukan buat
- * tanggal yang udah lewat. Cek duplikat (1 user cuma boleh 1 pengajuan
- * AKTIF per tanggal, sesuai `unique(user_id,date)` di migration) lewat
- * `withValidator()` karena butuh exclude pengajuan yang statusnya udah
- * 'ditolak'/'dibatalkan' (constraint DB `unique` gak bisa syarat
- * "kecuali status tertentu").
+ * Fase 5 — validasi pengajuan izin/cuti baru. `after_or_equal:today`
+ * karena kesepakatan Fase 5: nggak bisa ajukan buat tanggal yang udah
+ * lewat (beda kasus sama koreksi absen yang emang buat masa lalu).
+ * Validasi saldo cuti tahunan dilakukan lewat withValidator() karena
+ * butuh hitung work_days dulu dari start_date/end_date, bukan aturan
+ * per-field biasa.
+ *
+ * (Dipulihkan 2026-09-08 dari git history commit 937da89 — file ini
+ * sempat ketiban isi `StoreOvertimeRequestRequest` pas development
+ * Fase 7, harusnya dibikin file baru bukan nimpa file ini. Lihat
+ * `StoreOvertimeRequestRequest.php` buat versi Lembur-nya, sekarang
+ * udah dipisah ke file sendiri.)
  * ---------------------------------------------------------------------
  */
-class StoreOvertimeRequestRequest extends FormRequest
+class StoreLeaveRequestRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -29,7 +34,9 @@ class StoreOvertimeRequestRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => ['required', 'date', 'after_or_equal:today'],
+            'type' => ['required', 'in:' . implode(',', LeaveRequest::TYPES)],
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'reason' => ['required', 'string', 'max:1000'],
         ];
     }
@@ -37,18 +44,22 @@ class StoreOvertimeRequestRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (! $this->filled('date')) {
+            if (! $this->filled('type') || ! $this->filled('start_date') || ! $this->filled('end_date')) {
                 return;
             }
 
-            $exists = OvertimeRequest::query()
-                ->where('user_id', Auth::id())
-                ->whereDate('date', $this->input('date'))
-                ->whereIn('status', ['pending', 'disetujui'])
-                ->exists();
+            if ($this->input('type') !== LeaveRequest::QUOTA_TYPE) {
+                return;
+            }
 
-            if ($exists) {
-                $validator->errors()->add('date', 'Kamu sudah punya pengajuan lembur aktif di tanggal ini.');
+            $workDays = LeaveRequest::countWorkDays($this->input('start_date'), $this->input('end_date'));
+            $remaining = $this->user()->remainingAnnualLeaveDays();
+
+            if ($workDays > $remaining) {
+                $validator->errors()->add(
+                    'start_date',
+                    "Sisa jatah cuti tahunan kamu tinggal {$remaining} hari kerja, pengajuan ini butuh {$workDays} hari kerja."
+                );
             }
         });
     }
@@ -56,7 +67,8 @@ class StoreOvertimeRequestRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'date.after_or_equal' => 'Tanggal lembur nggak boleh tanggal yang udah lewat.',
+            'start_date.after_or_equal' => 'Tanggal mulai nggak boleh tanggal yang udah lewat.',
+            'end_date.after_or_equal' => 'Tanggal selesai nggak boleh sebelum tanggal mulai.',
         ];
     }
 }
