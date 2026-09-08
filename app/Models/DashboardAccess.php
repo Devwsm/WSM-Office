@@ -14,9 +14,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * levelnya 'none' (gak disimpan literal di DB, lihat migration).
  *
  * MODULES ini sumber kebenaran tunggal buat modul-modul dashboard di
- * luar `people`/attendance/leave yang tetap role-based — awalnya 7
- * modul dari prototype v13, ditambah `legal` (Fase 14) & `it` (Fase 15)
- * dari prototype v18, jadi 9. Dipakai di form assign (Owner), di
+ * luar `people`/attendance/leave yang tetap role-based — 7 modul
+ * pertama (`work`, `budget`, `royalty`, `kpi`, `people`, `contracts`,
+ * `payroll`) PERSIS sama dengan `DASHBOARD_MODULES` di prototype v18
+ * (`index.html`). `legal` (Fase 14) & `it` (Fase 15) BUKAN dari
+ * prototype — di prototype v18, LEGAL & IT cuma section tetap di
+ * sidebar CEO Dashboard (role-gated ke CEO), gak pernah jadi modul
+ * yang bisa di-assign per-user lewat `dashboard_access`/
+ * `DASHBOARD_MODULES`. Nambahin keduanya ke sini adalah desain baru
+ * WSM Office System sendiri (biar Owner bisa delegasikan akses Legal/
+ * IT ke staf lain, bukan cuma CEO/Owner) — bukan hasil porting dari
+ * prototype. Total jadi 9 modul. Dipakai di form assign (Owner), di
  * sidebar dashboard (User::canView()), dan validasi. Kalau nambah
  * modul baru, cukup ubah di sini + enum kolom `module` di migration
  * baru (jangan cuma di 1 tempat) — lihat pola migration

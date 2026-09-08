@@ -48,24 +48,47 @@ lanjut ngerjain.
 
 ## 👉 Langkah Selanjutnya
 
-1. **WAJIB validasi Data Layer Fase 9–16:** jalankan `php artisan migrate`
-   di database development dan pastikan seluruh migration baru lolos,
-   terutama foreign key, enum `dashboard_access.module`, dan migration
-   raw SQL untuk MySQL.
-2. Setelah migration lolos, **cek model/relation** lewat Tinker atau flow
+1. **🚨 WAJIB paling duluan, sebelum apapun lain di bawah ini: pastikan
+   PHP 8.4+ tersedia** di tempat development DAN di hosting
+   (cPanel/Rumahweb). Ini bukan sekadar rekomendasi — `vendor/` project
+   ini (Laravel 13 + komponen Symfony-nya) sudah kebukti gak bisa
+   di-parse sama sekali oleh PHP 8.3 ke bawah (syntax error langsung,
+   bukan cuma warning kompatibilitas), padahal `composer.json` masih
+   nulis `"php": "^8.3"` (perlu ikut dinaikkan biar konsisten). Cek
+   dulu di cPanel → MultiPHP Manager versi PHP tertinggi yang
+   disediakan hosting — kalau cuma sampai 8.3, situs bakal down total
+   begitu di-upload. Kalau hosting gak bisa 8.4, opsinya downgrade
+   `laravel/framework` ke versi yang kompatibel PHP 8.3 (butuh
+   `composer update` ulang + testing regresi penuh).
+2. **Konfirmasi manual: apakah alamat kantor di `OfficeSettingSeeder.php`
+   (Jl. Raya Tapos No.43, Depok) itu memang lokasi WSM yang sebenarnya?**
+   Catatan lama di README ini sempat bilang "masih placeholder titik
+   Monas" — itu udah gak akurat (sudah dikoreksi di bagian "Cara
+   Menjalankan" di bawah), tapi belum ada yang memastikan alamat Depok
+   itu beneran kantor WSM atau cuma placeholder lain yang belum
+   diverifikasi. Ini nentuin absensi berbasis geo bakal akurat atau
+   nggak begitu dipakai beneran.
+3. **WAJIB validasi Data Layer Fase 9–16:** setelah PHP 8.4 siap,
+   jalankan `php artisan migrate` di database development dan pastikan
+   seluruh migration baru lolos, terutama foreign key, enum
+   `dashboard_access.module`, dan migration raw SQL untuk MySQL.
+4. Setelah migration lolos, **cek model/relation** lewat Tinker atau flow
    CRUD sederhana supaya relasi Project → Work Item → Meeting/Action Item,
    User → KPI/Contract/Payroll, Project → Budget, serta Legal/IT tidak
    punya error.
-3. **Fase 7 tetap menjadi pekerjaan user-facing yang perlu diselesaikan**
+5. **Jalankan checklist testing manual** yang sudah ditulis di
+   "🩹 Perbaikan Bug Fase 7" dan "🔍 Audit Ulang Menyeluruh ronde 2" di
+   atas (Edit Karyawan, Pengaturan Kantor, auto-close hari ini, Ajukan
+   Izin/Cuti, Ajukan Lembur) — semua itu baru lolos cek statis
+   (syntax/nama file/referensi), **belum ada satupun yang tervalidasi
+   jalan beneran end-to-end lewat browser**.
+6. **Fase 7 tetap menjadi pekerjaan user-facing yang perlu diselesaikan**
    (Lembur, auto-close, shortage, Lapangan/Gigs, geo settings UI), karena
    Payroll bergantung pada data Lembur/potongan jam tersebut.
-4. Setelah fondasi tervalidasi, lanjutkan UI + Controller **Fase 9 Work
+7. Setelah fondasi tervalidasi, lanjutkan UI + Controller **Fase 9 Work
    Control**, kemudian isi modul Fase 10–16 satu per satu sesuai prototype
    v18. Data Layer boleh sudah disiapkan lebih awal, tetapi jangan dianggap
    modul selesai sebelum flow end-to-end tersedia.
-5. **Sebelum absensi dipakai beneran:** titik lokasi kantor di sistem
-   masih contoh (bukan lokasi WSM asli) — perlu diganti dulu, caranya
-   ada di bagian "Cara Menjalankan" di bawah.
 
 ## 🚀 Cara Menjalankan (Setup)
 
@@ -81,11 +104,17 @@ npm install
 npm run dev   # atau: npm run build
 ```
 
-> ⚠️ **Sebelum absen bisa dipakai beneran**, buka
-> `database/seeders/OfficeSettingSeeder.php` dan ganti `latitude`,
-> `longitude`, `address`, `office_name` sesuai lokasi kantor WSM yang
-> sebenarnya (nilai sekarang masih placeholder titik Monas), lalu
-> jalankan ulang `php artisan db:seed --class=OfficeSettingSeeder`.
+> ⚠️ **Sebelum absen bisa dipakai beneran**, cek dulu
+> `database/seeders/OfficeSettingSeeder.php` — isinya SEKARANG sudah
+> `office_name: 'WSM Office'`, alamat Jl. Raya Tapos No.43, Depok, dan
+> koordinat `-6.4069, 106.8880` (BUKAN placeholder titik Monas lagi
+> seperti catatan versi sebelumnya — komentar itu sudah basi, sudah
+> dikoreksi di sini). Yang perlu dipastikan sebelum dipakai beneran:
+> konfirmasi apakah alamat & koordinat itu memang lokasi kantor WSM
+> yang sesungguhnya (bukan cuma placeholder baru yang belum
+> diverifikasi) — kalau belum, ganti `latitude`, `longitude`, `address`,
+> `office_name` sesuai lokasi asli, lalu jalankan ulang
+> `php artisan db:seed --class=OfficeSettingSeeder`.
 > `radius_meters`/`work_start_time`/`late_tolerance_minutes` juga bisa
 > disesuaikan di file yang sama.
 
@@ -1214,3 +1243,84 @@ browser. Checklist testing manual yang udah ditulis di bagian
   alasan → submit → harus berhasil, muncul di riwayat status Pending.
   Coba ajuin 2x tanggal yang sama sebelum yang pertama diputus →
   yang kedua harus ditolak validasi ("sudah punya pengajuan aktif").
+
+### 🔍 Audit Ulang Menyeluruh (2026-09-08, ronde 3 — cek parity prototype v18 & konsistensi dokumentasi)
+
+Ronde ini beda sandbox dari ronde 1 & 2 — kali ini **PHP 8.3 berhasil
+diinstall** (paket `noble/main`, bukan `noble-updates` yang 404 di
+mirror ini), jadi bisa dicek otomatis, bukan cuma baca kode manual.
+Tapi **PHP 8.4 tetap gak tersedia** di repo Ubuntu 24.04 manapun yang
+bisa diakses sandbox ini (cuma ada lewat PPA pihak ketiga yang gak di-
+whitelist), jadi klaim kritis ronde 2 (vendor butuh PHP 8.4+) dicoba
+dikonfirmasi ulang dengan cara lain, bukan dijalankan penuh:
+
+1. **Konfirmasi ulang blocker PHP 8.4 — masih valid, dan sekarang
+   kebukti langsung (bukan cuma baca `composer.json`).** Coba jalanin
+   `php artisan --version` pakai PHP 8.3.6 asli → persis kejadian yang
+   diprediksi: fatal `RuntimeException` dari
+   `vendor/composer/platform_check.php` ("require PHP >= 8.4.1, you
+   are running 8.3.6"). Dicek lebih dalam: `php -l` langsung ke
+   `vendor/symfony/http-foundation/Request.php` → **parse error
+   sungguhan** di baris 117 (`public ParameterBag $attributes { set {
+... } }`, syntax _property hooks_ PHP 8.4). Jadi ini bukan cuma
+   soal `platform_check.php` yang bisa di-bypass — filenya sendiri
+   secara harfiah gak valid buat parser PHP 8.3 ke bawah. Kesimpulan
+   ronde 2 soal ini **akurat, gak perlu revisi**.
+2. **Re-cek otomatis semua yang diklaim "udah dites" di ronde 1 & 2 —
+   semua konsisten, gak ada regresi.** Pakai PHP 8.3 buat: `php -l` ke
+   seluruh isi `app/`, `database/`, `routes/` (nol syntax error);
+   tokenize tiap file `app/**/*.php` buat mastiin nama class = nama
+   file (nol yang ketuker lagi — perbaikan `UpdateEmployeeRequest`,
+   `UpdateOfficeSettingRequest`, `StoreLeaveRequestRequest`,
+   `StoreOvertimeRequestRequest` dari ronde 1 & 2 terkonfirmasi masih
+   bener); cocokin 35 pemanggilan `view()` di seluruh `app/` ke file
+   Blade yang ada (semua ketemu); cocokin semua `[Controller::class,
+'method']` di `routes/web.php` + `routes/auth.php` ke class/method
+   yang beneran ada (semua ketemu, termasuk yang lewat alias `use ...
+as`).
+3. **README (bagian "Cara Menjalankan") ketinggalan info — sudah
+   dibetulin di atas.** Peringatan sebelum absen dipakai bilang
+   koordinat kantor "masih placeholder titik Monas", padahal isi
+   `OfficeSettingSeeder.php` yang sebenarnya sekarang alamat Jl. Raya
+   Tapos No.43, Depok (`-6.4069, 106.8880`) — bukan Monas. Kemungkinan
+   sudah diganti ke alamat asli/alamat baru di ronde sebelumnya tapi
+   catatan peringatannya lupa disesuaikan. **Belum bisa dipastikan dari
+   sini apakah alamat Depok itu memang lokasi kantor WSM yang
+   sebenarnya atau masih placeholder lain** — itu perlu dikonfirmasi
+   manusia, bukan sesuatu yang bisa diverifikasi dari kode. README
+   sudah diubah supaya gak menyesatkan (gak bilang "masih Monas" lagi),
+   plus nambahin catatan buat konfirmasi manual itu.
+4. **Ditemukan 1 klaim provenance yang salah di komentar kode (bukan
+   README) — sudah dibetulin.** Komentar `MODULES` di
+   `app/Models/DashboardAccess.php` bilang modul `legal` & `it`
+   "ditambah ... dari prototype v18". Dicek langsung ke `DASHBOARD_MODULES`
+   di `index.html` prototype (sumber tunggal buat daftar modul yang
+   bisa di-assign per-user) → cuma isi 7 key
+   (`work,budget,royalty,kpi,people,contracts,payroll`), gak pernah ada
+   `legal`/`it` di situ maupun di pemanggilan `canViewModule()`/
+   `canManageModule()`/`accessLevel()` manapun di seluruh file
+   prototype. Yang ada di prototype cuma section **LEGAL** & **IT** di
+   sidebar CEO Dashboard — itu tetap/role-gated ke CEO, BUKAN modul
+   `dashboard_access` yang bisa didelegasikan. README sendiri sebenarnya
+   udah benar (nyebut Legal & IT sebagai "(BARU)" di roadmap Fase 14/15,
+   bukan porting dari prototype) — cuma komentar di file model yang
+   kelewat nulis "dari prototype v18". Komentar sudah dikoreksi supaya
+   jelas: 7 modul dasar = persis prototype, `legal`/`it` = desain baru
+   WSM Office sendiri (delegasi akses Legal/IT ke staf, bukan cuma
+   CEO), bukan hasil porting.
+5. **Konsistensi lain yang ikut dicek dan AMAN (gak ada temuan baru):**
+   kebijakan WFO di `OfficeSettingSeeder` (`radius_meters=200`,
+   `work_start_time=09:30`, `normal_end_time=20:00`) persis kebijakan
+   v18 di README prototype; akun `DemoSeeder` (nama, email, role) persis
+   tabel di bagian "Cara Menjalankan"; daftar 9 modul di migration
+   `add_legal_and_it_modules_to_dashboard_access` konsisten dengan enum
+   di model (gak ada mismatch DB vs kode).
+
+**Belum bisa dites di sandbox ini** (masih sama seperti ronde 2, PHP
+8.4 tetap gak ada): migration end-to-end
+(`php artisan migrate:fresh --seed`) dan smoke-test lewat browser.
+Checklist manual di bagian "🩹 Perbaikan Bug Fase 7" & poin
+Izin/Cuti-Lembur di ronde 2 di atas **tetap jadi langkah wajib**
+sebelum fitur-fitur itu dianggap kelar — belum ada satupun yang
+tervalidasi jalan beneran end-to-end, baru lolos cek statis (syntax,
+nama class/file, referensi view & route).
