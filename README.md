@@ -5,107 +5,172 @@ data karyawan, rekrutmen, dan modul kerja tim, semuanya di 1 tempat.
 Dokumen ini isinya status progres (buat dipantau) + panduan buat yang
 lanjut ngerjain.
 
+## 🎯 Acuan Utama Project — WAJIB DIIKUTI
+
+**`WOS_2_0_App_v32.zip` adalah source of truth untuk sistem internal WSM.**
+WSM-Office adalah implementasi Laravel dari prototype tersebut. Target akhir
+adalah **seluruh fitur, data, halaman, layout, placement, UI, UX, permission,
+dan flow prototype berhasil dipindahkan ke web resmi**.
+
+Aturan anti-drift:
+
+- Prototype **v32**, bukan v13/v18 atau roadmap lama, menjadi acuan utama.
+- Sebelum membuat atau mengubah fitur, cari padanannya di prototype v32.
+- Cocokkan **data, halaman, komponen, urutan informasi, placement, UI, UX,
+  flow, role, dan hak akses** sebelum coding.
+- Jangan menyederhanakan atau menghilangkan fitur prototype hanya karena lebih
+  mudah dibuat di Laravel.
+- Perbedaan hanya boleh dilakukan untuk **keamanan, arsitektur
+  Laravel/database, responsive behavior, atau kebutuhan resmi WSM di luar
+  prototype**.
+- Setiap perbedaan yang disengaja wajib dicatat di README beserta alasannya.
+- Migration/model saja **bukan** berarti fitur selesai.
+
+### Definisi "Selesai"
+
+Sebuah fitur/fase hanya boleh diberi `[x]` jika **database/data, logic, UI,
+UX, placement, permission, validation, dan flow end-to-end** sudah tersedia,
+berjalan tanpa error, dan hasilnya sudah dibandingkan kembali dengan
+prototype v32.
+
+> **Prinsip utama:** jangan membuat WSM-Office semakin berbeda dari prototype.
+> Jika ragu, **ikuti prototype v32 terlebih dahulu**, lalu dokumentasikan
+> alasan jika implementasi Laravel memang harus berbeda.
+
 ## ✅ Progres Sekarang
 
-**Status terbaru (2026-09-08): Fase 0–8 sudah dibangun. Fase 6, 7, dan 8
-sudah lolos pengecekan end-to-end secara manual. Review kode Fase 6–8 juga
-sudah dilakukan dan tidak ditemukan error sintaks PHP pada file aplikasi
-yang diperiksa.**
+**Status saat ini (2026-09-08): sistem inti sudah berjalan dan Fase 6–8
+sudah divalidasi end-to-end. Fokus berikutnya adalah memindahkan seluruh
+fitur prototype v32 yang belum ada ke WSM-Office tanpa mengubah scope secara
+sembarangan.**
 
-### Sudah berjalan & sudah divalidasi
+### Sudah berjalan
 
 - [x] Website publik (Beranda, Tentang Kami, Layanan, Kontak)
 - [x] Karir + form lamaran kerja publik
 - [x] Login & data karyawan
 - [x] Struktur atasan-bawahan & organisasi
 - [x] Rekrutmen & pipeline pelamar
-- [x] Absensi dasar
-- [x] Izin & Cuti
-- [x] **Fase 6 — Dashboard Access + Memo/MoM**
-- [x] **Fase 7 — Absensi Lanjutan:** WFO 09:30–20:00, auto-close,
-      Lembur request/approval, Lapangan/Gigs multi-sesi, shortage blok
-      60 menit, dan pengaturan kantor dari UI Owner
-- [x] **Fase 8 — Memo Forum & Home Personalization:** read/unread,
-      hide/show, reply thread, badge management, job title/divisi, dan
-      banner cuti tim
+- [x] Absensi dasar: Kantor/WFH, lokasi, selfie opsional, riwayat & rekap
+- [x] Izin/Cuti & approval
+- [x] Dashboard Access per-orang
+- [x] Memo/MoM: CRUD, pin, baca/sembunyikan, reply thread
+- [x] Home personalization: jabatan/divisi + Cuti Tim Bulan Ini
 - [x] Profile & ganti password
 - [x] Lock Dashboard
-- [x] Custom error pages
-- [x] Data Layer Fase 9–16 sebagai fondasi database/model
+- [x] Halaman error custom
+- [x] **Fase 7 Absensi Lanjutan:** WFO 09:30–20:00, auto-close, Lembur
+      request/approval, mode Lapangan/Gigs multi-sesi, shortage per blok
+      60 menit, dan pengaturan kantor dari UI Owner/HR.
+- [x] Data Layer Fase 9–16 sudah disiapkan sebagai fondasi database/model.
 
-### Review kode Fase 6–8
+### Sudah divalidasi end-to-end
 
-**Kesimpulan: struktur kode sudah layak untuk lanjut ke fase berikutnya,
-tetapi belum dianggap final production-hardening.**
+- [x] **Fase 6 — Dashboard Access & MoM/Memo:** role Owner, Manage, View,
+      dan tanpa akses sudah dicek termasuk pembatasan URL langsung.
+- [x] **Fase 8 — Memo Forum & Home Personalization:** read/unread,
+      hide/show, shared reply, badge management, job title/divisi, dan
+      banner cuti tim sudah dicek.
+- [x] **Fase 7 — Absensi Lanjutan:** Lapangan/Gigs, auto-close, Lembur,
+      shortage, dan pengaturan kantor sudah dicek.
+- [ ] Migration + seeder seluruh fondasi Fase 9–16 perlu tetap divalidasi
+      di environment development setelah perubahan terakhir.
 
-Yang sudah dicek:
+### Belum dibangun sebagai fitur user-facing
 
-- [x] PHP syntax lint untuk file `app/`, `routes/`, `database/`, dan
-      `config/` tidak menemukan syntax error.
-- [x] Middleware `module:{module},{level}` memisahkan hak `view` dan
-      `manage` di level route.
-- [x] Owner otomatis `manage` semua modul melalui `User::accessLevel()`.
-- [x] Perubahan Dashboard Access dilakukan dalam database transaction.
-- [x] Memo read/hide memakai relasi unik per user + memo.
-- [x] Reply memo memakai thread bersama dan foreign key ke memo/user.
-- [x] Lembur memakai state transition approve/reject/cancel di model.
-- [x] Attendance melakukan validasi ulang lokasi di server, bukan
-      mempercayai hasil browser.
-- [x] Auto-close dipisahkan ke `AttendanceReconciler` sehingga dipakai
-      dari beberapa flow.
-- [x] Perhitungan nominal lembur/shortage **tidak dicampur ke Fase 7**;
-      data Fase 7 disiapkan untuk Payroll Fase 12.
+- [ ] **Fase 9:** Projects, Work Tracker board, Timeline Calendar, dan MoM
+      sebagai fitur Work Control lanjutan.
+- [ ] **Fase 10:** KPI & Performance.
+- [ ] **Fase 11:** Kontrak Karyawan.
+- [ ] **Fase 12:** Payroll, termasuk Gaji Pokok, Target Jam/Hari, Flat
+      Overtime Rate, perhitungan lembur, dan dampak shortage.
+- [ ] **Fase 13:** Project Budgeting & Royalty.
+- [ ] **Fase 14:** Legal.
+- [ ] **Fase 15:** IT — Audit Log & System Change Log.
+- [ ] **Fase 16:** CEO Dashboard IA & Settings.
+- [ ] **Fase 17:** CMS Landing Page.
+- [ ] **Fase 18:** Security, testing final, staging, deployment, backup &
+      monitoring.
 
-### Catatan yang masih perlu dibereskan
-
-- [ ] **Automated test belum tersedia secara bermakna.** Project masih
-      berisi `ExampleTest` bawaan Laravel. Saat audit, PHPUnit tidak bisa
-      dijalankan karena environment audit tidak memiliki extension PHP
-      `dom`, `mbstring`, dan `xmlwriter`.
-- [ ] `php artisan migrate:fresh --seed` belum bisa divalidasi di
-      environment audit karena driver MySQL PHP tidak tersedia. Validasi
-      migration tetap dilakukan di Laragon/development sebelum deployment.
-- [ ] **Lembur:** migration masih memakai `unique(user_id, date)`, sementara
-      validator mengizinkan pengajuan baru setelah status sebelumnya
-      `ditolak`/`dibatalkan`. Jika kebijakan memang mengizinkan submit ulang
-      pada tanggal yang sama, constraint database perlu diperbaiki sebelum
-      Fase 12. Jika memang tidak boleh submit ulang, validator/comment perlu
-      disesuaikan agar konsisten.
-- [ ] **Foto selfie absensi:** data URL divalidasi formatnya dan disimpan,
-      tetapi hardening produksi seperti batas ukuran payload dan validasi
-      image yang lebih ketat masih perlu dipastikan.
-- [ ] Badge unread management saat ini menandai pesan pada memo yang masuk
-      halaman yang sedang dibuka; jika jumlah memo > 15 dan pagination aktif,
-      perilaku badge perlu dipastikan kembali terhadap kebutuhan bisnis.
-
-> `~` berarti **fondasi database/model sudah dibuat**, bukan berarti modulnya
+> `~` berarti **fondasi database/model sudah dibuat**, bukan berarti modul
 > sudah bisa dipakai dari UI.
 
-> **Fase 7 → Fase 12:** Fase 7 menghasilkan data absensi, lembur, dan
-> shortage. Fase 12 yang menangani perhitungan nominal payroll, termasuk
-> lembur dan dampak shortage.
+> **Catatan penting Fase 7 → Fase 12:** Fase 7 tidak menghitung nominal
+> rupiah lembur atau potongan shortage. Fase 7 hanya menghasilkan data
+> kehadiran, lembur, dan shortage yang nantinya dipakai Payroll Fase 12.
+> Field **Gaji Pokok, Target Jam/Hari, dan Flat Overtime Rate** juga sengaja
+> dikerjakan di Fase 12, bukan di Fase 7.
 
 ## 👉 Langkah Selanjutnya
 
-1. **Step 0 — Foundation: SELESAI.**
-2. **Step 1 — Fase 6 & 8: SELESAI.** Sudah dicek end-to-end dan review kode
-   dasar sudah dilakukan.
-3. **Step 2 — Fase 7: SELESAI.** Sudah dicek end-to-end. Jangan tambahkan
-   perhitungan nominal payroll ke Fase 7; bagian tersebut masuk Fase 12.
-4. **Fase 9 — Work Control Lanjutan:** bangun Projects, Work Tracker,
-   Timeline Calendar, dan MoM lanjutan.
-5. **Fase 10 — KPI & Performance.**
-6. **Fase 11 — Kontrak Karyawan.**
-7. **Fase 12 — Payroll:** termasuk Gaji Pokok, Target Jam/Hari, Flat
-   Overtime Rate, perhitungan lembur, dan dampak shortage dari Fase 7.
-8. **Fase 13–17:** Budget/Royalty, Legal, IT, CEO Dashboard & Settings,
-   lalu CMS Landing Page.
-9. **Fase 18:** security hardening, automated testing, staging, deployment,
-   backup, monitoring, dan final acceptance.
+Urutan kerja terbaru:
 
-**Definisi selesai:** sebuah fase tidak cukup hanya punya migration/model.
-Fitur dianggap selesai setelah logic, UI, hak akses, validasi, flow
-end-to-end, dan pengujian yang relevan semuanya beres.
+1. **Step 0 — Foundation: SELESAI.** Composer/PHP, migration dasar,
+   struktur project, dan pemeriksaan fondasi yang sebelumnya menjadi
+   blocker sudah dicek.
+2. **Fase 6–8: SELESAI & sudah divalidasi end-to-end.** Tidak perlu diulang
+   sebagai blocker development; lakukan regression test bila ada perubahan
+   yang menyentuh modul tersebut.
+3. **Prioritas berikutnya: Fase 9 — Work Control Lanjutan**, dengan fokus
+   utama pada **App Mode yang dipakai semua karyawan** sebelum memperdalam
+   dashboard Owner.
+4. Setelah Fase 9 stabil, lanjut **Fase 10 → 11 → 12 → 13 → 14 → 15 → 16 →
+   17** sesuai urutan roadmap aktif.
+5. Setiap fase wajib diselesaikan sebagai fitur utuh: database + logic + UI
+    - UX + placement + hak akses + validasi + responsive + flow end-to-end +
+      perbandingan kembali dengan prototype v32.
+6. Terakhir kerjakan **Fase 18 — Security, Testing, Staging, Deployment,
+   Backup & Monitoring**. Sistem baru dianggap benar-benar selesai setelah
+   tahap ini lolos.
+
+**Definisi "selesai" untuk sebuah fase:** bukan sekadar migration/model
+sudah ada. Fitur dianggap selesai kalau pengguna bisa menjalankan flow dari
+awal sampai akhir, hak akses benar, validasi benar, tidak ada error, dan
+sudah diuji di environment project yang sebenarnya.
+
+### 🎯 Prioritas Implementasi Sampai Deployment
+
+Karena **App Mode dapat diakses seluruh karyawan**, penyelesaian sistem
+internal diprioritaskan dari pengalaman pengguna di App Mode terlebih dahulu.
+
+1. **Fase 9 — Work Control Lanjutan**
+    - Samakan Home App dengan prototype v32: identitas karyawan, status
+      absensi, banner cuti, milestone, My KPI, My Work Tracker, Shared
+      Calendar, Latest Attendance, dan Work Dashboard sesuai role.
+    - Bangun Projects, Work Tracker board, Timeline Calendar, dan MoM.
+    - Pastikan alur dari App Mode → fitur kerja → kembali ke App Mode berjalan
+      utuh di desktop, tablet, dan mobile.
+2. **Fase 10 — KPI & Performance**
+    - Bangun tampilan KPI, target/current, bobot, periode, status, dan
+      persentase pencapaian sesuai prototype v32.
+3. **Fase 11 — Kontrak Karyawan**
+    - Bangun monitoring kontrak, periode, file, catatan, dan status jatuh
+      tempo sesuai hak akses.
+4. **Fase 12 — Payroll**
+    - Integrasikan data Fase 7: absensi, lembur, shortage, lalu hitung payroll
+      termasuk Gaji Pokok, Target Jam/Hari, Flat Overtime Rate, potongan, dan
+      adjustment.
+5. **Fase 13 — Project Budgeting & Royalty**
+    - Selesaikan budget vs actual, variance, royalty, share, recoupment, dan
+      status pembayaran.
+6. **Fase 14 — Legal**
+    - Bangun Kontrak Album dan Perjanjian Royalti.
+7. **Fase 15 — IT**
+    - Bangun Audit Log dan System Change Log.
+8. **Fase 16 — CEO Dashboard & Settings**
+    - Samakan Information Architecture Owner dengan prototype v32: 7 grup,
+      badge LIMITED, accent color, dan sidebar yang dapat scroll independen.
+9. **Fase 17 — CMS Landing Page**
+    - Owner dapat mengubah konten website publik tanpa mengubah kode.
+10. **Fase 18 — Production Readiness & Deployment**
+    - Feature freeze → audit parity v32 → E2E semua role → responsive test
+      → security audit → automated/regression test → staging → UAT → fix &
+      regression → backup & monitoring → production deployment → smoke test
+      setelah rilis.
+
+**Aturan kerja tiap fase:** `Prototype v32 → pahami flow → cek data →
+implement logic → UI/UX & placement → permission → responsive → E2E →
+bandingkan kembali dengan prototype → PASS.`
 
 ## 🚀 Cara Menjalankan (Setup)
 
@@ -158,7 +223,29 @@ jalankan `npm run build` lalu upload file yang berubah + folder
 > pantau progres** — cukup lihat bagian ✅ Progres Sekarang di paling
 > atas.
 
-### Riwayat Perubahan Detail
+### Status Pengerjaan Terbaru (2026-09-08)
+
+- **Step 0 — Foundation:** selesai dan sudah dicek.
+- **Fase 6–8:** fitur sudah ada dan sudah divalidasi end-to-end.
+- **Fase 9:** menjadi pekerjaan aktif berikutnya. Data layer sudah tersedia,
+  tetapi UI, controller, permission detail, responsive behavior, dan flow
+  user-facing Work Control belum selesai.
+- **Fase 9–16:** fondasi database/model sudah disiapkan, tetapi UI dan
+  flow user-facing belum dibangun.
+- **Fase 17–18:** belum dikerjakan.
+
+> Catatan audit lama di bawah tetap dipertahankan sebagai riwayat. Jika
+> ada pernyataan lama yang bertentangan dengan status di bagian atas,
+> gunakan **Status Pengerjaan Terbaru** dan **Progres Sekarang** sebagai
+> acuan.
+
+### Riwayat Perubahan Detail — Arsip
+
+> Bagian ini adalah **catatan sejarah development**, bukan source of truth
+> untuk scope atau status sekarang. Beberapa catatan lama masih menyebut
+> prototype v13/v18 atau status sebelum fase berikutnya dikerjakan. Jika ada
+> konflik dengan bagian atas README atau prototype v32, **abaikan catatan
+> historis tersebut dan ikuti v32 + status aktif di atas**.
 
 > Status saat ini: **Fase 0 (Fondasi) selesai**, **Fase 1 (Landing Page &
 > Company Profile) selesai** — Beranda, Tentang Kami, Layanan, Karir,
@@ -474,7 +561,7 @@ Controller/View/flow end-to-end untuk modul-modul tersebut pada update ini.
 Migration harus dijalankan di development sebelum testing, dan deployment
 production jangan dilakukan sebelum migration + relation + flow diuji.
 
-### 🔄 Rombak Rencana: Acuan Naik ke Prototype v18 (2026-09-06)
+### 🔄 Rombak Rencana: Acuan Final Prototype v32
 
 Acuan desain & sistem sebelumnya adalah prototype **W.O.S 2.0 v13**
 (`WOS_2_0_STANDALONE_v13.html`). Prototype itu sudah berkembang jauh
@@ -627,7 +714,8 @@ Urutan fase development:
 3. **Rekrutmen (HRD)** — kelola lowongan (nyambung ke halaman Karir), form lamaran publik, pipeline pelamar, convert ke karyawan. ✅ _(`Recruitment\JobOpeningController` (resource, slug otomatis dari judul) + `Recruitment\JobApplicationController` (index/show/updateStatus/convert). Halaman Karir publik (`PageController::careers`/`careerShow`/`careerApply`) sekarang nampilin lowongan status "Tayang" beneran, bukan hardcode lagi. Pipeline status di `JobApplication::STATUSES`. HRD landing ke `/rekrutmen/pelamar` setelah login. Belum ada: upload CV, notifikasi email ke pelamar.)_
 4. **Absensi** — clock in/out, riwayat, rekap. ✅ _(`Employee\AttendanceController` — `clockIn()`/`clockOut()` hitung ulang jarak dari kantor di server (`App\Support\Geo::distanceMeters`, Haversine) biar nggak percaya koordinat mentah dari browser, `history()` buat riwayat bulanan sendiri. `Attendance\RecapController` — rekap harian + detail bulanan per karyawan, scope Manajer dibatasi ke bawahan turunan (`scopedUsers()`, sama polanya dengan tree org-chart Fase 2), Owner/HRD lihat semua. Status (`Hadir`/`Terlambat`/`Kurang Jam Kerja`/`Sedang Bekerja`/`Lupa Absen Pulang`) dihitung on-the-fly di model `Attendance`, bukan kolom DB, biar nggak basi kalau `office_settings` diubah. Widget di `employee/home.blade.php` (Alpine component `attendanceWidget`, `resources/js/attendance.js`) urus geolocation, mini map Leaflet (marker kantor + user + lingkaran radius), kompresi foto selfie client-side, dan modal konfirmasi. Koreksi absen manual pindah & selesai di Fase 5. Belum ada: mode Lapangan/Event, halaman Settings buat Owner ubah lokasi/radius dari UI — nyusul Fase 12.)_
 5. **Izin/Cuti & Approval** — ke Manajer, fallback Owner. ✅ _(`LeaveRequest` model — 4 jenis (`cuti_tahunan`/`izin_sakit`/`izin_pribadi`/`lainnya`), `countWorkDays()` hitung hari kerja Senin-Jumat, `approveBy()`/`rejectBy()`/`cancelBy()` sebagai state transition biar logic-nya gak keulang di 2 controller. `Employee\LeaveRequestController` — ajukan (cuma hari ini/ke depan, saldo cuti tahunan divalidasi server di `StoreLeaveRequestRequest`) + riwayat + batalkan sendiri. `Approval\LeaveRequestController` — **scope beda dari rekap absensi**: Manajer cuma bawahan LANGSUNG (`manager_id` persis dia, bukan turunan), Owner bisa lihat & putuskan siapa aja kapan aja (approver tercatat siapa yang beneran mutusin). HRD sengaja TIDAK dikasih akses approval. Ditolak wajib alasan (`decision_note`), dibatalkan wajib alasan (`cancellation_reason`, oleh karyawan sendiri ATAU Manajer/Owner) — dua-duanya lewat `CancelLeaveRequestRequest`/`RejectLeaveRequestRequest`. Hari yang izin/cutinya disetujui: tombol absen ilang dari Home (`LeaveRequest::approvedFor()` dicek di `HomeController` buat UI DAN di `AttendanceController::clockIn()` buat validasi server — bukan cuma sembunyi tombol doang), dan muncul badge "Cuti"/"Izin" (bukan "Belum Absen") di rekap `RecapController`. Koreksi absen manual (`RecapController::correct()`, `CorrectAttendanceRequest`) — cuma edit jam, nyimpen `original_clock_in_at`/`original_clock_out_at` (kesisi sekali di koreksi pertama) + siapa/kapan/alasan, dan karyawan bisa lihat catatan itu transparan di riwayatnya sendiri. Semua aksi berdampak (setuju/tolak/batalkan/koreksi) dipasangi `data-confirm`. Belum ada: notifikasi real-time/email (baru badge count, itupun masih ditunda), approval berjenjang (mis. HRD ikut approve cuti tahunan).)_
-6. **Dashboard Access & MoM/Memo** ✅ _(Fase 6a — fondasi permission per-user per-modul, ngikutin persis konsep prototype v13: tabel `dashboard_access` (`user_id`×`module`×`level` view/manage, baris dihapus kalau levelnya 'none' — bukan disimpan literal), 7 modul (`App\Models\DashboardAccess::MODULES`): Work Control, Project Budgeting, Royalty, KPI & Performance, People & Leave, Contract Monitoring, Payroll Overview. Owner SENGAJA gak punya baris di tabel ini — `User::accessLevel()` hardcode 'manage' semua modul buat Owner, jadi Owner baru otomatis full-access tanpa seed ulang. Middleware baru `module:{modul},{level}` (`EnsureModuleAccess`, alias di `bootstrap/app.php`) — polanya disamain sama `role:...` yang udah ada. Assign akses cuma bisa Owner, lewat `Owner\DashboardAccessController` (tombol "Akses" di tabel karyawan, gak muncul buat baris Owner). Sisi user: tombol "Dashboard" di header app-mobile (`hasAnyDashboardAccess()`) + section "Modul" dinamis di sidebar (`app.blade.php`) — beda tombol dari "Kelola Tim" yang tetap role-based (rekap absensi/approval cuti Fase 4/5 SENGAJA TIDAK dipindah ke sistem ini, kesepakatan waktu breakdown Fase 6). — Fase 6b — modul pertama yang jalan di atas fondasi itu: `Memo` (tabel `memos`, kolom `type` bedain 'memo'/pengumuman vs 'mom'/Minutes of Meeting, `pinned` buat nahan di atas). `Dashboard\Work\MemoController` — CRUD, dijaga `module:work,view` (index) / `module:work,manage` (create/edit/delete) di routing, bukan dicek manual di controller. Kartu "Info dari Owner" di Home (`employee/home.blade.php`) sekarang nampilin 3 memo terbaru beneran — SENGAJA kelihatan buat SEMUA role internal terlepas dari `dashboard_access`, karena ini pengumuman ke tim, bukan modul kerja. `DemoSeeder` nambah contoh: Aldora (karyawan biasa) dikasih akses 'manage' ke Work Control walau dia bukan Manajer/HRD/Owner — buat nunjukin sistemnya beneran per-user bukan per-role. Belum ada: 6 modul lain masih placeholder generik (`dashboard/module.blade.php`) sampai dibangun satu-satu.)_
+6. **Dashboard Access & MoM/Memo** ⚠️ _Fitur sudah dibangun; menunggu validasi end-to-end._ _(Fase 6a — fondasi permission per-user per-modul, ngikutin persis konsep prototype v13: tabel `dashboard_access` (`user_id`×`module`×`level` view/manage, baris dihapus kalau levelnya 'none' — bukan disimpan literal), 7 modul (`App\Models\DashboardAccess::MODULES`): Work Control, Project Budgeting, Royalty, KPI & Performance, People & Leave, Contract Monitoring, Payroll Overview. Owner SENGAJA gak punya baris di tabel ini — `User::accessLevel()` hardcode 'manage' semua modul buat Owner, jadi Owner baru otomatis full-access tanpa seed ulang. Middleware baru `module:{modul},{level}` (`EnsureModuleAccess`, alias di `bootstrap/app.php`) — polanya disamain sama `role:...` yang udah ada. Assign akses cuma bisa Owner, lewat `Owner\DashboardAccessController` (tombol "Akses" di tabel karyawan, gak muncul buat baris Owner). Sisi user: tombol "Dashboard" di header app-mobile (`hasAnyDashboardAccess()`) + section "Modul" dinamis di sidebar (`app.blade.php`) — beda tombol dari "Kelola Tim" yang tetap role-based (rekap absensi/approval cuti Fase 4/5 SENGAJA TIDAK dipindah ke sistem ini, kesepakatan waktu breakdown Fase 6). — Fase 6b — modul pertama yang jalan di atas fondasi itu: `Memo` (tabel `memos`, kolom `type` bedain 'memo'/pengumuman vs 'mom'/Minutes of Meeting, `pinned` buat nahan di atas). `Dashboard\Work\MemoController` — CRUD, dijaga `module:work,view` (index) / `module:work,manage` (create/edit/delete) di routing, bukan dicek manual di controller. Kartu "Info dari Owner" di Home (`employee/home.blade.php`) sekarang nampilin 3 memo terbaru beneran — SENGAJA kelihatan buat SEMUA role internal terlepas dari `dashboard_access`, karena ini pengumuman ke tim, bukan modul kerja. `DemoSeeder` nambah contoh: Aldora (karyawan biasa) dikasih akses 'manage' ke Work Control walau dia bukan Manajer/HRD/Owner — buat nunjukin sistemnya beneran per-user bukan per-role. Enam modul lain masih placeholder generik (`dashboard/module.blade.php`)
+   sampai dibangun satu-satu.)_
 
     > ⚠️ **Peta Fase 7 ke bawah ini sudah dirombak total (2026-09-06)**
     > menyesuaikan prototype v18 — lihat
@@ -637,28 +725,13 @@ Urutan fase development:
     > Dashboard Access & MoM/Memo", itu urutan LAMA — pakai urutan di bawah
     > ini.
 
-7. **Absensi Lanjutan (Kebijakan WFO v18)** — revisi Fase 4, BUKAN
-    > **Keputusan (2026-09-06):** field `Gaji Pokok`/`Target Jam/Hari`/
-    > `Flat Overtime Rate` di form Karyawan (ada di form Owner prototype
-    > v18) SENGAJA ditunda ke Fase 12 (Payroll), TIDAK digarap di Fase
-    > 7 ini. Modul Lembur di Fase 7 cuma nyimpen status request &
-    > approval (disetujui/ditolak) buat basis hitung jam kerja & potongan
-    > shortage — belum ngitung nominal rupiah, karena rate-nya belum ada
-    > sampai Fase 12.
-    > modul baru. Jam kerja normal WFO 09:30–20:00 + auto-close jam 20:00
-    > kalau lupa checkout dan gak ada Lembur disetujui (nyusul job/cek
-    > on-load, sama kayak keterbatasan prototype — server beneran gak
-    > butuh "app harus dibuka dulu" kayak prototype browser-based). Modul
-    > **Lembur** baru: request → approval (siapa yang approve nyusul sama
-    > pola Fase 5) → dibayar **flat rate per jabatan/karyawan**, bukan
-    > per jam. Potongan kurang jam diakumulasi & dipotong per blok 60
-    > menit (sisa menit dibawa ke perhitungan bulan itu). Mode
-    > **Lapangan/Gigs**: attendance boleh multi-sesi per hari (perlu
-    > lepas constraint `unique(user_id,date)`, ganti jadi
-    > `unique(user_id,date,session_number)` atau tabel sesi terpisah).
-    > **Geo settings pindah dari seeder ke UI**: Owner/HR bisa atur nama
-    > kantor, lat/lng, radius (default 200m, bukan 150m), toggle
-    > enable/disable geo attendance, toggle enforce/disable radius.
+7. **Absensi Lanjutan (Kebijakan WFO v18)** — **fitur user-facing sudah
+   dibangun, menunggu validasi end-to-end.** Jam kerja normal WFO 09:30–20:00
+    - auto-close, Lembur request → approval, mode Lapangan/Gigs multi-sesi,
+      shortage yang dihitung per blok 60 menit, serta pengaturan kantor dari
+      UI Owner. **Nominal rupiah lembur/shortage tidak dihitung di Fase 7**;
+      data hasil Fase 7 menjadi input Fase 12 Payroll.
+
 8. **Memo Forum & Home Personalization** ✅ _(revisi Fase 6b, bukan
    modul baru. `Memo` yang tadinya broadcast satu arah sekarang forum:
    status baca/sembunyi per-karyawan (tabel `memo_reads`), balasan
@@ -910,129 +983,112 @@ Catatan penting soal kapan halaman ini benar-benar muncul:
 
 ### Checklist Testing Teknis
 
-> **Prinsip tetap buat semua kerjaan mulai sekarang (2026-09-06):**
-> sisi web resmi dibuat **semirip mungkin sama prototype v18**,
-> satu-satunya pembeda yang disengaja adalah landing page publik +
-> rekrutmen (Fase 0–3). Kalau nemu prototype punya perilaku/posisi UI
-> yang belum ada di web resmi dan gak ada alasan teknis kuat buat beda
-> (kayak kasus Lock Dashboard di atas — mekanismenya diadaptasi ke
-> arsitektur auth per-user, tapi semangat & posisinya tetap disamain),
-> langsung anggap itu spek yang harus diikuti, gak perlu nunggu
-> ditanya dulu — biar gak ada rombak besar-besaran lagi ke depannya.
+> **Tujuan bagian ini sekarang:** memvalidasi fitur yang sudah dibangun,
+> bukan mengaudit ulang kode dari nol. Step 0 sudah selesai; fokus terdekat
+> adalah Fase 6 & 8, lalu validasi Fase 7.
 
-Fase 0–8 sudah dibangun dan **Fase 6, 7, 8 sudah diuji end-to-end secara
-manual di environment development**. Bagian di bawah dipertahankan sebagai
-referensi pengujian/regresi jika ada perubahan kode di area tersebut.
+#### Regression Check — Fase 6–8
 
-1. **Migrate dari nol**: `php artisan migrate:fresh --seed` (2 tabel
-   baru: `dashboard_access` dan `memos`; `DemoSeeder` sekarang juga isi
-   contoh akses & memo).
-2. **Cek Owner otomatis full-access**: login `owner@wsm.local` → tombol
-   "Dashboard" di header app-mobile harus muncul tanpa perlu di-assign
-   apa-apa duluan → buka, ketujuh modul harus kelihatan semua dengan
-   badge "Manage".
-3. **Uji assign akses (Owner)**: buka Karyawan → klik "Akses" di baris
-   Gepeng → cek dropdown-nya nunjukin "None" di semua modul (belum ada
-   baris di seed buat Gepeng selain Work Control) → ubah salah satu
-   jadi View/Manage → simpan → cek balik lagi ke halaman itu,
-   pilihannya harus kesimpen. Coba juga baris Owner — tombol "Akses"-nya
-   seharusnya gak ada sama sekali di tabel.
-4. **Login sebagai Aldora** (dikasih 'manage' Work Control di seeder):
-    - Tombol "Dashboard" di header app-mobile harus muncul (dia
-      karyawan biasa, BUKAN Manajer/HRD/Owner — ini pembuktian utama
-      kalau sistemnya per-user bukan per-role).
-    - Buka Dashboard → cuma modul "Work Control" yang muncul, badge
-      "Manage".
-    - Masuk modul itu → tombol "+ Tambah" harus ada → coba bikin Memo
-      baru & MoM baru (isi tanggal rapat + peserta) → cek muncul di
-      listing, urutan pinned duluan baru terbaru.
-    - Coba edit & hapus punya sendiri → harus bisa (dia 'manage').
-5. **Login sebagai Gepeng** (dikasih 'view' doang Work Control):
-    - Masuk modul Work Control → BOLEH lihat listing, tapi tombol
-      "+ Tambah"/Edit/Hapus TIDAK BOLEH muncul.
-    - Coba akses langsung URL `/dashboard/work/create` (ketik manual di
-      address bar) → harus kena 403, bukan cuma tombolnya yang
-      disembunyikan di UI.
-6. **Login sebagai Karyawan biasa yang belum di-assign apa-apa** (mis.
-   sebelum langkah 3 di atas dilakukan buat dia) → tombol "Dashboard" di
-   header app-mobile TIDAK BOLEH muncul sama sekali.
-7. **Cek kartu "Info dari Owner" di Home** — login role apa aja (bukan
-   cuma yang punya akses Work Control) → harus lihat memo yang dibuat
-   Aldora/seeder tadi, maksimal 3, yang di-pin duluan.
-8. **Cek urutan route `/dashboard/work` gak ketuker** — ini yang paling
-   gampang salah kalau ada modul baru ditambah nanti: pastikan
-   `/dashboard/work` masuk ke `MemoController` (ada listing beneran),
-   BUKAN ke halaman placeholder "belum dibangun". Kalau ternyata malah
-   placeholder yang muncul, cek urutan route di `routes/web.php` — grup
-   `work` harus terdaftar SEBELUM route `/{module}` generik.
-9. Setelah Fase 6 & 8 dinyatakan PASS, **Fase 7: Absensi Lanjutan
-   (Kebijakan WFO v18)** juga sudah divalidasi end-to-end. (lihat peta di bawah) — bukan lagi "Task &
-   Project Tracker" seperti rencana lama, lihat
-   [Rombak Rencana](#-rombak-rencana-acuan-naik-ke-prototype-v18-2026-09-06)
-   di atas untuk alasan urutan berubah.
-10. **Belum dites juga**: halaman Profile baru (`employee.profile.index`,
-    `employee.profile.password`) dari audit UI/UX 2026-09-06 — login role
-    apa aja → tab Profile di bottom-nav harus kebuka (bukan `#` lagi) →
-    coba ganti password pakai `current_password` salah (harus muncul
-    error "Password saat ini salah") lalu yang benar (harus redirect
-    balik + toast sukses) → logout → login ulang pakai password baru
-    buat mastiin `Hash::make` kesimpen bener.
-11. **Belum dites juga**: Lock Dashboard (2026-09-06) — login sebagai
-    Manajer/HRD/Owner → masuk sisi `layouts.app` mana aja → klik
-    "🔒 Kunci Dashboard" di footer sidebar → harus muncul konfirmasi
-    SweetAlert dulu → confirm → harus kelempar ke app-mobile
-    (`employee.home`) + toast "Dashboard dikunci." → coba akses
-    langsung salah satu URL manajemen (mis. `/owner/dashboard` atau
-    `/absensi`, ketik manual di address bar) → harus KEPENTAL ke layar
-    "Dashboard Terkunci" (`/dashboard-lock`), bukan malah kebuka. Di
-    layar itu: coba password salah dulu (harus muncul error "Password
-    salah"), baru password bener → harus balik PERSIS ke URL yang tadi
-    dituju (bukan ke `/dashboard` doang). Ulangi sekali lagi tapi kali
-    ini klik "Kembali" (bukan isi password) → harus ke `employee.home`
-    tanpa logout (masih tetep login, coba buka tab baru ke salah satu
-    URL manajemen, harus masih kepental — berarti sesi login gak
-    kepengaruh, cuma flag lock-nya doang). Terakhir, login sebagai
-    Karyawan biasa (bukan Manajer/HRD/Owner) → tombol "🔒 Kunci
-    Dashboard" TIDAK BOLEH muncul sama sekali (dia gak pernah masuk
-    `layouts.app`).
-12. **WAJIB `php artisan migrate` dulu** sebelum tes Fase 8 — 2 tabel
-    baru (`memo_reads`, `memo_thread_messages`) belum ada di database
-    manapun. Setelah itu, jalanin ulang `php artisan db:seed
---class=DemoSeeder` kalau mau langsung ada contoh data (atau tes
-    manual dari nol juga bisa). Checklist: - Login **Karyawan/Manajer/HRD non-manage** apa aja → buka Home →
-    hero harus nampilin job title + divisi di bawah tanggal (kalau
-    user itu punya keduanya) → kalau Gepeng baru di-seed dalam bulan
-    berjalan, banner "Cuti Tim Bulan Ini" harus muncul di atas kartu
-    absensi. - Di kartu "Info dari Owner": memo yang belum pernah disentuh harus
-    berstatus **UNREAD** (chip biru) → klik "Tandai Sudah Dibaca" →
-    chip berubah jadi **READ** (abu-abu) tanpa reload halaman terasa
-    aneh (submit form biasa, boleh ada reload, yang penting state-nya
-    berubah). Klik lagi → balik ke UNREAD. - Klik "Sembunyikan" di salah satu memo → memo itu HILANG dari
-    daftar utama, muncul tombol "N disembunyikan" di pojok kanan atas
-    kartu → klik tombol itu → memo yang disembunyikan muncul lagi
-    (opacity redup) dengan tombol "Tampilkan Lagi" → klik → balik ke
-    daftar utama. - Ketik reply di form bawah salah satu memo (mis. memo "Selamat
-    datang") → submit → pesan baru harus muncul di thread, RATA KANAN
-    & warna gelap (bubble "mine") kalau itu punya sendiri. - Login **beda user** (mis. login Gepeng abis reply pakai Aldora) →
-    buka memo yang sama → HARUS kelihatan reply dari Aldora juga
-    (bukti thread-nya dibagi bareng, bukan privat per-orang). - Login **Aldora** (manage-level modul Work di seed) → buka sidebar
-    → item "Work Control" harus ada badge merah angka **1** (dari
-    reply seed Aldora sendiri yang belum ke-mark — kalau udah pernah
-    buka `/dashboard/work` sebelumnya di sesi manapun, badge-nya
-    bakal 0, itu normal). Buka `/dashboard/work` → badge di sidebar
-    HARUS HILANG (jadi 0) setelah halaman itu selesai dimuat, gak
-    perlu refresh manual. - Di `/dashboard/work`, coba reply dari sisi manajemen di salah
-    satu memo → cek bubble-nya kelabel "· Manajemen" (bukan "mine",
-    soalnya ini akun berbeda dari yang reply duluan) kalau dilihat
-    dari akun lain. - Login **Karyawan biasa TANPA akses modul work** (mis. Gepeng,
-    cuma 'view') → sidebar Modul: semua 7 item HARUS ada ikonnya
-    (☷/Rp/♪/◎/◉/▤/🧾) di depan label, bukan cuma teks polos kayak
-    sebelumnya.
+Fase 6–8 sudah divalidasi end-to-end. Checklist di bawah dipakai sebagai
+regression test jika ada perubahan pada modul terkait.
 
-### Ceklis Parity UI/UX vs Prototype v18 (2026-09-07)
+**A. Owner — Dashboard Access**
+
+1. Login sebagai `owner@wsm.local`.
+2. Buka **Karyawan → Akses**.
+3. Pastikan Owner tidak memiliki tombol "Akses" untuk dirinya sendiri.
+4. Buka akses **Gepeng**:
+    - ubah satu modul menjadi `View` → simpan → pastikan tersimpan;
+    - ubah menjadi `Manage` → simpan → pastikan tersimpan;
+    - hapus/nonaktifkan akses → pastikan modul tidak lagi bisa dipakai.
+5. Login sebagai user tersebut dan cek perubahan akses benar-benar berlaku.
+6. Coba buka URL modul secara langsung untuk memastikan pembatasan bukan
+   hanya menyembunyikan menu.
+
+**B. Karyawan dengan Manage — contoh Aldora**
+
+1. Login sebagai `aldora@wsm.local`.
+2. Tombol **Dashboard** harus muncul.
+3. Dashboard hanya menampilkan modul yang memang diberikan.
+4. Buka **Work Control**.
+5. Buat Memo dan MoM.
+6. Edit dan hapus data.
+7. Pastikan data tampil kembali di listing.
+
+**C. Karyawan dengan View — contoh Gepeng**
+
+1. Login sebagai `gepeng@wsm.local`.
+2. Buka Work Control.
+3. Data boleh dilihat.
+4. Tombol Tambah/Edit/Hapus tidak boleh tersedia.
+5. Coba buka `/dashboard/work/create` langsung → harus **403**.
+
+**D. Memo Forum — semua role internal**
+
+1. Login sebagai user biasa.
+2. Di Home, memo muncul di kartu **Info dari Owner**.
+3. Memo baru harus berstatus **UNREAD**.
+4. Tandai sudah dibaca → status berubah menjadi **READ**.
+5. Sembunyikan memo → memo hilang dari daftar utama.
+6. Buka "N disembunyikan" → memo muncul kembali.
+7. Balas memo → balasan muncul di thread.
+8. Login sebagai user lain → balasan user sebelumnya harus tetap terlihat,
+   karena thread bersifat bersama, bukan privat.
+
+**E. Badge Management**
+
+1. Pastikan ada reply karyawan yang belum dibaca management.
+2. Login sebagai user yang punya `Manage` Work Control.
+3. Badge unread pada **Work Control** harus muncul.
+4. Buka `/dashboard/work`.
+5. Badge harus menjadi 0 setelah halaman dimuat, tanpa perlu refresh manual.
+
+**F. Home Personalization**
+
+1. Pastikan user memiliki `job_title` dan/atau `division`.
+2. Login → Home harus menampilkan informasi tersebut.
+3. Jika ada cuti tim bulan berjalan, banner **Cuti Tim Bulan Ini** harus
+   muncul.
+4. Izin sakit tidak boleh diumumkan di banner tim.
+
+> **Hasil Step 1:** tandai tiap poin sebagai `PASS`, `PARTIAL`, atau `FAIL`.
+> Jangan mengubah status fase hanya berdasarkan perkiraan dari kode.
+
+#### Regression Check — Fase 7 Absensi Lanjutan
+
+Gunakan setelah ada perubahan pada modul Absensi Lanjutan:
+
+- [ ] Kantor/WFH tetap maksimal 1 sesi per hari.
+- [ ] Lapangan/Gigs bisa membuat sesi berikutnya setelah sesi sebelumnya
+      checkout.
+- [ ] Sesi yang lupa checkout untuk Kantor/WFH dapat auto-close sesuai
+      `normal_end_time`.
+- [ ] Lembur bisa diajukan.
+- [ ] Manajer hanya melihat bawahan langsung untuk approval.
+- [ ] Owner bisa melihat dan memutuskan semua pengajuan.
+- [ ] Reject wajib alasan.
+- [ ] Pembatalan wajib alasan.
+- [ ] Pengajuan aktif ganda pada tanggal yang sama ditolak.
+- [ ] Shortage dapat dihitung dalam blok 60 menit.
+- [ ] Owner dapat mengubah pengaturan kantor dari UI.
+- [ ] Perubahan `normal_end_time` yang tidak valid ditolak.
+- [ ] Status Hadir/Terlambat/Kurang Jam Kerja/Auto-close tampil sesuai data.
+
+**Catatan:** Fase 7 tidak menghitung nominal rupiah. Gaji pokok, target
+jam/hari, flat overtime rate, pembayaran lembur, dan dampak finansial
+shortage dikerjakan bersama **Fase 12 Payroll**.
+
+#### Setelah Step 1–2
+
+Jika Fase 6, 7, dan 8 sudah `PASS`, lanjut ke:
+
+**Fase 9 → Fase 10 → Fase 11 → Fase 12 Payroll → Fase 13 → Fase 14 →
+Fase 15 → Fase 16 → Fase 17 → Fase 18.**
+
+### Ceklis Parity UI/UX vs Prototype v32
 
 **Aturan baku buat semua fase di bawah:** ikutin UX & posisi elemen
-prototype v18 SEPERSIS mungkin. Boleh dirubah dari aslinya HANYA kalau
+prototype v32 SEPERSIS mungkin. Boleh dirubah dari aslinya HANYA kalau
 niru persis bikin sesuatu **gak responsif** (mis. sidebar 7-grup
 prototype didesain buat layar lebar, harus dites & disesuaikan buat
 mobile) atau **berantakan** (mis. prototype numpuk banyak badge/label
@@ -1052,9 +1108,11 @@ elemen & fungsinya harus tetap ada, jangan dihilangin.
 - [x] SweetAlert buat semua konfirmasi/alert (termasuk logout & kunci dashboard)
 - [x] **Fase 8 (Memo Forum & Home Personalization)** — badge unread di sidebar "Work Control" (dihitung ulang biar beneran reset pas dibaca, bukan numpuk terus kayak prototype — lihat catatan di bawah), icon per-item buat semua 7 modul, reply jadi thread (dibagi bareng, bukan flat/privat), tombol tandai-baca + sembunyikan per-memo, job title/divisi di Home, banner cuti tim bulan ini.
 
-**Belum, per fase (urutan sama kayak [Peta Fase 7–18](#peta-fase-718-rombak-total-lihat-rombak-rencana-di-atas) di bawah, sekarang tiap fase ada catatan UI/UX-nya sendiri):**
+**Belum, per fase (urutan sama seperti roadmap aktif; Fase 6–8 sudah selesai):**
 
-- **Fase 7 (Absensi Lanjutan)** — fitur dan flow sudah dibangun serta sudah diuji end-to-end. Yang sengaja belum dikerjakan di fase ini adalah perhitungan nominal lembur/shortage; itu masuk Fase 12 Payroll.
+- **Fase 7 (Absensi Lanjutan)** — parity UI/UX sudah diimplementasikan dan
+  divalidasi sebagai bagian Fase 7. Regression test dilakukan kembali jika
+  ada perubahan pada absensi, lembur, shortage, atau pengaturan kantor.
 - **Fase 9 (Work Control Lanjutan)** — Tracker pakai board (kolom Todo/In Progress/Done, drag-drop), Timeline Calendar pakai grid kalender bulanan — dua-duanya UI BARU (belum ada padanan lama sama sekali di web resmi), jadi bebas ambil struktur HTML/CSS-nya dari prototype (bukan kode JS-nya, itu di-porting jadi Blade+Livewire/Alpine sesuai stack yang udah dipakai).
 - **Fase 10–15 (KPI, Kontrak, Payroll, Budgeting, Royalty, Legal, IT)** —
   UI masih placeholder generik (`dashboard/module.blade.php`), jadi belum ada
@@ -1097,15 +1155,14 @@ elemen & fungsinya harus tetap ada, jangan dihilangin.
 12. **Fase 18 — Keamanan, Testing, Deployment** — staging/production
     terpisah, backup otomatis, monitoring.
 
-**Kenapa Fase 7 (Absensi Lanjutan) didahulukan** dari Memo Forum (Fase 8) meski Memo Forum lebih "berdiri sendiri"/lebih cepat dikerjain:
-data Lembur & potongan jam per blok yang dihasilkan Fase 7 jadi input
-buat Payroll (Fase 12) — makin lama ditunda, makin banyak histori
-absensi yang harus di-reconcile manual belakangan. Kalau tim lebih
-butuh "menang cepat" yang kelihatan user-facing duluan (mis. buat demo
-ke stakeholder), Fase 8 (Memo Forum & Home Personalization) juga aman
-dikerjain duluan — dua-duanya independen satu sama lain, gak saling
-depend. Fase 9 ke atas WAJIB nunggu 7 & 8 kelar dulu karena sama-sama
-numpuk di modul `work`/`office_settings` yang sama.
+**Hubungan Fase 7 → Fase 12:** Fase 7 menghasilkan data absensi,
+Lembur, dan shortage. Fase 12 memakai data tersebut untuk perhitungan
+Payroll, termasuk nominal lembur dan dampak shortage. Karena itu Fase 7
+perlu selesai dan tervalidasi sebelum Payroll dibuat, tetapi **tidak
+perlu menghitung uang lembur di Fase 7**.
+
+Fase 8 tidak bergantung pada Fase 7. Karena itu Fase 6/8 bisa divalidasi
+terlebih dahulu, lalu Fase 7 divalidasi sebelum masuk Fase 9–12.
 
 Belum ada keputusan final urutan Fase 10–13 (KPI/Kontrak/Payroll/
 Budgeting & Royalty) — sama seperti rencana lama, itu masih perlu
@@ -1197,32 +1254,32 @@ sama persis kayak kemarin** di modul lain.
     — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
     sempat kejalanin.
 
-        **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
-        sendiri, jadi gak perlu downgrade major version.** Laravel 13
-        ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
-        8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
-        Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
-        padahal constraint Laravel 13 sendiri ke paket itu masih
-        `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
-        memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
-        8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
-        (versi terbaru yang tersedia) karena constraint di `composer.json`
-        gak mengunci versi Symfony-nya secara eksplisit.
+         **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
+         sendiri, jadi gak perlu downgrade major version.** Laravel 13
+         ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
+         8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
+         Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
+         padahal constraint Laravel 13 sendiri ke paket itu masih
+         `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
+         memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
+         8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
+         (versi terbaru yang tersedia) karena constraint di `composer.json`
+         gak mengunci versi Symfony-nya secara eksplisit.
 
-        **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
-        eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
+         **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
+         eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
 
     "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
-    mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
-    gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
-    diverifikasi jalan di sandbox ini** (Composer & akses ke
-   `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
-    dicek manual**: hapus folder`vendor/`lama, jalankan`composer
+ mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
+ gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
+ diverifikasi jalan di sandbox ini** (Composer & akses ke
+`packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
+ dicek manual**: hapus folder`vendor/`lama, jalankan`composer
     update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
-    resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
-    lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
-    halaman Home). Kalau masih ada 1-2 paket dependency lain yang
-    maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
+ resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
+ lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
+ halaman Home). Kalau masih ada 1-2 paket dependency lain yang
+ maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
     bakal nunjukin kalau ada conflict), baru pertimbangkan opsi kedua:
     minta Rumahweb upgrade PHP ke 8.4 (kalau hostingnya nanti nyediain).
 
@@ -1366,3 +1423,189 @@ Izin/Cuti-Lembur di ronde 2 di atas **tetap jadi langkah wajib**
 sebelum fitur-fitur itu dianggap kelar — belum ada satupun yang
 tervalidasi jalan beneran end-to-end, baru lolos cek statis (syntax,
 nama class/file, referensi view & route).
+
+### 🔍 Audit Ulang Menyeluruh (2026-09-09, ronde 4 — fokus App Mode/Home, karena diakses semua karyawan)
+
+Ronde ini beda fokus dari ronde 1-3 (yang lebih ke bug/syntax): baca
+ulang `WOS_2_0_App_v32/index.html` (1MB, ~3000 baris) sisi Home App
+karyawan dari fungsi `renderEmployeeHome` dkk, dibandingkan baris per
+baris ke `resources/views/employee/home.blade.php` +
+`Employee\HomeController` + `layouts/employee.blade.php` yang beneran
+ada di kode. Tidak menemukan gap baru di luar yang sudah tercatat di
+"Langkah Selanjutnya" — laporan ini konfirmasi ulang + detail supaya
+Fase 9 gampang dieksekusi tanpa re-audit dari nol.
+
+**Sudah PERSIS sesuai prototype (dicek isi, bukan cuma judul):**
+
+- Hero salam ("Halo, {nama} 👋" + tanggal), job title + divisi di
+  bawah tanggal — cocok `employeeCelebrationMarkup`/header v18.
+- Kartu absen: toggle Kantor/WFH (Lapangan/Gigs juga sudah ada, malah
+  Laravel-nya sesi multi-check-in/out yang prototype baru punya di
+  v18 ke atas), test lokasi + mini map + radius, foto selfie opsional,
+  status "sedang bekerja"/"absensi selesai".
+- Banner "Cuti Tim Bulan Ini" (cuti_tahunan & izin_pribadi doang,
+  izin_sakit privat) — persis kebijakan v18.
+- Kartu "Info dari Owner" (memo): read/unread badge, tandai baca,
+  sembunyikan/tampilkan, reply thread — persis `employeeMemoMarkup`.
+- **Dashboard Access — 7 modul inti** (`work`, `budget`, `royalty`,
+  `kpi`, `people`, `contracts`, `payroll`): key, label, DAN deskripsi
+  di `DashboardAccess::MODULES` (Laravel) dicocokkan literal ke
+  `DASHBOARD_MODULES` (prototype, baris 1202-1210) — **sama persis,
+  nol drift**. `legal`/`it` sebagai modul ke-8/9 juga sudah dilabeli
+  benar di komentar sebagai desain baru WSM, bukan porting.
+- Routing generik modul placeholder (`dashboard/{module}`) vs
+  modul `work` yang sudah punya controller sendiri — urutan
+  registrasi route di `web.php` sudah benar (grup `work.` didaftar
+  SEBELUM `/{module}` generik), jadi tidak ke-intercept placeholder.
+
+**Konfirmasi ulang: bagian Home yang BELUM ada, semuanya sudah
+tercakup di cakupan Fase 9 (baris "Langkah Selanjutnya" poin 3 di
+atas) — bukan temuan baru, tapi berikut detail per item biar
+langsung actionable:**
+
+1. **Milestones (Birthday & Work Anniversary)** — prototype selalu
+   nampilin ini di Home (ada sejak versi paling awal `v7`, bukan fitur
+   baru v18), tapi belum ada sama sekali di
+   `employee/home.blade.php`. **Catatan penting:** kolom
+   `users.birth_date` dan `users.join_date` **SUDAH ADA** di database
+   (dipakai buat Fase 2 Master Karyawan & perhitungan cuti) — jadi ini
+   **cuma butuh 1 partial view + sedikit logic tanggal di
+   `HomeController`, TIDAK butuh migration baru**. Kandidat quick win
+   pertama dari Fase 9 karena effort kecil, dampak kelihatan ke semua
+   karyawan.
+2. **My Work Tracker** (daftar task/item pribadi milik karyawan) —
+   butuh `work_items` (sudah ada modelnya dari Data Layer Fase 9-16,
+   tinggal query + card UI di Home).
+3. **Shared Calendar** (tombol dari dalam My Work Tracker, modal 14
+   hari workload tim dari deadline task, BUKAN kalender pribadi) —
+   nunggu #2 selesai duluan (sumber datanya sama, `work_items.due`).
+4. **My KPI** (mini card skor KPI pribadi di Home, ringkas — beda
+   dari halaman KPI & Performance penuh Fase 10) — butuh tabel `kpis`
+   (sudah ada modelnya).
+5. **Latest Attendance embedded di Home** — prototype nampilin 3-5
+   riwayat absen terakhir LANGSUNG di Home (bukan cuma link). Laravel
+   sekarang cuma kasih link "Riwayat" di bottom-nav ke halaman
+   terpisah (`employee/attendance/history.blade.php`). Beda posisi
+   ini **efeknya kecil** (data & halamannya sudah ada, cuma soal
+   ditaruh di 2 tempat atau 1) — bisa disamakan cepat kapan aja,
+   tidak perlu nunggu Fase 9 penuh kalau mau dikerjakan duluan.
+6. **Work Dashboard entry point di Home** (`secretaryConsoleMarkup` —
+   kartu shortcut ke Work Control buat role tertentu) — sudah ADA
+   padanannya (tombol "Kelola Tim" & "Dashboard" di header
+   `layouts/employee.blade.php`, beda posisi tapi fungsinya
+   ketemu), jadi item ini **statusnya sudah cukup**, bukan gap.
+
+**Prioritas eksekusi App Mode yang disarankan (dari yang paling
+murah ke paling mahal, karena semua ini kelihatan seluruh karyawan):**
+
+1. Milestones (quick win, no migration).
+2. Latest Attendance embedded di Home (quick win, no migration, no
+   model baru — tinggal UI).
+3. My Work Tracker (butuh controller + view baru buat CRUD/list
+   `work_items` versi karyawan, ini beban utama Fase 9).
+4. Shared Calendar (menyusul #3).
+5. My KPI mini card (butuh controller/view kecil buat `kpis` versi
+   employee, bisa paralel sama #3-4).
+6. Baru sesudah itu masuk ke sisi ADMIN Fase 9 (Projects, Work
+   Tracker board penuh, Timeline Calendar, MoM) yang dipakai
+   Owner/Manajer/HRD/role dengan `dashboard_access=work,manage` —
+   README "Langkah Selanjutnya" sudah benar naruh App Mode duluan
+   sebelum ini, tinggal dieksekusi urutannya.
+
+**Belum bisa dites di sandbox ini** (masih sama kendala ronde
+sebelumnya — PHP 8.4 tidak tersedia): perbandingan di atas murni dari
+baca kode statis (isi Blade view, Controller, dan prototype
+`index.html`), bukan hasil klik langsung di browser. Checklist
+manual E2E dari ronde 1-3 tetap wajib dijalankan sebelum rilis.
+
+### ✅ Dikerjakan (2026-09-09): Milestones + Latest Attendance + My KPI
+
+3 quick win dari ronde 4 di atas (poin 1, 2, 5 — yang independen dari
+Projects/Work Tracker board) **sudah diimplementasikan**, TIDAK ada
+migration baru (semua kolom/tabel yang dipakai sudah ada dari Fase
+2/10):
+
+- **`app/Models/User.php`** — 3 method baru: `nextBirthdayOccurrence()`,
+  `nextWorkAnniversaryOccurrence()` (padanan `occurrenceInfo()` di
+  prototype, termasuk geser 29 Februari ke 28 Februari di tahun
+  non-kabisat), `serviceDurationLabel()` (padanan `serviceDuration()`).
+  Dipanggil langsung dari view (`auth()->user()->...`), sama pola
+  kayak job_title/divisi di Fase 8 — sengaja TIDAK lewat Controller.
+- **`app/Models/Kpi.php`** — 3 method baru: `achievementBadgeClass()`,
+  `progressBarClass()` (ambang batas >=90 hijau/>=60 kuning/sisanya
+  merah, sama persis prototype), `formatNumber()` (angka ringkas,
+  buang trailing zero).
+- **`app/Http/Controllers/Employee/HomeController.php`** — nambah
+  query `$latestAttendance` (5 sesi absen terakhir milik sendiri,
+  lintas bulan) dan `$kpis` (KPI Active/Completed milik sendiri, urut
+  `due_date`), dioper ke view.
+- **`resources/views/employee/_milestones.blade.php`** (baru) — kartu
+  Milestones (Lama Bekerja/Birthday/Anniversary), padanan
+  `employeeCelebrationMarkup`.
+- **`resources/views/employee/_kpi.blade.php`** (baru) — kartu My KPI,
+  padanan `employeeKpiMarkup`. Nampilin pesan "KPI belum diset..."
+  kalau kosong (Fase 10 UI Owner buat isi KPI belum ada — kartu ini
+  baru keliatan isinya setelah ada baris `kpis` lewat
+  `tinker`/seeder/Fase 10).
+- **`resources/views/employee/attendance/_history-card.blade.php`**
+  (baru) — partial 1 kartu riwayat absen, di-extract dari
+  `history.blade.php` biar bisa dipakai ulang di kartu "Latest
+  Attendance" pada Home TANPA duplikasi markup.
+- **`resources/views/employee/attendance/history.blade.php`** — diubah
+  supaya `@include` partial di atas (perilaku halaman ini TIDAK
+  berubah, cuma refactor markup ke partial).
+- **`resources/views/employee/home.blade.php`** — tambah
+  `@include('employee._milestones')` tepat setelah hero,
+  `@include('employee._kpi')` sebelum kartu memo "Info dari Owner",
+  dan section "Latest Attendance" (5 kartu + tombol "Lihat semua" ke
+  `employee.attendance.history`) di paling bawah, sebelum
+  `@endsection`. Urutan section LAIN yang sudah ada (banner cuti,
+  kartu absen, memo) **sengaja tidak diubah/dipindah** — cuma nambah,
+  biar risiko regresi kecil (prototype v18 taruh Milestones & memo di
+  urutan berbeda dari Laravel sekarang; menyamakan urutan penuh
+  ditunda, bukan scope quick win ini).
+
+**Flow hasil akhir buat dicek manual** (Home karyawan, urutan
+top-to-bottom setelah perubahan):
+
+1. Hero ("Halo, {nama}") + job title/divisi.
+2. **[BARU] Milestones** — 3 kartu: Lama Bekerja, Birthday, Work
+   Anniversary (atau pesan "belum diset" kalau `birth_date`/
+   `join_date` kosong).
+3. Banner "Cuti Tim Bulan Ini" (kalau ada).
+4. Warning absen lupa checkout (kalau ada).
+5. Status cuti hari ini ATAU kartu absen (mode Kantor/WFH/Lapangan/
+   Gigs, test lokasi, dst — tidak berubah).
+6. **[BARU] My KPI** — grid kartu KPI aktif, atau pesan kosong.
+7. Kartu "Info dari Owner" (memo forum — tidak berubah).
+8. **[BARU] Latest Attendance** — 5 kartu riwayat absen terakhir +
+   tombol "Lihat semua" ke halaman Riwayat penuh.
+
+**Checklist manual yang perlu dijalankan** (belum tervalidasi di
+sandbox ini, PHP 8.4 masih belum ada):
+
+- `php artisan migrate:fresh --seed`, lalu buka Home login sebagai
+  Aldora/Gepeng (2 karyawan `DemoSeeder`) — cek kartu Milestones
+  nongol dan angkanya masuk akal berdasarkan `birth_date`/`join_date`
+  di seeder.
+- Kalau `DemoSeeder` belum isi `birth_date` buat semua user, cek juga
+  tampilan "belum diset" (jangan sampai error/blank kalau null).
+- `php artisan tinker` → buat 1-2 baris `Kpi::create([...])` manual
+  buat 1 user demo → refresh Home → cek kartu My KPI muncul dengan
+  badge warna & progress bar yang sesuai (coba 1 KPI overachieve
+    > 100%, 1 KPI di bawah 60%, 1 tanpa `owner_note`).
+- Absen masuk-pulang 1-2 kali (beda mode) → cek "Latest Attendance" di
+  Home ke-update dan kartunya identik visual dengan yang di halaman
+  Riwayat (`/app/riwayat`) — soalnya sekarang 1 partial yang sama.
+- Buka halaman Riwayat (`/app/riwayat`) itu sendiri → pastikan TIDAK
+  ada regresi dari refactor partial (tampilan harus identik dengan
+  sebelum perubahan).
+- Cek responsive mobile (kartu Milestones & My KPI pakai
+  `grid-cols-1 sm:grid-cols-3` / `sm:grid-cols-2` — pastikan gak
+  numpuk aneh di layar sempit).
+
+**Belum dikerjakan (sengaja, di luar scope quick win ini):** My Work
+Tracker & Shared Calendar tetap ditunda sampai ada fondasi admin
+Projects + Work Tracker board (lihat diskusi jalur eksekusi di atas)
+— dikerjain duluan cuma bakal jadi widget kosong tanpa cara isi data
+dari UI.

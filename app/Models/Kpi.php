@@ -58,4 +58,38 @@ class Kpi extends Model
 
         return round(($this->current / $this->target) * 100, 1);
     }
+
+    /**
+     * App Mode quick win (2026-09-09) — warna badge kartu "My KPI" di
+     * Home. Ambang batas sama persis prototype (`employeeKpiMarkup`:
+     * >=90 hijau, >=60 kuning, sisanya merah).
+     */
+    public function achievementBadgeClass(): string
+    {
+        $pct = $this->achievementPct();
+
+        return match (true) {
+            $pct >= 90 => 'badge-wsm-green',
+            $pct >= 60 => 'badge-wsm-yellow',
+            default => 'badge-wsm-red',
+        };
+    }
+
+    /** Warna progress bar kartu "My KPI" — pasangan achievementBadgeClass() di atas. */
+    public function progressBarClass(): string
+    {
+        $pct = $this->achievementPct();
+
+        return match (true) {
+            $pct >= 90 => 'bg-brand-green',
+            $pct >= 60 => 'bg-brand-yellow',
+            default => 'bg-[#f16c61]',
+        };
+    }
+
+    /** Tampilan angka ringkas ("100" bukan "100.00", "12.5" bukan "12.50"). */
+    public static function formatNumber(?float $value): string
+    {
+        return rtrim(rtrim(number_format($value ?? 0, 2, '.', ''), '0'), '.') ?: '0';
+    }
 }

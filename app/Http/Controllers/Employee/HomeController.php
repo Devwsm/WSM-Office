@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\Kpi;
 use App\Models\LeaveRequest;
 use App\Models\Memo;
 use App\Models\OfficeSetting;
@@ -40,6 +41,23 @@ use Illuminate\Support\Facades\Auth;
  *   (selain diri sendiri).
  * - Job title & divisi TIDAK dioper lewat sini — udah ada langsung di
  *   `auth()->user()->job_title`/`->division`, dipakai langsung di view.
+ *
+ * App Mode quick win (2026-09-09, dari audit ronde 4 di README) nambah:
+ * - Milestones (Birthday & Work Anniversary + lama bekerja) — TIDAK
+ *   dioper lewat sini juga, sama pola kayak job_title/divisi di atas:
+ *   view manggil `auth()->user()->nextBirthdayOccurrence()`,
+ *   `->nextWorkAnniversaryOccurrence()`, `->serviceDurationLabel()`
+ *   langsung (lihat User model), soalnya gak butuh query tambahan.
+ * - `$latestAttendance` — 5 sesi absen terakhir milik sendiri (lintas
+ *   bulan, BUKAN cuma bulan berjalan kayak `attendance.history`),
+ *   ditampilkan langsung di Home padanan "Latest Attendance" prototype.
+ *   Pakai partial `employee.attendance._history-card` yang sama
+ *   dengan halaman Riwayat penuh, biar kartunya konsisten & gak dobel
+ *   kode.
+ * - `$kpis` — KPI aktif milik sendiri buat kartu "My KPI". KPI-nya
+ *   sendiri masih diinput manual (Fase 10 — UI Owner buat kelola KPI
+ *   per karyawan belum ada), jadi kartu ini kelihatan kosong sampai
+ *   ada yang diisiin lewat `tinker`/seeder atau Fase 10 selesai.
  * ---------------------------------------------------------------------
  */
 class HomeController extends Controller
@@ -104,6 +122,26 @@ class HomeController extends Controller
             ->latestFirst()
             ->get();
 
+        // App Mode quick win — "Latest Attendance" langsung di Home
+        // (padanan `historyCards(id,5)` di prototype), lepas dari bulan
+        // yang lagi dibuka di halaman Riwayat penuh.
+        $latestAttendance = Attendance::query()
+            ->where('user_id', Auth::id())
+            ->orderByDesc('date')
+            ->orderByDesc('session_number')
+            ->limit(5)
+            ->get();
+
+        // App Mode quick win — kartu "My KPI" (padanan `employeeKpiMarkup`).
+        // 'Archived' sengaja dikecualikan (KPI lama yang udah gak
+        // relevan), 'Completed' tetap ditampilkan biar kelihatan yang
+        // baru aja kelar.
+        $kpis = Kpi::query()
+            ->where('employee_id', Auth::id())
+            ->whereIn('status', ['Active', 'Completed'])
+            ->orderBy('due_date')
+            ->get();
+
         return view('employee.home', [
             'attendance' => $attendance,
             'sessions' => $sessions,
@@ -113,6 +151,8 @@ class HomeController extends Controller
             'officeSetting' => OfficeSetting::current(),
             'memos' => $memos,
             'teamLeavesThisMonth' => $teamLeavesThisMonth,
+            'latestAttendance' => $latestAttendance,
+            'kpis' => $kpis,
         ]);
     }
 }

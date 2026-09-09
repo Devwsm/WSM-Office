@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
 /**
  * Model User
@@ -180,5 +181,102 @@ class User extends Authenticatable
             'hrd' => 'HRD',
             default => 'Karyawan',
         };
+    }
+
+    /**
+     * App Mode quick win (2026-09-09) — kartu Milestones di Home.
+     * Padanan `birthdayInfo(emp)` di prototype (`occurrenceInfo`,
+     * kind='birthday'). Null kalau `birth_date` belum diisi Owner di
+     * Master Karyawan (kolomnya sudah ada sejak Fase 2, cuma belum
+     * dipakai buat ini).
+     *
+     * @return array{date: Carbon, days: int, years: null}|null
+     */
+    public function nextBirthdayOccurrence(): ?array
+    {
+        return $this->nextAnnualOccurrence($this->birth_date, false);
+    }
+
+    /**
+     * Padanan `anniversaryInfo(emp)` di prototype — tanggal kerja
+     * berikutnya + sudah tahun ke berapa. Null kalau `join_date` belum
+     * diisi.
+     *
+     * @return array{date: Carbon, days: int, years: int}|null
+     */
+    public function nextWorkAnniversaryOccurrence(): ?array
+    {
+        return $this->nextAnnualOccurrence($this->join_date, true);
+    }
+
+    /**
+     * Cari kejadian tahunan terdekat (tahun ini atau tahun depan) dari
+     * bulan+tanggal `$source` — tahun aslinya diabaikan kecuali buat
+     * hitung `years` pas anniversary. 29 Februari di tahun non-kabisat
+     * digeser ke 28 Februari, sama seperti `occurrenceInfo()` di
+     * prototype (`candidate.setDate(0)`).
+     */
+    private function nextAnnualOccurrence(?Carbon $source, bool $isAnniversary): ?array
+    {
+        if (! $source) {
+            return null;
+        }
+
+        $today = Carbon::today();
+
+        $buildFor = function (int $year) use ($source) {
+            try {
+                return Carbon::create($year, $source->month, $source->day);
+            } catch (\Exception) {
+                return Carbon::create($year, $source->month, 1)->endOfMonth();
+            }
+        };
+
+        $next = $buildFor($today->year);
+
+        if ($isAnniversary) {
+            // Belum genap 1 tahun sejak join_date -> anniversary pertama
+            // dulu, bukan tanggal bulan-ini/tahun-ini yang mungkin masih
+            // di masa lalu.
+            $firstAnniversary = $source->copy()->addYear();
+            if ($today->lt($firstAnniversary)) {
+                $next = $firstAnniversary;
+            } elseif ($next->lt($today)) {
+                $next = $buildFor($today->year + 1);
+            }
+        } elseif ($next->lt($today)) {
+            $next = $buildFor($today->year + 1);
+        }
+
+        return [
+            'date' => $next,
+            'days' => $today->diffInDays($next),
+            'years' => $isAnniversary ? max(1, $next->year - $source->year) : null,
+        ];
+    }
+
+    /**
+     * Label "lama bekerja" (mis. "2 tahun 3 bulan 10 hari"). Padanan
+     * `serviceDuration()` di prototype. Null kalau `join_date` belum
+     * diisi atau masih tanggal di masa depan.
+     */
+    public function serviceDurationLabel(): ?string
+    {
+        if (! $this->join_date || Carbon::today()->lt($this->join_date)) {
+            return null;
+        }
+
+        $diff = $this->join_date->diff(Carbon::today());
+
+        $parts = [];
+        if ($diff->y > 0) {
+            $parts[] = "{$diff->y} tahun";
+        }
+        if ($diff->m > 0 || $diff->y > 0) {
+            $parts[] = "{$diff->m} bulan";
+        }
+        $parts[] = "{$diff->d} hari";
+
+        return implode(' ', $parts);
     }
 }

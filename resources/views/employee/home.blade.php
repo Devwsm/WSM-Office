@@ -32,6 +32,11 @@
         @endif
     </div>
 
+    {{-- App Mode quick win (2026-09-09) — Milestones (Lama Bekerja,
+         Birthday, Work Anniversary), padanan employeeCelebrationMarkup
+         di prototype. Lihat employee/_milestones.blade.php. --}}
+    @include('employee._milestones')
+
     {{-- Fase 8: banner cuti tim bulan ini — cuti_tahunan & izin_pribadi
          doang (izin_sakit privat, sengaja gak diumumin). --}}
     @if ($teamLeavesThisMonth->isNotEmpty())
@@ -297,6 +302,12 @@
         </div>
     @endif
 
+    {{-- App Mode quick win (2026-09-09) — kartu "My KPI", padanan
+         employeeKpiMarkup di prototype. Lihat employee/_kpi.blade.php.
+         Kelihatan kosong sampai Fase 10 (Owner input KPI tim) selesai —
+         itu perilaku yang disengaja, bukan bug. --}}
+    @include('employee._kpi')
+
     @php
         $me = auth()->user();
         $visibleMemos = $memos->reject(fn($m) => $m->isHiddenBy($me))->take(4);
@@ -388,6 +399,34 @@
                     @endforeach
                 </div>
             @endif
+        @endif
+    </div>
+
+    {{-- App Mode quick win (2026-09-09) — "Latest Attendance" langsung
+         di Home (padanan historyCards(id,5) di prototype), lepas dari
+         halaman Riwayat penuh (bottom-nav). Pakai partial yang sama
+         dengan employee/attendance/history.blade.php. --}}
+    <div class="employee-section mt-3.5">
+        <div class="mb-2.5 flex items-center justify-between gap-3">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Latest Attendance</p>
+            <a href="{{ route('employee.attendance.history') }}" class="btn-wsm-white py-2! px-3.5! text-[10px]!">
+                Lihat semua
+            </a>
+        </div>
+
+        @if ($latestAttendance->isEmpty())
+            <div class="card-wsm-white text-center">
+                <p class="text-xs text-muted">Belum ada riwayat.</p>
+            </div>
+        @else
+            <div class="grid gap-2.5">
+                @foreach ($latestAttendance as $row)
+                    @include('employee.attendance._history-card', [
+                        'row' => $row,
+                        'setting' => $officeSetting,
+                    ])
+                @endforeach
+            </div>
         @endif
     </div>
 @endsection
