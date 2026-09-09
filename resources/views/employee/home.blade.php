@@ -314,6 +314,22 @@
          itu perilaku yang disengaja, bukan bug. --}}
     @include('employee._kpi')
 
+    {{-- Fase 9 (2026-09-09) — "My Work Tracker", padanan
+         employeeTasksMarkup di prototype. Posisi PERSIS prototype:
+         tepat setelah My KPI, sebelum Team Moments di bawah (lewat
+         memo di antaranya, karena memo emang bagian Home yang sudah
+         ada dari Fase 8, prototype gak punya konsep "memo" terpisah
+         di titik ini). Lihat employee/_work-tracker.blade.php. --}}
+    @include('employee._work-tracker')
+
+    {{-- Fase 9 (2026-09-09) — "Team Moments", padanan
+         teamCelebrationMarkup di prototype. Posisi DIPINDAH ke sini
+         (dulu sempat ditaruh sementara sebelum "Latest Attendance" di
+         ronde 5, sebelum My Work Tracker ada) — sekarang PERSIS urutan
+         prototype: My KPI -> My Work Tracker -> Team Moments -> Role
+         Dashboard entry. Lihat employee/_team-moments.blade.php. --}}
+    @include('employee._team-moments')
+
     @php
         $me = auth()->user();
         $visibleMemos = $memos->reject(fn($m) => $m->isHiddenBy($me))->take(4);
@@ -407,12 +423,6 @@
             @endif
         @endif
     </div>
-
-    {{-- App Mode quick win (2026-09-09, ronde 5) — "Team Moments",
-         padanan teamCelebrationMarkup di prototype. Lihat
-         employee/_team-moments.blade.php untuk catatan posisi
-         (sementara di sini sampai My Work Tracker Fase 9 selesai). --}}
-    @include('employee._team-moments')
 
     {{-- App Mode quick win (2026-09-09) — "Latest Attendance" langsung
          di Home (padanan historyCards(id,5) di prototype), lepas dari

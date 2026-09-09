@@ -15,16 +15,21 @@ use Illuminate\Support\Facades\Auth;
 /**
  * RecapController (Attendance)
  * ---------------------------------------------------------------------
- * Fase 4 — rekap absensi buat Manajer/Owner/HRD. Dipisah dari namespace
- * Owner/Employee karena dipakai bareng 3 role (pola sama seperti
- * Recruitment\JobOpeningController buat HRD+Owner).
+ * Fase 4 — rekap absensi. Dipisah dari namespace Owner/Employee karena
+ * dipakai bareng siapa pun yang di-assign modul `people` (dashboard_
+ * access) — bukan role tertentu lagi sejak refactor 2026-09-09, lihat
+ * routes/web.php grup 'attendance.recap.'.
  *
- * Scope data per role:
+ * Scope data (scopedUsers() di bawah, TIDAK berubah sejak Fase 4 — cuma
+ * gerbang MASUKNYA yang jadi permission-based, ini tetap role-based):
  * - Owner & HRD -> semua karyawan aktif (fungsi HR, HRD perlu lihat
  *   semua walau bukan atasan langsungnya).
- * - Manajer -> diri sendiri + seluruh bawahan turunan (bukan cuma
- *   bawahan langsung), dibangun dari manager_id di memori sama seperti
- *   OrganizationController (jumlah karyawan masih kecil).
+ * - Selain itu (termasuk Manajer, atau karyawan biasa yang di-assign
+ *   modul `people`) -> diri sendiri + seluruh bawahan turunan (bukan
+ *   cuma bawahan langsung), dibangun dari manager_id di memori sama
+ *   seperti OrganizationController (jumlah karyawan masih kecil).
+ *   Karyawan biasa yang bukan atasan siapa pun otomatis cuma lihat
+ *   dirinya sendiri — aman, gak perlu penyesuaian tambahan.
  * ---------------------------------------------------------------------
  */
 class RecapController extends Controller

@@ -9,6 +9,7 @@ use App\Models\LeaveRequest;
 use App\Models\Memo;
 use App\Models\OfficeSetting;
 use App\Models\User;
+use App\Models\WorkItem;
 use App\Support\AttendanceReconciler;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -189,6 +190,20 @@ class HomeController extends Controller
             ->take(6)
             ->values();
 
+        // App Mode (2026-09-09) — "My Work Tracker", padanan
+        // `employeeTasksMarkup()` di prototype. `pic_employee_id`
+        // adalah satu-satunya kolom yang nentuin "punya siapa" —
+        // `additional_pic` (string bebas) sengaja gak ikut, lihat
+        // catatan lengkap di WorkTrackerController.
+        $myWorkItems = WorkItem::query()
+            ->where('pic_employee_id', Auth::id())
+            ->with('project')
+            ->orderByRaw('due_date IS NULL, due_date')
+            ->get();
+
+        $openWorkItems = $myWorkItems->where('progress', '!=', 'Done')->values();
+        $doneWorkItemsCount = $myWorkItems->where('progress', '=', 'Done')->count();
+
         return view('employee.home', [
             'attendance' => $attendance,
             'sessions' => $sessions,
@@ -201,6 +216,8 @@ class HomeController extends Controller
             'latestAttendance' => $latestAttendance,
             'kpis' => $kpis,
             'teamMoments' => $teamMoments,
+            'openWorkItems' => $openWorkItems,
+            'doneWorkItemsCount' => $doneWorkItemsCount,
         ]);
     }
 }

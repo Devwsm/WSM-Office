@@ -12,8 +12,10 @@ use Illuminate\Support\Str;
 /**
  * JobOpeningController (Recruitment)
  * ---------------------------------------------------------------------
- * Fase 3 — CRUD lowongan oleh HRD/Owner (middleware role:hrd,owner di
- * routes/web.php). `slug` dibuat otomatis dari `title` sekali saat
+ * Fase 3 — CRUD lowongan buat siapa pun di-assign modul `recruitment`
+ * (middleware module:recruitment,view|manage di routes/web.php — dulu
+ * role:hrd,owner, diganti 2026-09-09 lihat README "Dashboard
+ * permission-based, bukan role"). `slug` dibuat otomatis dari `title` sekali saat
  * dibuat dan tidak pernah berubah lagi (lihat method slugFrom()), biar
  * link publik /karir/{slug} yang sudah dibagikan tidak rusak kalau
  * judul lowongan diedit belakangan.

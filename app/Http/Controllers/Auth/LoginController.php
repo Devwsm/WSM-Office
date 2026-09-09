@@ -11,9 +11,17 @@ use Illuminate\Validation\ValidationException;
  * LoginController
  * ---------------------------------------------------------------------
  * Login memakai 1 form untuk semua role (Owner/Manajer/Karyawan/HRD).
- * Setelah berhasil login, redirectPath() menentukan halaman awal sesuai
- * role — Owner ke /owner/dashboard, HRD ke /rekrutmen/pelamar (kerjaan
- * utamanya sekarang), Manajer & Karyawan ke /app/home.
+ * Setelah berhasil login, redirectPath() menentukan halaman awal.
+ *
+ * 2026-09-09 — HRD DIHAPUS dari redirect khusus (dulu -> /rekrutmen/
+ * pelamar). Sejak refactor "permission bukan role", role 'hrd' TIDAK
+ * LAGI otomatis berarti punya akses Rekrutmen (itu sekarang
+ * dashboard_access modul `recruitment`, bisa dicabut Owner per-orang)
+ * — kalau tetap diarahkan ke sana dan kebetulan akses itu udah dicabut,
+ * orangnya bakal kena 403 tepat setelah login. Semua role SELAIN Owner
+ * sekarang seragam ke /app/home (App Mode) — dari situ tombol
+ * "Dashboard"/"Kelola Tim" di header cuma muncul kalau memang punya
+ * akses beneran (lihat layouts/employee.blade.php).
  * ---------------------------------------------------------------------
  */
 class LoginController extends Controller
@@ -54,7 +62,6 @@ class LoginController extends Controller
     {
         return match (Auth::user()->role) {
             'owner' => route('owner.dashboard'),
-            'hrd' => route('recruitment.applications.index'),
             default => route('employee.home'),
         };
     }

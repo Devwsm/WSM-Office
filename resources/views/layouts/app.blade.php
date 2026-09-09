@@ -1,14 +1,20 @@
 {{--
     layouts/app.blade.php
     ---------------------------------------------------------------------
-    Layout untuk sisi Owner, Manajer & HRD (dashboard dengan sidebar).
+    Layout untuk sisi Owner & staf yang di-assign dashboard_access.
     Gaya visual disamakan dengan prototype W.O.S 2.0 (absensi_wsm):
     palet cream/paper, brand mark hitam, nav pill aktif hitam.
-    Sidebar sudah disesuaikan per role (Fase 3) — menu Karyawan/Struktur
-    Organisasi cuma untuk Owner, menu Rekrutmen untuk HRD & Owner. Sejak
-    Fase 6a, section "Modul" di bawah ini murni dari dashboard_access
-    (User::canViewModule()) — bukan role — jadi bisa beda-beda per
-    orang, bukan cuma per jabatan.
+
+    2026-09-09 — SEMUA link sidebar di sini (kecuali grup Owner-only)
+    SEKARANG murni dashboard_access (User::canViewModule()), TERMASUK
+    Absensi & Persetujuan yang dulu role-based (`isManajer()`/`isHrd()`)
+    — bahkan link "Absensi" dulu KOSONG SAMA SEKALI tanpa gate apa pun,
+    itu bug yang lagi dibenerin (lihat komentar inline di link-nya).
+    "Role" (`users.role`) sekarang murni label jabatan, gak menentukan
+    apa pun yang kelihatan di sidebar ini selain grup Owner (Owner
+    memang konsep akun super-admin terpisah, bukan permission yang
+    didelegasikan — accessLevel() hardcode 'manage' semua modul buat
+    Owner). Lihat README "Dashboard permission-based, bukan role".
     ---------------------------------------------------------------------
 --}}
 <!DOCTYPE html>
@@ -37,13 +43,29 @@
                 </div>
             </div>
 
-            <nav class="grid gap-1.5 text-sm">
-                @if (auth()->user()->isManajer() || auth()->user()->isHrd() || auth()->user()->isOwner())
-                    <a href="{{ route('employee.home') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold text-[#5e5951] hover:bg-white">
-                        ← App Saya
-                    </a>
-                @endif
+            {{--
+                2026-09-09 — nav ini SEKARANG bisa jadi panjang (Owner
+                4 link + Rekrutmen 2 + Absensi/Persetujuan + daftar
+                modul dashboard_access yang di-assign, bisa sampai 10).
+                `<aside>` tingginya fixed (`h-screen`), jadi tanpa
+                `flex-1 overflow-y-auto` di sini, sidebar kepanjangan
+                bakal ke-cut / footer (Kunci Dashboard, Keluar) ke-dorong
+                keluar layar / gak bisa di-scroll sama sekali. `min-h-0`
+                WAJIB ada bareng `flex-1` — tanpa itu flexbox gak mau
+                nyusutin nav ini di bawah tinggi kontennya sendiri
+                (gotcha klasik flexbox), jadi overflow-y-auto gak akan
+                efektif walau udah dipasang.
+            --}}
+            <nav class="grid flex-1 min-h-0 gap-1.5 overflow-y-auto text-sm">
+                {{-- 2026-09-09 — dulu di-@if (isManajer/isHrd/isOwner), padahal
+                     SIAPA PUN yang bisa nyampe layouts.app ini juga otomatis
+                     anggota grup route 'employee.*' (base /app), jadi link ini
+                     selalu valid buat siapa pun yang lihatnya — @if-nya dicabut,
+                     bukan diganti permission check. --}}
+                <a href="{{ route('employee.home') }}"
+                    class="rounded-2xl px-3.5 py-3 font-extrabold text-[#5e5951] hover:bg-white">
+                    ← App Saya
+                </a>
                 @if (auth()->user()->isOwner())
                     <a href="{{ route('owner.dashboard') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
@@ -62,7 +84,10 @@
                         Pengaturan Kantor
                     </a>
                 @endif
-                @if (auth()->user()->isHrd() || auth()->user()->isOwner())
+                {{-- 2026-09-09 — dulu `isHrd() || isOwner()`. SEKARANG
+                     `canViewModule('recruitment')` (routes/web.php grup
+                     'recruitment.*' juga udah pindah ke module:recruitment). --}}
+                @if (auth()->user()->canViewModule('recruitment'))
                     <a href="{{ route('recruitment.applications.index') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'applications' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                         Pelamar
@@ -72,11 +97,30 @@
                         Lowongan
                     </a>
                 @endif
-                <a href="{{ route('attendance.recap.index') }}"
-                    class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                    Absensi
-                </a>
-                @if (auth()->user()->isManajer() || auth()->user()->isOwner())
+                {{--
+                    2026-09-09 — INI BUG YANG DILAPORKAN: link "Absensi" di
+                    bawah ini SEBELUMNYA SAMA SEKALI TANPA @if (nol gate),
+                    nempel gitu aja di luar kondisi manapun. Efeknya: SIAPA
+                    PUN yang somehow nyampe layouts.app (misal Aldora — role
+                    'karyawan' biasa — lewat modul 'work' yang dia PUNYA
+                    akses beneran) otomatis lihat link ke Rekap Absensi juga,
+                    padahal nggak ada dashboard_access ke situ sama sekali.
+                    Sekarang digerbang `canViewModule('people')` — sama modul
+                    yang gerbangin route attendance.recap.* (routes/web.php).
+                --}}
+                @if (auth()->user()->canViewModule('people'))
+                    <a href="{{ route('attendance.recap.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        Absensi
+                    </a>
+                    {{-- 2026-09-09 — dulu `isManajer() || isOwner()` (HRD
+                         sengaja dikecualikan, kesepakatan Fase 5, TETAP
+                         berlaku — lihat routes/web.php grup
+                         'approval.leave.'). SEKARANG sama-sama gerbang
+                         `canViewModule('people')` kayak Absensi di atas
+                         (approve/reject beneran tetap dicek manager_id di
+                         controller, link ini cuma nampilin/nyembunyiin
+                         entry point-nya). --}}
                     <a href="{{ route('approval.leave.index') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'approval' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                         Persetujuan

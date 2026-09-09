@@ -13,13 +13,12 @@
     langsung). Section ini disembunyikan total kalau kosong — sama
     seperti prototype (`if(!rows.length)return''`).
 
-    Posisi: prototype naruh ini setelah "My Work Tracker" (Fase 9,
-    belum ada) dan sebelum "Role Dashboard" entry point. Karena My Work
-    Tracker belum dibangun, section ini untuk sementara ditaruh
-    langsung sebelum "Latest Attendance" di `home.blade.php` — posisi
-    relatif paling dekat ke urutan prototype dari yang SUDAH ada
-    sekarang. Pindahkan ke bawah "My Work Tracker" begitu Fase 9
-    selesai, biar urutannya kembali persis prototype.
+    Posisi: PERSIS urutan prototype sejak Fase 9 (2026-09-09) — setelah
+    "My Work Tracker", sebelum "Role Dashboard" entry point (tombol
+    "Dashboard" di header, lihat layouts/employee.blade.php). Sebelum
+    Fase 9 ada, section ini sempat ditaruh sementara sebelum "Latest
+    Attendance" (ronde 5) karena My Work Tracker belum dibangun —
+    sekarang sudah di posisi final.
     ---------------------------------------------------------------------
 --}}
 @if ($teamMoments->isNotEmpty())

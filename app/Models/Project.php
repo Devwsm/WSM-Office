@@ -41,6 +41,19 @@ class Project extends Model
         ];
     }
 
+    /**
+     * ⚠️ 2026-09-09 — pas `migrate:fresh --seed` beneran dicoba, hook
+     * ini TERNYATA gak keisi ke query INSERT waktu dipanggil lewat
+     * `Project::create([...])` tanpa `slug` di array-nya (lihat
+     * README "My Work Tracker + Shared Calendar" buat detail error &
+     * fix sementara di DemoSeeder). Akar masalahnya BELUM
+     * dikonfirmasi — `#[Fillable(['slug', ...])]` di atas class ini
+     * memang class asli Laravel 13, bukan salah pakai, jadi bukan itu
+     * penyebabnya. SAMPAI ini diinvestigasi & diperbaiki, JANGAN
+     * andelin hook ini — selalu isi `slug` eksplisit tiap kali bikin
+     * Project baru (`Project::uniqueSlugFrom($name)`), sama pola yang
+     * dipakai `JobOpeningController::store()`.
+     */
     protected static function booted(): void
     {
         static::creating(function (self $project) {

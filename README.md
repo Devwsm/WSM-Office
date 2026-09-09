@@ -1796,8 +1796,349 @@ sandbox ini, PHP 8.4 masih belum ada):
   ada perubahan di sana (quick win ini cuma nambah 2 partial baru +
   1 query baru, tidak menyentuh Controller/Model Cuti yang sudah ada).
 
-**Belum dikerjakan (sengaja, tetap menunggu Fase 9):** My Work
-Tracker & Shared Calendar — alasan sama seperti ronde 4, plus catatan
-baru dari ronde 5: waktu dikerjakan nanti, sertakan filter
-Project/Category/Progress dari awal (lihat detail di atas), jangan
-versi minimal dulu.
+**Update (2026-09-09): My Work Tracker & Shared Calendar — SELESAI,
+plus koreksi audit ronde 5.** Baris di atas ("Belum dikerjakan...
+sertakan filter Project/Category/Progress dari awal") **SALAH** dan
+digantikan seksi di bawah — dibiarkan di sini (dicoret secara tekstual
+lewat baris ini, bukan dihapus) sesuai prinsip README ini: catat
+riwayatnya, jangan diam-diam diedit seolah gak pernah salah.
+
+### ✅ Dikerjakan (2026-09-09): My Work Tracker + Shared Calendar
+
+**Koreksi audit sebelumnya dulu, sebelum daftar file:** ronde 5 bilang
+versi final prototype punya filter Project/Category/Progress di widget
+Home. **Itu salah** — pas beneran ditelusuri ulang baris-per-baris di
+`WOS_2_0_STANDALONE_v32.html`, filter itu (`V12_TASK_FILTERS`, baris 1183) ternyata dari versi v12 yang SUDAH DIGANTIKAN. Versi
+`employeeTasksMarkup()` PALING AKHIR (baris 1857) sama sekali gak
+punya filter — cuma daftar item open (max 8) + tombol "▦ Shared
+Calendar" yang buka modal 14 hari (`openSharedWorkloadCalendar()`,
+baris 1858, JUGA tanpa filter Project/PIC — klaim ronde 5 soal itu
+juga salah). Diimplementasikan di bawah PERSIS versi final ini, bukan
+versi ber-filter yang disebut sebelumnya.
+
+**File baru:**
+
+- **`app/Http/Controllers/Employee/WorkTrackerController.php`** —
+  cuma 1 action, `calendar()`, buat Shared Calendar. My Work Tracker
+  sendiri TIDAK punya Controller/route sendiri — datanya dihitung di
+  `HomeController` (pola sama Milestones/My KPI/Team Moments) karena
+  dia embedded langsung di Home, bukan halaman terpisah.
+- **`resources/views/employee/_work-tracker.blade.php`** — widget "My
+  Work Tracker" di Home. Header + subtitle "{open} open · {done}
+  done" + tombol "▦ Shared Calendar", lalu daftar sampai 8 item open
+  (lewat `_work-item-card.blade.php`). BEDA dari Team Moments: section
+  ini TETAP tampil walau kosong (nampilin "Tidak ada item aktif"),
+  bukan disembunyikan total — ini bagian tetap Home App Mode, bukan
+  notifikasi kondisional.
+- **`resources/views/employee/_work-item-card.blade.php`** — 1 kartu
+  task, padanan `taskCardMarkupV9()`. Badge progress pakai token warna
+  yang SUDAH ADA (`badge-wsm-green/yellow/red/blue/gray`, nol token
+  baru). Focus pill (HARI INI/BESOK/MINGGU INI/dst) pakai hex warna
+  **persis** sama prototype (`#ffe876`, `#e6f4e9`, dst — nol drift
+  warna), inline style karena bukan token Tailwind yang ada di
+  `app.css`.
+- **`resources/views/employee/work-tracker/calendar.blade.php`** —
+  halaman Shared Calendar. **Deviasi UI yang disengaja & dicatat di
+  kode:** prototype nampilin ini sebagai grid horizontal 14 kolom
+  dalam MODAL (wajar buat SPA layar lebar) — WSM-Office bukan SPA dan
+  App Mode-nya mobile-first (`max-w-140`, sama kayak halaman Riwayat),
+  jadi diadaptasi jadi LIST VERTIKAL (1 hari = 1 section, ditumpuk ke
+  bawah) sebagai halaman tersendiri (bukan modal overlay). Isi & sumber
+  data 100% sama — cuma tata letaknya yang beda, bukan datanya.
+
+**File yang diubah:**
+
+- **`app/Http/Controllers/Employee/HomeController.php`** — tambah
+  query `$myWorkItems` (WorkItem dengan `pic_employee_id` = user yang
+  login, eager-load `project`), split jadi `$openWorkItems` &
+  `$doneWorkItemsCount`.
+- **`resources/views/employee/home.blade.php`** — `@include('employee.
+_work-tracker')` ditaruh tepat setelah My KPI. **Team Moments
+  DIPINDAH** dari posisi sementara (sebelum Latest Attendance, ronde 5)
+  ke tepat SETELAH My Work Tracker — sekarang urutan Home PERSIS
+  prototype: Milestones → Paid Leave → Cuti Tim → status
+  absen/cuti hari ini → My KPI → **My Work Tracker (baru)** → **Team
+  Moments (posisi final)** → Memo → Latest Attendance.
+- **`database/seeders/DemoSeeder.php`** — tambah 1 `Project` ("Album
+  Q3 Release") + 7 `WorkItem` contoh, sengaja nyebar tanggalnya
+  (kelewat, hari ini, besok, minggu ini/depan, tanpa tanggal, sudah
+  Done) biar SEMUA warna focus pill kelihatan pas dites manual, tanpa
+  My Work Tracker & Shared Calendar bakal keliatan kosong terus abis
+  seed (belum ada UI Owner/PIC buat bikin WorkItem — itu sisi ADMIN
+  Fase 9 yang masih di roadmap, lihat penutup di bawah).
+
+**Yang SENGAJA belum dikerjakan (v1, view-only):** prototype punya
+dropdown ubah status + tombol "Update Note" langsung di tiap task-card
+(`employeeModeView=true` di `taskCardMarkupV9`) — itu butuh
+route+validasi+authorization nulis (PATCH WorkItem) yang belum digarap
+di putaran ini, biar gak nyampur sama scope "tampilkan data yang udah
+ada" murni. Karyawan sekarang cuma bisa LIHAT My Work Tracker, belum
+bisa update progress/notes dari situ.
+
+**Flow hasil akhir Home App Mode** (top → bottom, LENGKAP, semua
+ronde ditandai):
+
+1. Hero.
+2. Milestones _[ronde 4]_.
+3. Paid Leave banner _[2026-09-09, quick win]_.
+4. Banner "Cuti Tim Bulan Ini".
+5. Warning absen lupa checkout (kalau ada).
+6. Status cuti hari ini ATAU kartu absen.
+7. My KPI _[ronde 4]_ — kosong sampai Fase 10.
+8. **My Work Tracker [BARU]** — max 8 item open + tombol Shared
+   Calendar, klik → halaman `/app/kalender-tim` (14 hari, seluruh tim,
+   item punya sendiri di-highlight biru).
+9. **Team Moments [posisi final]** — disembunyikan total kalau kosong.
+10. Kartu "Info dari Owner" (memo forum).
+11. Latest Attendance _[ronde 4]_.
+
+**Checklist manual yang perlu dijalankan** (belum tervalidasi di
+sandbox ini):
+
+> **Update (2026-09-09, setelah dicoba beneran oleh Arga):**
+> `migrate:fresh --seed` sempat GAGAL di `DemoSeeder` — MySQL nolak
+> insert ke `projects` karena kolom `slug` (NOT NULL, unique) kosong:
+> `Field 'slug' doesn't have a default value`. **Sudah diperbaiki** di
+> `database/seeders/DemoSeeder.php` — `Project::create([...])` sekarang
+> set `'slug' => Project::uniqueSlugFrom('Album Q3 Release')` eksplisit,
+> gak lagi ngandelin `static::creating()` hook di `Project::booted()`
+> yang seharusnya auto-isi slug kalau kosong.
+>
+> **Belum terjawab tuntas (perlu diinvestigasi terpisah, BUKAN
+> diklaim sudah beres):** kenapa hook `booted()` itu gak jalan pas
+> mass-assignment lewat `create()`? `Project` pakai atribut PHP
+> `#[Fillable([...])]` (dicek: ini class ASLI Laravel 13,
+> `Illuminate\Database\Eloquent\Attributes\Fillable`, bukan sesuatu
+> yang custom/salah pakai) yang literally mendaftarkan `slug` sebagai
+> fillable — jadi bukan itu masalahnya. Kemungkinan ada interaksi
+> aneh antara atribut ini dan event `creating` yang didaftarkan di
+> `static::booted()`, tapi belum dibuktikan langsung (gak ada PHP di
+> sandbox audit ini buat `dd()`/tinker beneran). **Dampak nyata buat
+> ke depan:** kalau nanti Fase 9 sisi Admin bikin form "Create
+> Project" yang manggil `Project::create([...])` TANPA eksplisit isi
+> `slug` (ngandelin hook), kemungkinan bakal kena error yang SAMA.
+> Sampai akar masalahnya jelas, **jangan andelin `booted()` hook itu**
+> — selalu isi `slug` eksplisit tiap kali `Project::create()`/`save()`
+> dipanggil (sama pola yang udah dipakai `JobOpeningController::store()`
+> buat `JobOpening`, itu juga gak pernah ngandelin hook otomatis).
+
+- `php artisan migrate:fresh --seed` → login Aldora → My Work Tracker
+  harus nampilin 3 item (kelewat/merah, hari ini/kuning, sudah Done
+  gak ikut ke-list) plus 1 item "Update inventaris" tanpa tanggal
+  (fokus "NOT URGENT"/hijau). Login Gepeng → 2 item (besok/kuning,
+  minggu ini/biru tergantung tanggal seed).
+- Klik "Shared Calendar" dari Aldora → harus lihat SEMUA item tim
+  (termasuk punya Gepeng & Kanaya), item Aldora sendiri ditandai
+  "Punyaku" + background biru muda.
+- Cek warna focus pill di browser cocok persis deskripsi di atas (kalau
+  ada yang meleset, kemungkinan besar tanggal seed relatif sudah
+  lewat dari asumsi "hari ini" pas seeding — wajar, bukan bug).
+- Regression check: My KPI, Team Moments, Memo, Latest Attendance
+  masih di posisi & isi yang benar setelah widget baru disisipkan di
+  tengah.
+
+---
+
+## 🔐 Dashboard permission-based, bukan role (2026-09-09)
+
+**Laporan awal:** Aldora (role `karyawan` biasa, tapi punya
+`dashboard_access` modul `work` level `manage`) kelihatan link
+**"Absensi"** di sidebar `layouts.app` — padahal dia gak pernah dikasih
+akses ke modul itu sama sekali.
+
+**Akar masalah, ditemukan lewat baca kode langsung (bukan asumsi):**
+link `<a href="{{ route('attendance.recap.index') }}">Absensi</a>` di
+`resources/views/layouts/app.blade.php` **SAMA SEKALI TANPA `@if`** —
+nempel gitu aja di luar kondisi apa pun. Siapa pun yang nyampe
+`layouts.app` (lewat modul APA PUN yang dia punya akses beneran, dalam
+kasus Aldora lewat modul `work`) otomatis lihat link ke Rekap Absensi
+juga. Ini murni bug dari struktur lama: 4 fitur (Rekap Absensi,
+Persetujuan Izin/Cuti, Persetujuan Lembur, Rekrutmen) digerbang lewat
+Laravel role middleware (`role:manajer,owner,hrd` dkk) yang blanket
+per-JABATAN, bukan per-ORANG — begitu seseorang (lewat modul lain)
+punya jalan masuk ke `layouts.app`, sidebar-nya nyampur nampilin semua
+link tanpa cek ulang apakah dia beneran ditugasin ke situ.
+
+**Kenapa ini juga soal ke-akuratan terhadap prototype, bukan cuma
+selera:** ditelusuri langsung ke `WOS_2_0_App_v32` — prototype
+TERNYATA 100% permission-based buat SEMUA fitur admin/manajemen
+(`canViewModule()`/`canManageModule()` dari `dashboard_access`), TIDAK
+PERNAH pakai konsep "role karyawan" buat nge-gate fitur apa pun. Fungsi
+`suggestAccessFromRole()` di prototype cuma auto-fill FORM waktu Owner
+BIKIN karyawan baru (convenience, berdasarkan teks jabatan yang
+diketik) — bukan enforcement. "People & Leave" (`people`, salah satu
+dari 7 modul awal `DASHBOARD_MODULES`) di prototype literally
+mendeskripsikan dirinya "People directory & leave monitoring" —
+persis cakupan Rekap Absensi + Persetujuan Izin/Cuti/Lembur. Jadi versi
+WSM-Office yang role-gated untuk fitur-fitur ini SEBENARNYA drift dari
+prototype sejak awal (keputusan breakdown Fase 6 dulu: "Fase 4/5 tetap
+role-based" — itu keputusan yang sekarang dibalik).
+
+**1 nuansa penting yang TIDAK diubah** — dicek langsung di fungsi
+`rolePeopleDashboard()` prototype, ada disclaimer literal di situ:
+_"Dashboard access tidak mengubah authority approval. Approval tetap
+mengikuti direct supervisor."_ Modul `people` di prototype cuma
+ngatur siapa BISA MASUK layar People/Leave — siapa yang BOLEH
+approve/reject request TERTENTU tetap murni relasi atasan-langsung
+(`manager_id`). WSM-Office `LeaveRequestController::canDecide()` /
+`OvertimeRequestController::canDecide()` **SUDAH** persis begitu sejak
+awal (dicek, tidak disentuh sama sekali di refactor ini) — jadi bagian
+ini TIDAK berubah, cuma gerbang MASUK layarnya yang diperbaiki.
+
+### Apa yang diubah
+
+| Sebelumnya (role-based)                               | Sekarang (permission-based)                                             |
+| ----------------------------------------------------- | ----------------------------------------------------------------------- |
+| `role:manajer,owner,hrd` → Rekap Absensi              | `module:people,view` (koreksi jam: `module:people,manage`)              |
+| `role:manajer,owner` → Persetujuan Izin/Cuti & Lembur | `module:people,view` (approve/reject tetap `manager_id`, tidak berubah) |
+| `role:hrd,owner` → Rekrutmen                          | `module:recruitment,view`/`manage` (modul BARU, lihat di bawah)         |
+| Link "Absensi" di sidebar: **TANPA gate sama sekali** | `canViewModule('people')`                                               |
+| Tombol "Kelola Tim" (App Mode): role check            | `canViewModule('people')`                                               |
+
+**Modul `recruitment` (BARU, ke-10) BUKAN dari prototype** — dicek
+langsung, prototype v32 gak punya fitur rekrutmen sama sekali (nol
+hasil grep "rekrutmen"/"recruitment"/"pelamar" di seluruh file).
+Ditambahin dengan alasan sama kayak `legal`/`it` sebelumnya: biar Owner
+bisa cabut/kasih akses ke staf tertentu satu-satu, bukan blanket ke
+semua orang berrole `hrd` — justru itulah tujuan refactor ini.
+
+**Yang SENGAJA TIDAK diubah:** grup `owner.*` (Karyawan, Struktur
+Organisasi, Pengaturan Kantor, assign Dashboard Access) tetap
+`role:owner` murni. Owner di prototype memang konsep akun super-admin
+terpisah (`accessLevel()` hardcode `'manage'` semua modul), bukan
+sesuatu yang didelegasikan lewat `dashboard_access` — jadi ini BUKAN
+kasus yang perlu "dibenerin".
+
+### File yang berubah (path asli project)
+
+**Baru:**
+
+- `database/migrations/2026_09_09_010000_add_recruitment_module_to_dashboard_access.php`
+  — nambah `recruitment` ke enum `dashboard_access.module` (pola
+  persis migration `legal`/`it` sebelumnya).
+- `database/migrations/2026_09_09_010100_backfill_dashboard_access_for_manajer_hrd.php`
+  — **PENTING buat deploy ke instalasi yang UDAH JALAN** (bukan
+  instalasi baru): tanpa ini, semua user existing berrole
+  `manajer`/`hrd` di database production/staging bakal LANGSUNG
+  kehilangan akses pas migration ini di-deploy. Migration ini nyamain
+  akses SETELAH refactor supaya PERSIS SAMA dengan SEBELUM refactor
+  (`manajer` → `people:view`, `hrd` → `people:manage` +
+  `recruitment:manage`) — nol perubahan akses buat siapa pun di hari
+  deploy. Owner baru bisa cabut satu-satu lewat halaman "Dashboard
+  Access" kalau memang ada yang gak seharusnya punya akses itu.
+  Idempotent (`insertOrIgnore`), aman di-run ulang. `down()` sengaja
+  no-op (mencabut akses banyak orang sekaligus lewat rollback otomatis
+  itu keputusan Owner, bukan yang boleh kejadian diam-diam).
+
+**Diubah:**
+
+- `app/Models/DashboardAccess.php` — tambah entri `recruitment` ke
+  `MODULES` + doc-comment lengkap alasan refactor.
+- `routes/web.php` — 4 grup route (`attendance.recap.*`,
+  `approval.leave.*`, `approval.overtime.*`, `recruitment.*`) pindah
+  dari `role:...` ke `module:...`. Grup `dashboard-lock.*` dilebarin ke
+  `role:karyawan,manajer,owner,hrd` (dulu cuma manajer/owner/hrd) biar
+  karyawan biasa yang punya dashboard_access modul apa pun tetap bisa
+  pakai "Kunci Dashboard".
+- `app/Http/Controllers/Auth/LoginController.php` — redirect khusus
+  role `hrd` ke halaman Pelamar DIHAPUS (biar gak 403 kalau
+  `recruitment` udah dicabut Owner dari orang itu). Semua role selain
+  Owner sekarang seragam ke `/app/home`.
+- `resources/views/layouts/employee.blade.php` — tombol "Kelola Tim"
+  → `canViewModule('people')`.
+- `resources/views/layouts/app.blade.php` — **fix bug utama**: link
+  "Absensi" (dulu nol gate) → `canViewModule('people')`. Link
+  "Persetujuan" → `canViewModule('people')`. Link "Pelamar"/"Lowongan"
+  → `canViewModule('recruitment')`. Link "← App Saya" disederhanakan
+  jadi tanpa kondisi (siapa pun yang nyampe layout ini otomatis anggota
+  grup route `employee.*`).
+- `resources/views/owner/dashboard-access/edit.blade.php` — teks
+  banner yang dulu bilang "Persetujuan izin/cuti & rekap absensi tetap
+  ngikutin role" (sekarang SALAH) dibetulin, jelasin nuansa approval
+  authority di atas.
+- `database/seeders/DemoSeeder.php` — Kanaya (manajer) dikasih
+  `people:view`, Rania (hrd) dikasih `people:manage` +
+  `recruitment:manage` — biar fresh seed tetap punya akses yang sama
+  kayak sebelum refactor (padanan migration backfill di atas, tapi
+  buat instalasi baru).
+- Beberapa doc-comment controller (`RecapController`,
+  `DashboardAccessController`, `JobOpeningController`) diupdate biar
+  gak nyebut role lama.
+
+### Flow hasil akhir untuk dicek
+
+**Sebagai Aldora** (`karyawan`, akses `work:manage` doang):
+
+1. Login → masuk `/app/home` (bukan lagi ada redirect aneh).
+2. Buka modul Work Control lewat tombol "Dashboard" di header →
+   masuk `layouts.app`.
+3. **Cek sidebar: link "Absensi" & "Persetujuan" TIDAK BOLEH muncul
+   sama sekali** (ini bug yang dilaporkan — harus hilang sekarang).
+4. Coba akses langsung `/absensi` via URL → harus kena 403.
+
+**Sebagai Kanaya** (`manajer`, backfill `people:view`):
+
+1. Login → tombol "Kelola Tim" di header App Mode harus tetap muncul.
+2. Buka Rekap Absensi & Persetujuan → harus tetap bisa (akses lama
+   dipertahankan lewat seed baru).
+3. Approve/reject leave request Aldora/Gepeng (bawahan langsung) →
+   harus tetap bisa (logic `canDecide()` tidak berubah).
+
+**Sebagai Rania** (`hrd`, backfill `people:manage` + `recruitment:manage`):
+
+1. Login → landing di `/app/home` (bukan lagi auto-redirect ke
+   Pelamar).
+2. Sidebar harus nampilin Pelamar, Lowongan, DAN Absensi (karena
+   `people:manage` juga buka Rekap Absensi) + tombol koreksi jam
+   absensi harus muncul (manage-level).
+3. Coba approve leave request yang BUKAN bawahannya → harus tetap
+   kena 403 (approval authority tidak berubah oleh `people` access).
+
+**Sebagai Owner:** semua di atas harus tetap bisa diakses tanpa
+perubahan apa pun (akses Owner hardcode, tidak lewat tabel
+`dashboard_access`).
+
+**Nuansa minor yang perlu diketahui, BUKAN bug:** karena `module:
+people,view` sekarang jadi gerbang bareng buat Rekap Absensi & layar
+Persetujuan, seseorang dengan HANYA `people` access (tanpa jadi atasan
+siapa pun) BISA membuka halaman Persetujuan (bakal keliatan kosong,
+`canDecide()` tetap menolak approve). Ini konsekuensi wajar dari
+"1 modul gerbangin beberapa layar terkait", bukan celah keamanan
+(data tetap terlindungi oleh `canDecide()`), tapi dicatat di sini biar
+Arga sadar kalau ada yang nanya kenapa Rania bisa lihat halaman
+Persetujuan walau dia gak punya siapa pun bawahan.
+
+**Keputusan yang SENGAJA belum diambil (perlu konfirmasi Arga kalau
+mau diubah):** apakah `people` access-level (`view` vs `manage`) juga
+harus mempersempit `scopedUsers()` di `RecapController` (misalnya
+`view` → subordinate doang, `manage` → recursive/semua)? Sekarang
+levelnya CUMA ngatur boleh-koreksi-jam atau enggak, scope datanya
+masih 100% role-based lama (Owner/HRD → semua, sisanya → bawahan
+turunan) — dicek di prototype, `rolePeopleDashboard()` juga TIDAK
+mempersempit tabel berdasarkan view/manage (keduanya lihat SEMUA
+karyawan), jadi keputusan WSM-Office saat ini (scope masih role-based)
+sebenarnya **lebih ketat** dari prototype, bukan longgar — aman
+dibiarkan, tapi dicatat di sini sebagai keputusan yang bisa
+didiskusikan lagi kalau perlu.
+
+### Langkah selanjutnya
+
+1. **Jalankan checklist manual di atas** (3 skenario user: Aldora,
+   Kanaya, Rania) — terutama poin #3 Aldora, itu inti dari laporan bug.
+2. `php artisan migrate` di staging/production yang UDAH ADA datanya
+   — pastikan migration backfill jalan duluan sebelum siapa pun
+   komplain kehilangan akses.
+3. Cek satu-satu apakah ada Manajer/HRD LAIN di database production
+   yang aksesnya perlu di-fine-tune lewat halaman "Dashboard Access"
+   (misalnya: ada Manajer yang seharusnya CUMA lihat timnya sendiri,
+   bukan approve — sekarang Owner BISA atur itu per-orang, dulu
+   enggak bisa sama sekali).
+4. **My Work Tracker sisi ADMIN** (Fase 9 lanjutan) — Projects CRUD,
+   Work Tracker board penuh (assign task ke siapa pun, bukan cuma
+   lihat), update progress/notes dari App Mode (yang di-skip di v1
+   ini) — ini beban terbesar yang masih tersisa dari Fase 9, dan
+   sekarang jadi lebih jelas juga harus digerbang `module:work`
+   (bukan role), konsisten sama refactor ini.
+5. Timeline Calendar (Owner-side, beda dari Shared Calendar
+   karyawan) & Fase 10-17 lain — belum tersentuh, masih di roadmap
+   seperti sebelumnya.

@@ -1,10 +1,12 @@
 {{--
     owner/dashboard-access/edit.blade.php
     ---------------------------------------------------------------------
-    Fase 6a — cuma diakses lewat route role:owner. 7 dropdown (None/
-    View/Manage), 1 per modul. 'None' di dropdown = hapus barisnya di
-    DB (lihat DashboardAccessController::update()), bukan disimpan
-    literal.
+    Fase 6a — cuma diakses lewat route role:owner. 10 dropdown (None/
+    View/Manage), 1 per modul (lihat App\Models\DashboardAccess::MODULES
+    — daftarnya generik lewat @foreach di bawah, jadi nambah modul baru
+    otomatis nongol di sini tanpa ubah file ini). 'None' di dropdown =
+    hapus barisnya di DB (lihat DashboardAccessController::update()),
+    bukan disimpan literal.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Dashboard Access — ' . $employee->name, 'navActive' => 'employees'])
@@ -26,7 +28,9 @@
 
         <div class="mb-4 rounded-2xl bg-[#f2f0eb] p-3.5 text-[11px] text-[#5e5952]">
             <strong>View</strong> = cuma bisa lihat. <strong>Manage</strong> = bisa input/ubah data modul itu.
-            Persetujuan izin/cuti & rekap absensi tetap ngikutin role (Manajer/HRD/Owner), bukan tabel ini.
+            Modul <strong>People & Leave</strong> jadi gerbang masuk Rekap Absensi & Persetujuan Izin/Cuti/Lembur —
+            tapi siapa yang BOLEH approve request tertentu tetap ngikutin atasan langsung
+            ({{ $employee->name }} cuma bisa approve bawahannya sendiri, dashboard access di sini tidak mengubah itu).
         </div>
 
         <div class="grid gap-3">

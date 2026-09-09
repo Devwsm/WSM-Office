@@ -13,11 +13,13 @@ use Illuminate\Support\Facades\DB;
  * DashboardAccessController (Owner)
  * ---------------------------------------------------------------------
  * Fase 6a — cuma Owner yang boleh assign/ubah akses modul milik orang
- * lain (dikunci di routes/web.php lewat middleware role:owner, bukan
- * grup role:manajer,owner,hrd kayak fitur lain). Owner sendiri gak
- * kelihatan di daftar karyawan yang bisa diedit di sini karena
- * akses Owner udah otomatis 'manage' semua modul (User::accessLevel())
- * — gak ada yang perlu di-assign.
+ * lain (dikunci di routes/web.php lewat middleware role:owner — ini
+ * SENGAJA TETAP role-based, bukan ikut refactor "permission bukan
+ * role" 2026-09-09, karena Owner adalah konsep akun super-admin itu
+ * sendiri, bukan sesuatu yang didelegasikan lewat dashboard_access).
+ * Owner sendiri gak kelihatan di daftar karyawan yang bisa diedit di
+ * sini karena akses Owner udah otomatis 'manage' semua modul
+ * (User::accessLevel()) — gak ada yang perlu di-assign.
  * ---------------------------------------------------------------------
  */
 class DashboardAccessController extends Controller

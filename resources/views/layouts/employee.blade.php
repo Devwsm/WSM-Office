@@ -29,23 +29,38 @@
                     <span class="text-xs font-extrabold text-muted">{{ $title ?? 'WSM' }}</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    @if (auth()->user()->isManajer() || auth()->user()->isOwner() || auth()->user()->isHrd())
+                    {{--
+                        2026-09-09 — refactor "permission bukan role" (lihat
+                        README). SEBELUMNYA `isManajer() || isOwner() ||
+                        isHrd()` — role apa pun di 3 itu otomatis lihat
+                        tombol ini & bisa masuk Rekap Absensi/Persetujuan,
+                        gak peduli beneran ditugasin ngurus tim atau
+                        enggak. SEKARANG `canViewModule('people')` — sama
+                        modul yang gerbangin route attendance.recap.* &
+                        approval.leave./overtime.* (lihat routes/web.php).
+                        Owner otomatis lolos (accessLevel() hardcode
+                        'manage' semua modul), gak perlu di-assign manual.
+                    --}}
+                    @if (auth()->user()->canViewModule('people'))
                         {{-- Entry point tunggal ke dashboard (pola prototype: 1 tombol
                              di halaman/header, bukan tab terpisah di bottom-nav). Landing
                              di attendance.recap.index karena itu satu-satunya route yang
-                             dibolehkan buat ketiga role ini — dari situ sidebar
+                             dibolehkan buat modul 'people' — dari situ sidebar
                              layouts.app nampilin link lain (Persetujuan, Pelamar, dst)
-                             sesuai role. --}}
+                             sesuai modul yang di-assign ke user ini. --}}
                         <a href="{{ route('attendance.recap.index') }}"
                             class="grid h-10 place-items-center rounded-2xl bg-ink px-3.5 text-[10px] font-extrabold text-white">
                             Kelola Tim
                         </a>
                     @endif
                     @if (auth()->user()->hasAnyDashboardAccess())
-                        {{-- Terpisah dari "Kelola Tim" di atas: ini berdasarkan
-                             dashboard_access (Fase 6a, per-user per-modul),
-                             sedangkan "Kelola Tim" berdasarkan role (Fase 4/5).
-                             Bisa aja Karyawan biasa lihat tombol ini doang
+                        {{-- Terpisah dari "Kelola Tim" di atas: dua-duanya SEKARANG
+                             sama-sama dashboard_access (Fase 6a/2026-09-09), tapi
+                             beda modul — "Kelola Tim" khusus modul 'people'
+                             (attendance.recap.*), tombol ini nyala kalau punya
+                             akses ke modul APA PUN (termasuk 'work', 'budget',
+                             dst — lihat DashboardAccess::MODULES). Bisa aja
+                             Karyawan biasa lihat tombol ini doang tanpa
                              tanpa "Kelola Tim", atau sebaliknya. --}}
                         <a href="{{ route('dashboard.index') }}"
                             class="grid h-10 place-items-center rounded-2xl border border-line bg-white px-3.5 text-[10px] font-extrabold text-ink">
