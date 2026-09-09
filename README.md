@@ -1254,32 +1254,33 @@ sama persis kayak kemarin** di modul lain.
     — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
     sempat kejalanin.
 
-         **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
-         sendiri, jadi gak perlu downgrade major version.** Laravel 13
-         ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
-         8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
-         Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
-         padahal constraint Laravel 13 sendiri ke paket itu masih
-         `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
-         memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
-         8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
-         (versi terbaru yang tersedia) karena constraint di `composer.json`
-         gak mengunci versi Symfony-nya secara eksplisit.
+             **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
+             sendiri, jadi gak perlu downgrade major version.** Laravel 13
+             ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
+             8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
+             Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
+             padahal constraint Laravel 13 sendiri ke paket itu masih
+             `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
+             memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
+             8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
+             (versi terbaru yang tersedia) karena constraint di `composer.json`
+             gak mengunci versi Symfony-nya secara eksplisit.
 
-         **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
-         eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
+             **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
+             eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
 
-    "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
- mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
- gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
- diverifikasi jalan di sandbox ini** (Composer & akses ke
-`packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
- dicek manual**: hapus folder`vendor/`lama, jalankan`composer
+        "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
+
+    mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
+    gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
+    diverifikasi jalan di sandbox ini** (Composer & akses ke
+    `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
+    dicek manual**: hapus folder`vendor/`lama, jalankan`composer
     update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
- resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
- lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
- halaman Home). Kalau masih ada 1-2 paket dependency lain yang
- maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
+    resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
+    lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
+    halaman Home). Kalau masih ada 1-2 paket dependency lain yang
+    maksa Symfony 8 (`composer why-not symfony/http-foundation 7.4`
     bakal nunjukin kalau ada conflict), baru pertimbangkan opsi kedua:
     minta Rumahweb upgrade PHP ke 8.4 (kalau hostingnya nanti nyediain).
 
@@ -1609,3 +1610,194 @@ Tracker & Shared Calendar tetap ditunda sampai ada fondasi admin
 Projects + Work Tracker board (lihat diskusi jalur eksekusi di atas)
 — dikerjain duluan cuma bakal jadi widget kosong tanpa cara isi data
 dari UI.
+
+### 🔍 Audit Ulang Menyeluruh (2026-09-09, ronde 5 — cek `WOS_2_0_App_v32` (prototype terbaru) vs kode WSM-Office aktual, fokus App Mode)
+
+Ronde ini beda dari ronde 4: bukan baca ulang dari ingatan, tapi
+ekstrak & `grep` langsung isi `WOS_2_0_STANDALONE_v32.html` (fungsi
+`renderEmployeeHome`, `employeeNav`, `employeeTasksMarkup`,
+`teamCelebrationMarkup`, `paidLeaveBannerV18`, dst — versi PALING
+AKHIR di file, karena prototype nulis fungsi yang sama berkali-kali
+sebagai overlay per-versi v10→v32) lalu dicocokkan baris-per-baris ke
+`resources/views/employee/*.blade.php`,
+`app/Http/Controllers/Employee/HomeController.php`, `routes/web.php`,
+dan migration/model Fase 9-17. Kesimpulan utama: **klaim ronde 4 masih
+akurat 100%**, ditambah 2 temuan baru yang ronde 4 lewatkan, plus
+konfirmasi ulang status Fase 10-17 di level kode (bukan cuma migration
+ada, tapi benar-benar belum ada Controller/route/view sama sekali).
+
+**Terkonfirmasi ulang (sesuai, tidak ada drift):**
+
+- Bottom-nav App Mode prototype (`employeeNav`) cuma 5 tombol: Home,
+  Riwayat, Absen (center), Request, Profile — **persis** struktur
+  route `employee.*` yang ada sekarang. Tidak ada tombol nav terpisah
+  buat Work Tracker/Projects di prototype manapun — makanya "My Work
+  Tracker" & "Shared Calendar" memang harus nempel di dalam Home
+  (bukan halaman/route baru), sesuai rencana ronde 4.
+- Modul placeholder `dashboard/module.blade.php` (budget, royalty,
+  kpi, people, legal, it) dicek isinya: literal cuma nampilin pesan
+  "Modul ini belum dibangun" — dicek juga tidak ada Controller selain
+  `Dashboard\Work\MemoController`. Jadi klaim README "Fase 10-17 belum
+  ada sebagai fitur user-facing" **akurat di level kode**, bukan cuma
+  checklist yang lupa dicoret.
+- `My Work Tracker` di prototype (`employeeTasksMarkup`, versi
+  terakhir baris ~2461) ternyata sudah berkembang jauh dari deskripsi
+  ronde 4: ada filter Project/Category/Progress, tombol Expand
+  All/Collapse All, dan tiap task jadi `<details>` collapsible — bukan
+  cuma list kartu sederhana. **Actionable buat nanti:** waktu Fase 9
+  My Work Tracker beneran dikerjain, sertakan filter ini dari awal,
+  jangan versi minimal dulu baru nambah filter belakangan (biar gak
+  bikin migration UI 2x).
+
+**Temuan baru (belum tercatat di ronde 1-4):**
+
+1. **"Team Moments" (`teamCelebrationMarkup`) — beda dari Milestones
+   pribadi yang sudah dikerjakan.** Prototype nampilin section
+   terpisah di Home: daftar ulang tahun/anniversary **rekan kerja
+   lain** yang jatuh dalam 45 hari ke depan (bukan milik user yang
+   login). Dirender persis setelah `employeeTasksMarkup` (My Work
+   Tracker), sebelum `secretaryConsoleMarkup`. **Belum ada sama
+   sekali** di `employee/home.blade.php` atau di manapun — dicek
+   dengan `grep -rn "Team Moments|celebrationRows|teamCelebration"`
+   ke `resources/` & `app/`, nol hasil. Datanya bisa dihitung dari
+   kolom yang sudah ada (`birth_date`, `join_date` di tabel `users`,
+   sama seperti Milestones pribadi), jadi ini **quick win murah**
+   (tidak butuh migration baru) — cocok masuk sebelum atau bareng My
+   Work Tracker, tidak perlu nunggu Fase 9 penuh.
+2. **Banner "Paid Leave" (`paidLeaveBannerV18`) belum tampil di Home**,
+   padahal datanya sudah ada dan sudah dipakai di 2 tempat lain
+   (`User::remainingAnnualLeaveDays()`, dipakai di
+   `employee/profile.blade.php` dan `employee/leave/index.blade.php`).
+   Prototype nampilin banner besar (sisa hari, dari berapa hari
+   accrued, sudah terpakai berapa, tanggal reset di anniversary join
+   date) tepat setelah Milestones di Home — di Laravel sekarang info
+   ini cuma bisa dilihat kalau buka halaman Profile atau Request
+   Cuti secara terpisah, tidak muncul proaktif di Home. **Quick win
+   murah lain** (nol migration baru, tinggal 1 partial + include di
+   Home) karena logic `remainingAnnualLeaveDays()` sudah ada, cuma
+   perlu tanggal reset (anniversary join date) dihitung juga (mirip
+   `nextWorkAnniversaryOccurrence()` yang sudah ada di `User.php`).
+
+**Prioritas App Mode yang disarankan (update dari ronde 4, urutan
+termurah → termahal, karena semua dilihat SELURUH karyawan):**
+
+1. ~~Milestones~~ — **selesai** (ronde 4).
+2. ~~Latest Attendance embedded di Home~~ — **selesai** (ronde 4).
+3. ~~My KPI mini card~~ — **selesai** (ronde 4, kosong sampai Fase 10
+   ada cara isi data, itu memang disengaja).
+4. **[BARU] Team Moments** — quick win, nol migration, bisa
+   dikerjakan sekarang juga, tidak perlu nunggu Fase 9.
+5. **[BARU] Paid Leave banner di Home** — quick win, nol migration,
+   bisa dikerjakan sekarang juga, tidak perlu nunggu Fase 9.
+6. **My Work Tracker** (+ filter Project/Category/Progress dari awal,
+   bukan versi minimal) — beban utama Fase 9, butuh Controller + view
+   baru buat `work_items` versi karyawan.
+7. **Shared Calendar** — menyusul #6, sumber data sama
+   (`work_items.due`, plus filter Project & PIC).
+8. Baru sesudah itu sisi ADMIN Fase 9 (Projects CRUD, Work Tracker
+   board penuh ala Owner/Manajer, Timeline Calendar) dan Fase 10-17
+   lain sesuai urutan roadmap di atas — belum ada satupun
+   Controller/route untuk ini di kode saat ini.
+
+**Belum bisa dites di sandbox ini** (sama seperti ronde 1-4 — PHP 8.4
+tidak tersedia di sandbox ini): audit murni baca kode statis (isi
+Blade view, Controller, migration, dan `grep` langsung ke prototype
+`WOS_2_0_STANDALONE_v32.html`), bukan hasil klik langsung di browser.
+Checklist manual E2E dari ronde 1-4 tetap wajib dijalankan sebelum
+rilis, ditambah 2 item baru di atas begitu diimplementasikan.
+
+### ✅ Dikerjakan (2026-09-09): Team Moments + Paid Leave banner
+
+2 quick win poin 4-5 dari ronde 5 di atas **sudah diimplementasikan**,
+TIDAK ada migration baru (semua kolom yang dipakai — `birth_date`,
+`join_date`, `annual_leave_entitlement` — sudah ada dari Fase 2/5):
+
+- **`app/Http/Controllers/Employee/HomeController.php`** — nambah
+  query `$teamMoments`: loop semua `User`, ambil
+  `nextBirthdayOccurrence()`/`nextWorkAnniversaryOccurrence()` yang
+  jatuh ≤45 hari ke depan, urut tanggal, ambil 6 teratas — padanan
+  `celebrationRows(45).slice(0,6)` di prototype. Paid Leave banner
+  SENGAJA tidak lewat sini (sama pola Milestones — lihat poin di
+  bawah).
+- **`resources/views/employee/_team-moments.blade.php`** (baru) —
+  section "Team Moments", padanan `teamCelebrationMarkup()`. Baris:
+  ikon (🎂/✦) + nama + jenis (Birthday/Work Anniversary + tahun ke
+  berapa kalau anniversary) di kiri, tanggal di kanan. Section
+  disembunyikan total kalau `$teamMoments` kosong (sama seperti
+  prototype).
+- **`resources/views/employee/_paid-leave.blade.php`** (baru) —
+  banner lime (`bg-brand-lime`, token warna yang SUDAH ADA di
+  `resources/css/app.css` dan **persis** `--lime:#b4ef4b` di
+  prototype — nol drift warna) menampilkan sisa cuti tahunan + bubble
+  bulat `remaining/entitlement` di kanan, padanan `paidLeaveBannerV18`.
+  Sengaja manggil `auth()->user()` langsung (pola sama Milestones),
+  bukan lewat Controller. **Deviasi yang disengaja & didokumentasikan
+  di kode:** pakai `annual_leave_entitlement` FLAT (sama seperti
+  Profile & Request Cuti yang sudah ada), BUKAN hasil proration
+  bulanan tahun pertama seperti `leaveCycle()` di prototype — logic
+  accrual bulanan itu belum ada di modul Cuti manapun di WSM-Office,
+  jadi tidak direkayasa dadakan cuma buat banner ini. Kalau proration
+  bulanan dibutuhkan beneran, itu harus jadi perubahan terpisah yang
+  konsisten di Profile + Request Cuti + banner ini sekaligus, bukan
+  quick win.
+- **`resources/views/employee/home.blade.php`** — nambah
+  `@include('employee._paid-leave')` tepat setelah `_milestones`,
+  sebelum banner "Cuti Tim Bulan Ini" (posisi **persis** urutan
+  prototype: Milestones → Paid Leave → banner cuti tim). Nambah
+  `@include('employee._team-moments')` sebelum section "Latest
+  Attendance" — **beda posisi** dari prototype (prototype naruhnya
+  setelah "My Work Tracker", yang belum dibangun di Fase 9), posisi
+  saat ini adalah yang paling dekat dari urutan section yang SUDAH ADA
+  sekarang. Catatan sudah ditulis di komentar
+  `_team-moments.blade.php` — pindahkan ke bawah My Work Tracker
+  begitu Fase 9 selesai biar urutannya balik persis prototype.
+
+**Flow hasil akhir buat dicek manual** (Home karyawan, urutan
+top-to-bottom setelah perubahan, tambahan ronde 5 ditandai **[BARU]**,
+tambahan ronde 4 sebelumnya tetap ditandai _[ronde 4]_ biar jelas):
+
+1. Hero ("Halo, {nama}") + job title/divisi.
+2. Milestones _[ronde 4]_ — Lama Bekerja, Birthday, Work Anniversary.
+3. **[BARU] Paid Leave** — banner lime, sisa cuti tahunan + bubble
+   `remaining/entitlement`, atau pesan "Join date belum diset / leave
+   tidak berlaku" kalau `join_date` kosong.
+4. Banner "Cuti Tim Bulan Ini" (kalau ada — tidak berubah).
+5. Warning absen lupa checkout (kalau ada — tidak berubah).
+6. Status cuti hari ini ATAU kartu absen (tidak berubah).
+7. My KPI _[ronde 4]_ — grid kartu KPI aktif.
+8. Kartu "Info dari Owner" (memo forum — tidak berubah).
+9. **[BARU] Team Moments** — list ulang tahun/anniversary rekan kerja
+   dalam 45 hari, disembunyikan total kalau tidak ada yang jatuh
+   dalam rentang itu.
+10. Latest Attendance _[ronde 4]_ — 5 kartu riwayat absen terakhir.
+
+**Checklist manual yang perlu dijalankan** (belum tervalidasi di
+sandbox ini, PHP 8.4 masih belum ada):
+
+- `php artisan migrate:fresh --seed`, login sebagai 2+ karyawan demo
+  yang `birth_date`/`join_date`-nya beda-beda → cek Team Moments
+  cuma muncul kalau ada yang jatuh ≤45 hari dari hari ini, dan
+  section-nya hilang total (bukan kotak kosong) kalau tidak ada.
+- Cek Team Moments nongolin SEMUA karyawan termasuk yang lagi login
+  sendiri (sengaja disamakan ke prototype, lihat catatan deviasi di
+  atas) — kalau ini kerasa aneh/duplikat sama Milestones pas dicek
+  visual, exclude-diri-sendiri adalah opsi valid buat dibahas
+  terpisah, BUKAN silent fix.
+- Cek banner Paid Leave: angka `remaining` di banner harus SAMA
+  dengan angka "Sisa Cuti Tahunan" di halaman Profile & Request Cuti
+  (3 tempat harus konsisten karena sama-sama pakai
+  `remainingAnnualLeaveDays()`).
+- Coba user dengan `join_date` NULL → banner harus tampil versi
+  "belum diset", bukan error/blank.
+- Cek responsive mobile: banner Paid Leave (grid 1 kolom di mobile,
+  `1fr auto` di ≥sm) dan Team Moments (list, bukan grid, harusnya
+  aman di semua lebar layar).
+- Regression check halaman Profile & Request Cuti — pastikan TIDAK
+  ada perubahan di sana (quick win ini cuma nambah 2 partial baru +
+  1 query baru, tidak menyentuh Controller/Model Cuti yang sudah ada).
+
+**Belum dikerjakan (sengaja, tetap menunggu Fase 9):** My Work
+Tracker & Shared Calendar — alasan sama seperti ronde 4, plus catatan
+baru dari ronde 5: waktu dikerjakan nanti, sertakan filter
+Project/Category/Progress dari awal (lihat detail di atas), jangan
+versi minimal dulu.

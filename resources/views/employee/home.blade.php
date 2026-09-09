@@ -37,6 +37,12 @@
          di prototype. Lihat employee/_milestones.blade.php. --}}
     @include('employee._milestones')
 
+    {{-- App Mode quick win (2026-09-09, ronde 5) — banner "Paid Leave",
+         padanan paidLeaveBannerV18 di prototype. Posisi PERSIS
+         prototype: tepat setelah Milestones, sebelum banner "Cuti Tim
+         Bulan Ini" di bawah ini. Lihat employee/_paid-leave.blade.php. --}}
+    @include('employee._paid-leave')
+
     {{-- Fase 8: banner cuti tim bulan ini — cuti_tahunan & izin_pribadi
          doang (izin_sakit privat, sengaja gak diumumin). --}}
     @if ($teamLeavesThisMonth->isNotEmpty())
@@ -401,6 +407,12 @@
             @endif
         @endif
     </div>
+
+    {{-- App Mode quick win (2026-09-09, ronde 5) — "Team Moments",
+         padanan teamCelebrationMarkup di prototype. Lihat
+         employee/_team-moments.blade.php untuk catatan posisi
+         (sementara di sini sampai My Work Tracker Fase 9 selesai). --}}
+    @include('employee._team-moments')
 
     {{-- App Mode quick win (2026-09-09) — "Latest Attendance" langsung
          di Home (padanan historyCards(id,5) di prototype), lepas dari

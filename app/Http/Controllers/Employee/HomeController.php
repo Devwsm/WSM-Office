@@ -8,6 +8,7 @@ use App\Models\Kpi;
 use App\Models\LeaveRequest;
 use App\Models\Memo;
 use App\Models\OfficeSetting;
+use App\Models\User;
 use App\Support\AttendanceReconciler;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -58,6 +59,22 @@ use Illuminate\Support\Facades\Auth;
  *   sendiri masih diinput manual (Fase 10 — UI Owner buat kelola KPI
  *   per karyawan belum ada), jadi kartu ini kelihatan kosong sampai
  *   ada yang diisiin lewat `tinker`/seeder atau Fase 10 selesai.
+ *
+ * App Mode quick win (2026-09-09, ronde 5 — dari audit README) nambah:
+ * - `$teamMoments` — "Team Moments", ulang tahun/anniversary SEMUA
+ *   karyawan (bukan cuma diri sendiri) dalam 45 hari ke depan, padanan
+ *   `teamCelebrationMarkup()` di prototype. Beda dari Milestones
+ *   (`_milestones.blade.php`) yang cuma punya diri sendiri.
+ * - Paid Leave banner (`_paid-leave.blade.php`) SENGAJA tidak dioper
+ *   dari sini, sama pola kayak Milestones — manggil `auth()->user()`
+ *   langsung dari partial karena datanya (`annual_leave_entitlement`,
+ *   `usedAnnualLeaveDays()`) sudah ada di model, gak butuh query
+ *   tambahan. Catatan: banner ini pakai `annual_leave_entitlement`
+ *   FLAT (sama seperti halaman Cuti yang sudah ada), BUKAN hasil
+ *   proration bulanan tahun pertama seperti `leaveCycle()` di
+ *   prototype — WSM-Office belum punya logic accrual bulanan itu di
+ *   modul Cuti manapun, jadi disamakan ke pola yang SUDAH ada di app
+ *   ini dulu (lihat README, dicatat sebagai deviasi yang disengaja).
  * ---------------------------------------------------------------------
  */
 class HomeController extends Controller
@@ -142,6 +159,36 @@ class HomeController extends Controller
             ->orderBy('due_date')
             ->get();
 
+        // App Mode quick win (2026-09-09, ronde 5) — "Team Moments":
+        // padanan `teamCelebrationMarkup()` / `celebrationRows(45)` di
+        // prototype. BEDA dari Milestones (`_milestones.blade.php`,
+        // punya SENDIRI): ini ulang tahun & work anniversary SEMUA
+        // karyawan dalam 45 hari ke depan, termasuk diri sendiri kalau
+        // relevan — prototype juga tidak exclude viewer dari daftar ini,
+        // jadi sengaja disamakan biar tidak drift dari acuan v32.
+        // Butuh query lintas-user (beda dari Milestones pribadi yang
+        // manggil `auth()->user()->...` langsung dari view), makanya
+        // dihitung di sini, bukan di partial-nya.
+        $teamMoments = User::query()
+            ->orderBy('name')
+            ->get()
+            ->flatMap(function (User $u) {
+                $rows = [];
+
+                if (($b = $u->nextBirthdayOccurrence()) && $b['days'] <= 45) {
+                    $rows[] = ['type' => 'birthday', 'user' => $u, 'date' => $b['date'], 'days' => $b['days'], 'years' => null];
+                }
+
+                if (($a = $u->nextWorkAnniversaryOccurrence()) && $a['days'] <= 45) {
+                    $rows[] = ['type' => 'anniversary', 'user' => $u, 'date' => $a['date'], 'days' => $a['days'], 'years' => $a['years']];
+                }
+
+                return $rows;
+            })
+            ->sortBy(fn($row) => $row['date']->toDateString())
+            ->take(6)
+            ->values();
+
         return view('employee.home', [
             'attendance' => $attendance,
             'sessions' => $sessions,
@@ -153,6 +200,7 @@ class HomeController extends Controller
             'teamLeavesThisMonth' => $teamLeavesThisMonth,
             'latestAttendance' => $latestAttendance,
             'kpis' => $kpis,
+            'teamMoments' => $teamMoments,
         ]);
     }
 }
