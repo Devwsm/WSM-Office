@@ -12,6 +12,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{-- 2026-09-10 — dibutuhkan buat fetch() auto mark-read Inbox modal
+         di bawah (pola sama kayak layouts/app.blade.php buat drag-drop
+         Work Tracker board, lihat catatan di situ). --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'WSM' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -21,7 +25,17 @@
 
     <div class="min-h-screen pb-28">
         <div class="mx-auto max-w-140 px-4 pb-10 pt-5">
-            <div x-data="{ inboxOpen: false }">
+            {{-- 2026-09-10 — `inboxOpened` (beda dari `inboxOpen`, yang itu
+                 buka/tutup modal): flag one-way, begitu Inbox dibuka
+                 sekali di kunjungan ini, badge unread di ikon ✉ langsung
+                 disembunyikan (Alpine, instan, gak nunggu reload) SEKALIGUS
+                 fetch() ke server nandain semua memo yang kelihatan sebagai
+                 sudah dibaca (Memo::markAllReadFor(), lihat
+                 MemoInteractionController::markAllRead()) — biar kunjungan
+                 App Mode BERIKUTNYA juga gak nampilin badge itu lagi. Mulai
+                 `true` kalau emang udah 0 unread dari awal, biar gak fetch
+                 sia-sia. --}}
+            <div x-data="{ inboxOpen: false, inboxOpened: {{ ($inboxUnreadCount ?? 0) === 0 ? 'true' : 'false' }} }">
                 <header class="mb-8 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
                         <div
@@ -84,11 +98,21 @@
                         (AppServiceProvider), makanya kelihatan di SEMUA halaman
                         App Mode, bukan cuma Home. Posisi persis prototype:
                         sebelum avatar. --}}
-                        <button type="button" @click="inboxOpen = true" aria-label="Inbox"
+                        <button type="button" aria-label="Inbox"
+                            @click="inboxOpen = true; if (!inboxOpened) {
+                                inboxOpened = true;
+                                fetch('{{ route('employee.memo.markAllRead') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                        'Accept': 'application/json',
+                                    },
+                                });
+                            }"
                             class="relative grid h-10 w-10 flex-none place-items-center rounded-2xl bg-[#ece7dd] text-sm">
                             ✉
                             @if ($inboxUnreadCount ?? 0)
-                                <span
+                                <span x-show="!inboxOpened" x-cloak
                                     class="absolute -right-1 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full border-2 border-cream bg-[#ef5c50] px-1 text-[8px] font-black text-white">
                                     {{ $inboxUnreadCount > 9 ? '9+' : $inboxUnreadCount }}
                                 </span>
@@ -105,11 +129,12 @@
                     </div>
                 </header>
 
-                {{-- Modal Inbox — padanan `openEmployeeInboxV19`. Aksi Mark
-                Read/Unread & Hide pakai route yang udah ada dari Fase 8
-                (`memo.toggleRead`/`memo.toggleHidden`), form POST biasa
-                (bukan reply — inbox modal prototype gak ada reply, cuma
-                kartu "Info dari Owner" di Home yang ada reply). --}}
+                {{-- Modal Inbox — padanan `openEmployeeInboxV19`. Read jadi
+                otomatis begitu modal dibuka (2026-09-10, lihat fetch di
+                tombol ✉ + Memo::markAllReadFor()); "Hide" tetap manual,
+                form POST biasa ke `memo.toggleHidden` (bukan reply — inbox
+                modal prototype gak ada reply, cuma kartu "Info dari Owner"
+                di Home yang ada reply). --}}
                 <div x-show="inboxOpen" x-cloak
                     class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                     <div @click.outside="inboxOpen = false"
@@ -157,14 +182,14 @@
                                         From {{ $memo->creator?->name ?? 'Management' }} ·
                                         {{ $memo->created_at->translatedFormat('d M, H:i') }}
                                     </p>
+                                    {{-- 2026-09-10 — tombol "Mark Read/Unread" manual DICABUT
+                                         (permintaan Arga): begitu Inbox modal ini dibuka, SEMUA
+                                         memo yang kelihatan otomatis ke-mark read (fetch di tombol
+                                         ✉ header, lihat Memo::markAllReadFor()). Status "Read"/
+                                         "Unread" di badge atas tetap ditampilin apa adanya (jujur
+                                         soal status kunjungan SEBELUM ini), cuma tombolnya yang
+                                         hilang. "Hide" tetap ada, itu aksi beda. --}}
                                     <div class="mt-2.5 flex flex-wrap gap-1.5">
-                                        <form method="POST" action="{{ route('employee.memo.toggleRead', $memo) }}">
-                                            @csrf
-                                            <button type="submit"
-                                                class="rounded-xl border border-line bg-white px-2.5 py-1.5 text-[10px] font-extrabold">
-                                                {{ $isRead ? 'Mark Unread' : 'Mark Read' }}
-                                            </button>
-                                        </form>
                                         <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
                                             @csrf
                                             <button type="submit"

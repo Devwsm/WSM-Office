@@ -33,6 +33,27 @@ class MemoInteractionController extends Controller
         return back();
     }
 
+    /**
+     * 2026-09-10 (permintaan Arga) — auto mark-read pas Inbox modal
+     * dibuka (ikon ✉ di header `layouts.employee`, lihat AJAX fetch
+     * di situ). BUKAN toggleRead per-memo (itu masih ada, sengaja gak
+     * dihapus, tapi udah gak dipanggil dari UI App Mode manapun lagi
+     * setelah perubahan ini) — sekali klik buka Inbox, SEMUA memo yang
+     * lagi kelihatan (belum disembunyikan) ke-mark read bareng.
+     * Fetch dari JS, bukan form POST biasa, soalnya modal Inbox harus
+     * tetap kebuka di tempat (gak reload halaman) — response kosong,
+     * client gak butuh apa-apa balik selain status 204.
+     */
+    public function markAllRead()
+    {
+        /** @var User $me */
+        $me = Auth::user();
+
+        Memo::markAllReadFor($me);
+
+        return response()->noContent();
+    }
+
     public function toggleHidden(Memo $memo)
     {
         /** @var User $me */

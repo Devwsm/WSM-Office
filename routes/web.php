@@ -100,6 +100,12 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     // memo ini pengumuman ke tim, bukan modul kerja (sama alasan kenapa
     // $memos di HomeController gak dicek dashboard_access).
     Route::post('/memo/{memo}/baca', [MemoInteractionController::class, 'toggleRead'])->name('memo.toggleRead');
+    // --- 2026-09-10: auto mark-read pas Inbox modal dibuka (lihat catatan
+    // di MemoInteractionController::markAllRead) — dipanggil fetch() dari
+    // layouts/employee.blade.php, BUKAN dari halaman spesifik, makanya
+    // ditaruh di grup role yang sama (semua role internal), sama pola
+    // route memo lain di atas.
+    Route::post('/inbox/baca-semua', [MemoInteractionController::class, 'markAllRead'])->name('memo.markAllRead');
     Route::post('/memo/{memo}/sembunyikan', [MemoInteractionController::class, 'toggleHidden'])->name('memo.toggleHidden');
     Route::post('/memo/{memo}/balas', [MemoInteractionController::class, 'reply'])->middleware('throttle:15,1')->name('memo.reply');
 });

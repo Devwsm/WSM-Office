@@ -140,6 +140,15 @@ class HomeController extends Controller
             ->latestFirst()
             ->get();
 
+        // 2026-09-10 (permintaan Arga) — auto mark-read, gak ada lagi
+        // tombol "Tandai Sudah Dibaca" manual di kartu "Info dari Owner".
+        // SENGAJA dipanggil SETELAH $memos di atas selesai diambil (biar
+        // kunjungan yang LAGI JALAN ini tetap nampilin badge UNREAD yang
+        // benar ke user — dia perlu tau ada yang baru), yang berubah
+        // cuma status buat kunjungan Home BERIKUTNYA. Lihat
+        // Memo::markAllReadFor().
+        Memo::markAllReadFor(Auth::user());
+
         // App Mode quick win — "Latest Attendance" langsung di Home
         // (padanan `historyCards(id,5)` di prototype), lepas dari bulan
         // yang lagi dibuka di halaman Riwayat penuh.

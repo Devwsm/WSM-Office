@@ -369,14 +369,15 @@
                         </div>
                         <p class="mt-1.5 whitespace-pre-line text-xs text-muted">{{ $memo->content }}</p>
 
+                        {{-- 2026-09-10 — tombol "Tandai Sudah/Belum Dibaca" manual
+                             DICABUT (permintaan Arga): kartu ini udah kelihatan
+                             penuh isinya begitu Home dibuka, jadi otomatis
+                             ke-mark read server-side (lihat
+                             HomeController::index() -> Memo::markAllReadFor()),
+                             gak perlu aksi manual lagi. "Sembunyikan" tetap ada,
+                             itu aksi beda (nyembunyiin dari daftar, bukan status
+                             baca). --}}
                         <div class="mt-2 flex gap-3.5">
-                            <form method="POST" action="{{ route('employee.memo.toggleRead', $memo) }}">
-                                @csrf
-                                <button type="submit"
-                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
-                                    {{ $memo->isReadBy($me) ? 'Tandai Belum Dibaca' : 'Tandai Sudah Dibaca' }}
-                                </button>
-                            </form>
                             <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
                                 @csrf
                                 <button type="submit"

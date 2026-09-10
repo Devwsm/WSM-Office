@@ -67,6 +67,35 @@ class Memo extends Model
         return $this->readStateFor($user)->hidden_at !== null;
     }
 
+    /**
+     * Tandain SEMUA memo yang keliatan (belum disembunyikan) buat user
+     * ini jadi sudah dibaca. 2026-09-10 (permintaan Arga) — gak ada lagi
+     * tombol "Tandai Sudah Dibaca" manual: begitu memo-nya DITAMPILKAN/
+     * DIBUKA (Home atau Inbox modal), otomatis kebaca, sama prinsipnya
+     * kayak badge modul baru di sidebar dashboard (Owner) — muncul
+     * sekali pas ada yang baru, ilang begitu udah "dibuka".
+     *
+     * Dipanggil SETELAH data buat ditampilin ke view udah diambil
+     * (lihat HomeController/MemoInteractionController::markAllRead) —
+     * biar kunjungan yang lagi jalan tetap kelihatan status
+     * unread-nya (user perlu tau ada yang baru), yang berubah cuma
+     * status buat kunjungan BERIKUTNYA.
+     */
+    public static function markAllReadFor(User $user): void
+    {
+        static::query()->get()->each(function (Memo $memo) use ($user) {
+            if ($memo->isHiddenBy($user)) {
+                return;
+            }
+
+            $state = $memo->readStateFor($user);
+            if (! $state->read_at) {
+                $state->read_at = now();
+                $state->save();
+            }
+        });
+    }
+
     /** Pinned duluan, lalu terbaru duluan — dipakai di kartu Home & listing. */
     public function scopeLatestFirst(Builder $query): Builder
     {

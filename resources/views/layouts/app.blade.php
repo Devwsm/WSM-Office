@@ -61,8 +61,20 @@
                 nyusutin nav ini di bawah tinggi kontennya sendiri
                 (gotcha klasik flexbox), jadi overflow-y-auto gak akan
                 efektif walau udah dipasang.
-            --}}
-            <nav class="grid flex-1 min-h-0 gap-1.5 overflow-y-auto text-sm">
+
+                2026-09-10 — BUG (dilaporkan Arga, kelihatan di akun
+                akses minim kayak karyawan yang cuma punya 1 modul):
+                `grid` defaultnya `align-content: stretch` — sisa
+                ruang kosong di sidebar (karena isinya dikit) dibagi
+                rata ke SEMUA baris grid, bukan numpuk di bawah kayak
+                block layout biasa. Item non-aktif ikut melar juga
+                tapi gak keliatan (background transparan) — yang
+                keliatan cuma link yang lagi *active* (`bg-ink`),
+                jadinya kotak hitam raksasa nutupin separuh sidebar.
+                `content-start` maksa baris grid tetap seukuran
+                konten & sisa ruang numpuk di bawah, `items-start`
+                jaga-jaga item individual juga gak ikut melar. --}}
+            <nav class="grid content-start items-start flex-1 min-h-0 gap-1.5 overflow-y-auto text-sm">
                 {{-- 2026-09-09 — dulu di-@if (isManajer/isHrd/isOwner), padahal
                      SIAPA PUN yang bisa nyampe layouts.app ini juga otomatis
                      anggota grup route 'employee.*' (base /app), jadi link ini
