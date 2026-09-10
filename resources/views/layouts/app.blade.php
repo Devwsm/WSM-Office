@@ -23,6 +23,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {{-- Audit ronde 6 (2026-09-09) — dibutuhkan Work Tracker board buat
+         fetch() PATCH drag-drop (dashboard/work/tracker/index.blade.php).
+         SEBELUMNYA gak ada meta csrf-token sama sekali di layout ini
+         (semua interaksi lain pola form POST biasa + @csrf, gak butuh
+         token lewat JS) — board ini pertama yang butuh AJAX beneran. --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Dashboard' }} — WSM Office System</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

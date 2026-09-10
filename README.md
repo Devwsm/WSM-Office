@@ -63,6 +63,14 @@ sembarangan.**
       request/approval, mode Lapangan/Gigs multi-sesi, shortage per blok
       60 menit, dan pengaturan kantor dari UI Owner/HR.
 - [x] Data Layer Fase 9–16 sudah disiapkan sebagai fondasi database/model.
+- [x] **Fase 9 (App Mode):** Home personalization penuh (Milestones, Paid
+      Leave banner, My KPI, My Work Tracker, Shared Calendar, Latest
+      Attendance), plus **Inbox header** (ikon amplop + badge unread,
+      audit ronde 6 2026-09-09) yang kelihatan di semua halaman App Mode.
+- [x] **Fase 9 (Admin — Work Control Lanjutan):** Projects CRUD (via modal
+      "Kelola Projects") dan Work Tracker board kanban drag-drop
+      (`dashboard/work/tracker`) — audit ronde 6, 2026-09-09. Timeline
+      Calendar (Owner-side) BELUM, lihat "Belum dibangun" di bawah.
 
 ### Sudah divalidasi end-to-end
 
@@ -78,9 +86,12 @@ sembarangan.**
 
 ### Belum dibangun sebagai fitur user-facing
 
-- [ ] **Fase 9:** Projects, Work Tracker board, Timeline Calendar, dan MoM
-      sebagai fitur Work Control lanjutan.
-- [ ] **Fase 10:** KPI & Performance.
+- [ ] **Fase 9 (sisa):** Timeline Calendar (Owner-side, beda dari Shared
+      Calendar karyawan) — belum dikerjakan. Projects, Work Tracker board,
+      dan MoM sudah selesai (lihat "Sudah dibangun" di atas).
+- [ ] **Fase 10:** KPI & Performance. Di-SKIP dulu atas permintaan user
+      (2026-09-09) — bulk-assign/template KPI ke banyak karyawan sekaligus,
+      dikerjakan belakangan.
 - [ ] **Fase 11:** Kontrak Karyawan.
 - [ ] **Fase 12:** Payroll, termasuk Gaji Pokok, Target Jam/Hari, Flat
       Overtime Rate, perhitungan lembur, dan dampak shortage.
@@ -1276,7 +1287,7 @@ sama persis kayak kemarin** di modul lain.
     diverifikasi jalan di sandbox ini** (Composer & akses ke
     `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
     dicek manual**: hapus folder`vendor/`lama, jalankan`composer
-    update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
+update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
     resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
     lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
     halaman Home). Kalau masih ada 1-2 paket dependency lain yang
@@ -2142,3 +2153,150 @@ didiskusikan lagi kalau perlu.
 5. Timeline Calendar (Owner-side, beda dari Shared Calendar
    karyawan) & Fase 10-17 lain — belum tersentuh, masih di roadmap
    seperti sebelumnya.
+
+## 🔍 Audit App Mode — Ronde 6 (2026-09-09)
+
+Audit menyeluruh App Mode (`layouts.employee` + Home + Riwayat + Request
+
+- Profile) dibandingkan lagi dengan `WOS_2_0_App_v32.zip` (fungsi
+  `render*` versi PALING AKHIR di file, karena SPA-nya nimpa definisi
+  fungsi lama — beberapa audit sebelumnya sempat salah ambil versi lama,
+  lihat catatan koreksi di `_work-tracker.blade.php`).
+
+### ✅ Sudah sesuai (dicek ulang, tidak ada perubahan perlu)
+
+- Home: Hero, Milestones, Paid Leave banner, Cuti Tim Bulan Ini, warning
+  lupa checkout, kartu absen (mode Kantor/WFH/Lapangan/Gigs + geo + foto),
+  metric grid, My KPI, My Work Tracker (termasuk tombol Shared Calendar),
+  Team Moments, Role Dashboard entry (tombol "Kelola Tim" & "Dashboard"
+  di header), dan Latest Attendance — semua padanan fungsinya ketemu dan
+  konten/urutan/warna/style sudah dicek cocok dengan versi terakhir
+  prototype.
+- Shared Calendar (14-Day Team Calendar): sudah direvisi ronde sebelumnya
+  (warna kartu, header kompak) — dicek ulang, sudah PERSIS prototype
+  kecuali modal→halaman terpisah yang memang sudah didokumentasikan
+  sengaja (Laravel bukan SPA).
+- My Work Tracker card (`_work-item-card.blade.php`): badge warna,
+  focus label, dan layout sudah persis `taskCardMarkupV9`.
+
+### ⚠️ Temuan baru — belum pernah tercatat di README
+
+1. **Inbox header (mail icon + unread badge) HILANG TOTAL.** Prototype
+   punya `openEmployeeInboxV19()` — ikon amplop di header App Mode
+   (sebelah tombol Role Dashboard, sebelum avatar) yang buka modal berisi
+   semua memo/MoM yang dikirim ke karyawan itu, lengkap badge jumlah
+   unread, tombol Mark Read/Unread, dan Hide per-item — bisa diakses
+   dari HALAMAN MANA PUN (bukan cuma Home). Di WSM-Office, notifikasi
+   memo CUMA muncul di kartu "Info dari Owner" yang tertanam di dalam
+   Home (harus scroll ke bawah), jadi karyawan yang lagi buka
+   Riwayat/Request/Profile gak punya cara tahu ada memo baru tanpa balik
+   ke Home dan scroll. Ini gap fungsi nyata, bukan cuma kosmetik — badge
+   unread count di prototype sengaja didesain supaya kelihatan dari mana
+   pun. **Prioritas tinggi** karena App Mode dipakai semua karyawan dan
+   ini genuinely fitur yang hilang, bukan versi lama yang salah diaudit.
+    - Yang dibutuhkan: 1 tombol/ikon baru di `layouts/employee.blade.php`
+      header (antara tombol "Dashboard" dan avatar), badge unread count
+      (query count memo belum dibaca & belum di-hide milik user), dan
+      satu tampilan (bisa halaman terpisah `employee.inbox.index` mengikuti
+      pola Shared Calendar yang sudah "modal→halaman", tidak harus modal
+      JS) yang list semua memo + aksi read/unread/hide — logic-nya
+      kemungkinan besar SUDAH ADA (`MemoInteractionController` udah punya
+      toggleRead/toggleHidden/reply), tinggal butuh 1 view + 1 route index
+        - hitungan unread count yang dioper ke SEMUA halaman App Mode (lewat
+          View Composer atau middleware share, bukan cuma HomeController,
+          supaya badge-nya kelihatan konsisten di semua halaman).
+2. **Profile page tidak menampilkan Milestones/Paid Leave** (prototype
+   `renderEmployeeProfile` include `employeeCelebrationMarkup` +
+   `paidLeaveBanner` juga, duplikat dari Home). **Prioritas rendah** —
+   informasi yang sama sudah ada di Home, jadi ini cosmetic-only, bukan
+   data yang hilang. Boleh dibiarkan sebagai simplifikasi yang wajar,
+   didokumentasikan di sini biar bukan "keputusan diam-diam".
+3. **Form Request masih terpisah 2 halaman** (Pengajuan Izin/Cuti +
+   Lembur terpisah), sedangkan prototype versi akhir pakai 1 dropdown
+   "Jenis Request" (termasuk Koreksi Presensi & WFH juga ada di situ).
+   Ini BUKAN temuan baru — arsitektur ini dari Fase 5 (sebelum README
+   mulai rutin mencatat rasionalisasi tiap keputusan), tapi belum pernah
+   ditulis alasannya secara eksplisit. Dicatat di sini SUPAYA jelas:
+   dipisah karena struktur data (`LeaveRequest` vs `OvertimeRequest`
+   tabel terpisah dengan field beda) lebih rapi di Laravel daripada 1
+   tabel polymorphic kayak `state.requests` prototype — **keputusan
+   arsitektur yang sah** (izin README: "arsitektur Laravel/database"),
+   BUKAN sesuatu yang perlu disamakan balik ke 1 form. "Koreksi
+   Presensi" sendiri juga sudah ada jalurnya sendiri (tombol koreksi jam
+   di Rekap Absensi oleh Manajer/HRD/Owner, bukan self-request), jadi
+   tidak hilang — cuma flow-nya beda dari prototype (approval berbasis
+   siapa yang input, bukan siapa yang minta).
+
+### 👉 Langkah selanjutnya (App Mode, prioritas tertinggi karena diakses semua karyawan)
+
+1. Bangun Inbox (temuan #1 di atas) — ini satu-satunya gap App Mode yang
+   genuinely hilang dari hasil audit ronde 6.
+2. Lanjutkan roadmap Fase 9 sisanya sesuai bagian "Langkah selanjutnya"
+   di atas (My Work Tracker sisi admin — Projects CRUD, assign task,
+   update progress dari App Mode).
+3. Fase 10 (KPI input sisi Owner) supaya kartu "My KPI" di Home
+   (sekarang selalu kosong di instalasi baru) mulai keisi data asli.
+
+### ✅ Update — Fase 9 selesai dieksekusi (2026-09-09, lanjutan audit ronde 6)
+
+Ketiga temuan di atas sudah dikerjakan (kecuali KPI bulk-assign Fase 10,
+di-skip dulu atas permintaan user):
+
+- [x] **Inbox header** (temuan #1) — ikon amplop + badge unread di
+      `layouts/employee.blade.php`, data dibagikan lewat View Composer
+      baru di `AppServiceProvider.php`, kelihatan di SEMUA halaman App
+      Mode. Aksi Mark Read/Unread & Hide pakai route Fase 8 yang sudah ada.
+- [x] **Work Tracker board admin** — kanban drag-drop per kolom
+      `WorkItem::PROGRESS_OPTIONS`, Projects CRUD lewat modal "Kelola
+      Projects", assign PIC & update progress. Route baru di bawah
+      `dashboard.work.tracker.*`. **Beda sengaja dari prototype**
+      (`trackerBoardMarkup()` aslinya grouped-list per Project → Section,
+      BUKAN kanban) — keputusan eksplisit user pas ditanya, dicatat di
+      sini biar jelas bukan salah audit.
+- [ ] **Timeline Calendar** (Owner-side) — masih di luar cakupan sesi ini,
+      belum dikerjakan.
+- [ ] **Fase 10 (KPI bulk-assign)** — di-skip dulu atas permintaan user.
+
+**Bug yang ketemu & dibenerin sebelum dianggap selesai:**
+
+1. Meta tag `<meta name="csrf-token">` belum pernah ada di
+   `layouts/app.blade.php` — board ini AJAX pertama di sistem ini (semua
+   interaksi lain sebelumnya form POST + `@csrf` biasa), jadi ditambahkan.
+2. Tombol Edit Task/Project awalnya nyisipin `{{ $item->toJson() }}`
+   LANGSUNG di dalam atribut `onclick="..."` yang delimiternya double-quote
+   — JSON juga pakai double-quote, jadi bakal motong atribut HTML di
+   tengah jalan (browser baca `"id"` di JSON sebagai penutup atribut).
+   Diperbaiki: JSON sekarang lewat atribut `data-item`/`data-project`
+   (Blade `{{ }}` auto-escape `"` jadi `&quot;`, aman di atribut HTML),
+   dibaca balik pakai `JSON.parse(this.dataset.item)` di JS.
+
+**File yang berubah (Fase 9 lanjutan, audit ronde 6):**
+
+- `app/Providers/AppServiceProvider.php` — View Composer Inbox (baru)
+- `app/Http/Controllers/Dashboard/Work/WorkTrackerController.php` — baru
+- `app/Http/Requests/Dashboard/Work/ProjectRequest.php` — baru
+- `app/Http/Requests/Dashboard/Work/WorkItemRequest.php` — baru
+- `routes/web.php` — tambah grup `dashboard.work.tracker.*`
+- `resources/views/layouts/employee.blade.php` — tambah Inbox header + modal
+- `resources/views/layouts/app.blade.php` — tambah meta `csrf-token`
+- `resources/views/dashboard/work/index.blade.php` — tambah tab ke Tracker
+- `resources/views/dashboard/work/tracker/index.blade.php` — baru, board kanban
+
+### 🐛 Fix — bentrok nama class (2026-09-09, ditemukan user lewat Intelephense)
+
+Intelephense lapor `Duplicate symbol declaration 'WorkTrackerController'`
+(P1004). Penyebab: `App\Http\Controllers\Employee\WorkTrackerController`
+(Shared Calendar App Mode, sudah ada dari Fase 9 awal) dan controller board
+admin yang baru dibuat SAMA-SAMA dinamain `WorkTrackerController` — beda
+namespace jadi PHP-nya sendiri sah, TAPI `use` statement keduanya di
+`routes/web.php` sama-sama resolve ke short-name `WorkTrackerController`
+di file yang sama, itu yang bentrok (fatal error kalau beneran dijalanin,
+bukan cuma warning linter).
+
+**Fix:** controller board admin di-rename jadi `WorkTrackerBoardController`
+— file `app/Http/Controllers/Dashboard/Work/WorkTrackerController.php` →
+`WorkTrackerBoardController.php`, class di dalamnya, `use` statement di
+`routes/web.php`, dan SEMUA `[WorkTrackerController::class, ...]` di dalam
+grup route `tracker.*` (baris 276-283) ikut diganti — baris 91
+(`workTracker.calendar`, punya `Employee\WorkTrackerController`) SENGAJA
+TIDAK disentuh.

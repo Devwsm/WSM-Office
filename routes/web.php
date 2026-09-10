@@ -31,6 +31,7 @@ use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
+use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
@@ -266,6 +267,21 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::patch('/{memo}', [MemoController::class, 'update'])->middleware('module:work,manage')->name('update');
         Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
         Route::post('/{memo}/balas', [MemoController::class, 'reply'])->middleware(['module:work,manage', 'throttle:15,1'])->name('reply');
+
+        // --- Fase 9 lanjutan: Work Tracker board (audit ronde 6, 2026-09-09) ---
+        // Sub-halaman lain di modul 'work' (Memo Forum di atas cuma
+        // salah satu tab). 'view' bisa lihat board, 'manage' baru bisa
+        // drag-drop/CRUD — sama pola gate view/manage kayak MemoController.
+        Route::prefix('tracker')->name('tracker.')->group(function () {
+            Route::get('/', [WorkTrackerBoardController::class, 'index'])->middleware('module:work,view')->name('index');
+            Route::post('/proyek', [WorkTrackerBoardController::class, 'storeProject'])->middleware('module:work,manage')->name('projects.store');
+            Route::patch('/proyek/{project}', [WorkTrackerBoardController::class, 'updateProject'])->middleware('module:work,manage')->name('projects.update');
+            Route::delete('/proyek/{project}', [WorkTrackerBoardController::class, 'destroyProject'])->middleware('module:work,manage')->name('projects.destroy');
+            Route::post('/task', [WorkTrackerBoardController::class, 'storeItem'])->middleware('module:work,manage')->name('items.store');
+            Route::patch('/task/{item}', [WorkTrackerBoardController::class, 'updateItem'])->middleware('module:work,manage')->name('items.update');
+            Route::delete('/task/{item}', [WorkTrackerBoardController::class, 'destroyItem'])->middleware('module:work,manage')->name('items.destroy');
+            Route::patch('/task/{item}/progress', [WorkTrackerBoardController::class, 'updateProgress'])->middleware('module:work,manage')->name('items.progress');
+        });
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
