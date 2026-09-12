@@ -29,6 +29,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class Kpi extends Model
 {
+    public const STATUSES = ['Active', 'Completed', 'Archived'];
+
     protected function casts(): array
     {
         return [

@@ -30,6 +30,7 @@ use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeR
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
+use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
@@ -305,6 +306,22 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
             Route::delete('/{meeting}', [MeetingController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
             Route::post('/{meeting}/blast', [MeetingController::class, 'blast'])->middleware(['module:work,manage', 'throttle:10,1'])->name('blast');
         });
+    });
+
+    // --- Fase 10: KPI & Performance ---
+    // Sama pola persis grup 'work' di atas: harus terdaftar SEBELUM
+    // '/{module}' generik di bawah, soalnya Laravel matching route
+    // dari atas ke bawah. 5 modul lain (budget, royalty, people*,
+    // contracts, payroll) masih lewat placeholder generik itu.
+    // (*'people' punya controller sendiri juga, tapi di luar prefix
+    // 'dashboard' — lihat grup 'rekap-absensi'/'persetujuan-*' di atas.)
+    Route::prefix('kpi')->name('kpi.')->group(function () {
+        Route::get('/', [KpiController::class, 'index'])->middleware('module:kpi,view')->name('index');
+        Route::get('/create', [KpiController::class, 'create'])->middleware('module:kpi,manage')->name('create');
+        Route::post('/', [KpiController::class, 'store'])->middleware('module:kpi,manage')->name('store');
+        Route::get('/{kpi}/edit', [KpiController::class, 'edit'])->middleware('module:kpi,manage')->name('edit');
+        Route::patch('/{kpi}', [KpiController::class, 'update'])->middleware('module:kpi,manage')->name('update');
+        Route::delete('/{kpi}', [KpiController::class, 'destroy'])->middleware('module:kpi,manage')->name('destroy');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');

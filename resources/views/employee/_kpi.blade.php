@@ -6,10 +6,11 @@
     HomeController (KPI aktif/baru-selesai milik user yang lagi login).
 
     Fase 10 (KPI & Performance penuh, sisi Owner buat kelola KPI tim)
-    BELUM dibangun — jadi kartu ini kelihatan kosong sampai ada baris
-    `kpis` yang diisi (manual/tinker/seeder) atau Fase 10 selesai. Ini
-    perilaku yang DISENGAJA, sama seperti prototype waktu `state.kpis`
-    masih kosong (pesan "KPI belum diset...", bukan error).
+    SUDAH selesai (2026-09-12, lihat dashboard/kpi/*) — kartu ini
+    sekarang keisi begitu Owner/Manajer nambah KPI lewat
+    /dashboard/kpi. Pesan "KPI belum diset..." di bawah cuma muncul
+    kalau memang belum ada KPI utk karyawan ini, bukan lagi nunggu
+    fitur belum jadi.
     ---------------------------------------------------------------------
 --}}
 <div class="card-wsm-white mb-3.5">

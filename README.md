@@ -112,11 +112,13 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 10 — KPI & Performance
 
-⭕ **Belum dikerjakan.** Tabel `kpis` sudah ada (padanan `state.kpis`/`saveKpi`), model `Kpi` sudah ada, kartu "My KPI" sudah muncul di Home Employee App — tapi:
+✅ **Selesai (2026-09-12).** `KpiController` (`app/Http/Controllers/Dashboard/Kpi/`) + views `dashboard/kpi/*`:
 
-- Belum ada UI Owner buat input/kelola KPI per karyawan (satu-satunya cara isi data sekarang lewat `tinker`/seeder manual)
-- Belum ada controller/route untuk modul `kpi` di Dashboard (masih lewat placeholder generik `ModuleDashboardController::show`)
-- Kartu "My KPI" otomatis kelihatan kosong sampai fase ini selesai
+- Listing KPI seluruh tim (filter per karyawan), CRUD lengkap (tambah/edit/hapus), status `Active`/`Completed`/`Archived`
+- Gate `module:kpi,view` (lihat) / `module:kpi,manage` (CRUD) — pola sama persis modul `work`
+- Landing `/dashboard` di-fix biar modul KPI nyambung ke `dashboard.kpi.index` (sebelumnya bakal ke placeholder generik kalau gak di-special-case, sama kayak `work` dulu)
+- Kartu "My KPI" di Home sekarang keisi beneran begitu Owner/Manajer nambah KPI — style badge/progress bar (`achievementBadgeClass()`/`progressBarClass()`) dipakai ulang persis dari `Kpi` model, satu sumber warna buat kartu Home & listing Owner
+- Ditambah `Kpi::STATUSES` const (konsisten sama pola `Project::STATUSES`/`WorkItem::PROGRESS_OPTIONS`) — gak ada di kode sebelumnya, ditambahin pas fase ini
 
 ---
 
@@ -186,7 +188,7 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 8    | Memo interaktif, Team Moments, Milestones                      | ✅                                      |
 | 9    | Work Tracker board & Shared Calendar                           | ✅                                      |
 | 9    | Import CSV/XLSX bulk item                                      | ⭕                                      |
-| 10   | KPI & Performance                                              | ⭕ (tabel only)                         |
+| 10   | KPI & Performance                                              | ✅                                      |
 | 11   | Employee Contracts                                             | ⭕ (tabel only)                         |
 | 12   | Payroll                                                        | ⭕ (tabel only)                         |
 | 13   | Project Budgeting & Royalty                                    | ⭕ (tabel only)                         |
@@ -195,19 +197,25 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–9 (fondasi: publik, karyawan, absensi, izin, dashboard access, work control, kalender) sudah solid dan sesuai prototype (dengan penyesuaian arsitektur permission-based). Fase 10–15 (KPI, Contracts, Payroll, Budget, Royalty, Legal, IT) **data layer-nya udah lengkap duluan** (17 migration, 12 model) tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
+**Pola yang kelihatan:** Fase 1–10 (fondasi + KPI) sudah solid dan sesuai prototype (dengan penyesuaian arsitektur permission-based). Fase 11–15 (Contracts, Payroll, Budget, Royalty, Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
 
 ## Rekomendasi Urutan Kerja Berikutnya
 
 ~~1. MoM (Meeting)~~ — ✅ selesai 2026-09-12 (`MeetingController`, views `dashboard/work/meetings/*`, tab "Rapat & Action Item").
+~~2. KPI (Fase 10)~~ — ✅ selesai 2026-09-12 (`KpiController`, views `dashboard/kpi/*`, kartu "My KPI" di Home sekarang keisi).
 
-1. **KPI (Fase 10)** — kartu "My KPI" di Home udah nunggu data, dampak ke UX Employee App paling langsung kerasa
-2. **Contracts (Fase 11)** lalu **Payroll (Fase 12)** — payroll butuh `overtime_flat_rate` yang udah disiapkan dari Fase 7
-3. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa nyusul, dampak ke UX harian lebih kecil
-4. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
+1. **Contracts (Fase 11)** lalu **Payroll (Fase 12)** — payroll butuh `overtime_flat_rate` yang udah disiapkan dari Fase 7
+2. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa nyusul, dampak ke UX harian lebih kecil
+3. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
 
 - Export MoM ke PDF/print — belum ada (prototype juga gak eksplisit punya ini, jadi bukan regresi)
 - Notifikasi/reminder H-1 due date action item — belum ada, sama kayak WorkItem biasa (gak ada cron/reminder di seluruh sistem ini)
 - Belum ada test otomatis (unit/feature) buat `MeetingController` — konsisten sama controller lain di codebase ini yang juga belum ada test, bukan kelalaian khusus fitur ini
+
+## Belum Sempurna dari KPI & Performance (catatan QA jujur)
+
+- Belum ada grafik tren pencapaian KPI dari waktu ke waktu (cuma snapshot current/target terakhir)
+- Belum ada notifikasi ke karyawan pas KPI baru ditambahkan/diupdate Owner (karyawan baru tau kalau buka Home sendiri)
+- Belum ada test otomatis, sama alasan kayak MoM di atas

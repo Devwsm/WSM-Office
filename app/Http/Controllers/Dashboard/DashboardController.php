@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\DashboardAccess;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,12 +22,21 @@ use Illuminate\Support\Facades\Auth;
  *
  * Isi tiap modul masih placeholder — konten beneran (Work Control =
  * MoM & Memo dst.) baru dibangun mulai Fase 6b, satu-satu.
+ *
+ * `Auth::user()` di-cast manual ke `User` (`/** @var User $user *\/`)
+ * di kedua method — sama pola yang udah dipakai di
+ * `Attendance\RecapController`/`Employee\ProfileController` — soalnya
+ * return type aslinya `Authenticatable`, yang gak punya
+ * `hasAnyDashboardAccess()`/`accessLevel()`/`canViewModule()` (method
+ * custom model `User`). Cuma soal tipe data buat editor (Intelephense
+ * P1013 "Undefined method"), bukan bug jalan/nggaknya kode.
  * ---------------------------------------------------------------------
  */
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
 
         if (! $user->hasAnyDashboardAccess()) {
@@ -41,10 +51,15 @@ class DashboardController extends Controller
                     'label' => $meta['label'],
                     'desc' => $meta['desc'],
                     'level' => $user->accessLevel($key),
-                    // 'work' udah punya konten beneran (Fase 6b: MoM & Memo)
-                    // — 6 modul lain masih placeholder generik sampai
+                    // 'work' & 'kpi' udah punya konten beneran (Fase
+                    // 6b/9: MoM & Memo, Fase 10: KPI & Performance) —
+                    // 5 modul lain masih placeholder generik sampai
                     // dibangun satu-satu di fase berikutnya.
-                    'route' => $key === 'work' ? route('dashboard.work.index') : route('dashboard.show', $key),
+                    'route' => match ($key) {
+                        'work' => route('dashboard.work.index'),
+                        'kpi' => route('dashboard.kpi.index'),
+                        default => route('dashboard.show', $key),
+                    },
                 ];
             })
             ->filter(fn($m) => $m['level'] !== 'none')
@@ -55,6 +70,7 @@ class DashboardController extends Controller
 
     public function show(Request $request, string $module)
     {
+        /** @var User $user */
         $user = Auth::user();
 
         if (! array_key_exists($module, DashboardAccess::MODULES) || ! $user->canViewModule($module)) {
