@@ -57,4 +57,20 @@ class EmployeeContract extends Model
 
         return $this->end_date->between(Carbon::today(), Carbon::today()->addDays($withinDays));
     }
+
+    /** Tampilan ukuran file ringkas ("240 KB", "1.4 MB") — padanan display helper `Kpi::formatNumber()`. */
+    public function formattedSize(): string
+    {
+        $bytes = $this->size_bytes ?? 0;
+
+        if ($bytes >= 1024 * 1024) {
+            return round($bytes / (1024 * 1024), 1) . ' MB';
+        }
+
+        if ($bytes >= 1024) {
+            return round($bytes / 1024) . ' KB';
+        }
+
+        return $bytes . ' B';
+    }
 }

@@ -124,7 +124,15 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 11 — Employee Contracts
 
-⭕ **Belum dikerjakan.** Tabel `employee_contracts` sudah ada (padanan `state.contracts`/`saveContract`), tapi belum ada controller/view — modul `contracts` masih placeholder generik. Prototype punya: status kontrak per karyawan, upload file kontrak, badge status di daftar karyawan (`contractStatusMarkup`) — semua ini belum ada representasinya di WSM-Office.
+✅ **Selesai (2026-09-12).** `ContractController` (`app/Http/Controllers/Dashboard/Contracts/`) + views `dashboard/contracts/*`:
+
+- Upload file kontrak beneran (PDF/Word/gambar, maks 10MB) ke `Storage::disk('public')` — **controller PERTAMA di codebase ini yang pakai upload multipart** (`$request->file()`); sebelumnya cuma ada foto base64 dari kamera di `AttendanceController::storePhoto()`, beda mekanisme
+- CRUD lengkap: tambah/edit (ganti file opsional)/hapus, filter listing per karyawan
+- Badge "Segera Berakhir" pakai `EmployeeContract::isExpiringSoon()` (≤30 hari) yang udah ada dari Fase 11 awal, sebelumnya nganggur karena gak ada UI yang manggil
+- Landing `/dashboard` di-fix biar modul Contracts nyambung ke `dashboard.contracts.index` (sama fix yang dilakuin ke `kpi` sebelumnya)
+- Ditambah `EmployeeContract::formattedSize()` (tampilan ukuran file ringkas, "240 KB"/"1.4 MB") — gak ada di kode sebelumnya, ditambahin pas fase ini
+
+⚠️ **Catatan operasional (BUKAN bug kode, tapi perlu diverifikasi pas deploy):** `Storage::disk('public')` butuh symlink `public/storage → storage/app/public` yang normalnya dibuat lewat `php artisan storage:link`. Berhubung hosting-nya shared cPanel **tanpa akses terminal**, symlink ini kemungkinan besar belum ada — kalau belum, file kontrak (dan foto absensi yang udah lebih dulu pakai pola sama) gak bakal bisa diakses lewat `asset('storage/...')` walau upload-nya sendiri sukses. Ini bukan masalah baru dari fase ini — attendance photo udah lebih dulu punya risiko yang sama, cuma baru ketauan jelas sekarang karena Contract Monitoring nge-expose link filenya langsung ke user. Solusinya biasanya salah satu: symlink manual lewat File Manager cPanel, atau fitur "Setup Node.js/PHP App" sebagian host yang kasih akses jalanin 1 command, atau tanya ke Rumahweb caranya.
 
 ---
 
@@ -189,7 +197,7 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 9    | Work Tracker board & Shared Calendar                           | ✅                                      |
 | 9    | Import CSV/XLSX bulk item                                      | ⭕                                      |
 | 10   | KPI & Performance                                              | ✅                                      |
-| 11   | Employee Contracts                                             | ⭕ (tabel only)                         |
+| 11   | Employee Contracts                                             | ✅                                      |
 | 12   | Payroll                                                        | ⭕ (tabel only)                         |
 | 13   | Project Budgeting & Royalty                                    | ⭕ (tabel only)                         |
 | 14   | Legal                                                          | ⭕ (tabel only)                         |
@@ -203,8 +211,9 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 
 ~~1. MoM (Meeting)~~ — ✅ selesai 2026-09-12 (`MeetingController`, views `dashboard/work/meetings/*`, tab "Rapat & Action Item").
 ~~2. KPI (Fase 10)~~ — ✅ selesai 2026-09-12 (`KpiController`, views `dashboard/kpi/*`, kartu "My KPI" di Home sekarang keisi).
+~~3. Contracts (Fase 11)~~ — ✅ selesai 2026-09-12 (`ContractController`, views `dashboard/contracts/*`, upload file beneran ke storage).
 
-1. **Contracts (Fase 11)** lalu **Payroll (Fase 12)** — payroll butuh `overtime_flat_rate` yang udah disiapkan dari Fase 7
+1. **Payroll (Fase 12)** — butuh `overtime_flat_rate` yang udah disiapkan dari Fase 7
 2. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa nyusul, dampak ke UX harian lebih kecil
 3. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
 
@@ -219,3 +228,10 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 - Belum ada grafik tren pencapaian KPI dari waktu ke waktu (cuma snapshot current/target terakhir)
 - Belum ada notifikasi ke karyawan pas KPI baru ditambahkan/diupdate Owner (karyawan baru tau kalau buka Home sendiri)
 - Belum ada test otomatis, sama alasan kayak MoM di atas
+
+## Belum Sempurna dari Employee Contracts (catatan QA jujur)
+
+- Belum ada notifikasi otomatis pas kontrak mau habis (badge "Segera Berakhir" cuma kelihatan kalau Owner buka halamannya sendiri, gak ada email/memo blast otomatis)
+- Belum ada versi/histori kontrak — ganti file pas edit LANGSUNG timpa yang lama (dihapus dari storage), gak ada arsip revisi sebelumnya
+- Verifikasi symlink `storage:link` di hosting production — lihat catatan ⚠️ di Fase 11 di atas, ini paling penting dicek SEBELUM Contract Monitoring dipakai beneran
+- Belum ada test otomatis, sama alasan kayak MoM & KPI di atas

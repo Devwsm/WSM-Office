@@ -28,6 +28,7 @@
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
 use App\Http\Controllers\Attendance\RecapController;
+use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
@@ -322,6 +323,18 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{kpi}/edit', [KpiController::class, 'edit'])->middleware('module:kpi,manage')->name('edit');
         Route::patch('/{kpi}', [KpiController::class, 'update'])->middleware('module:kpi,manage')->name('update');
         Route::delete('/{kpi}', [KpiController::class, 'destroy'])->middleware('module:kpi,manage')->name('destroy');
+    });
+
+    // --- Fase 11: Contract Monitoring (kontrak karyawan) ---
+    // Sama pola persis grup 'work'/'kpi' — harus terdaftar SEBELUM
+    // '/{module}' generik di bawah.
+    Route::prefix('contracts')->name('contracts.')->group(function () {
+        Route::get('/', [ContractController::class, 'index'])->middleware('module:contracts,view')->name('index');
+        Route::get('/create', [ContractController::class, 'create'])->middleware('module:contracts,manage')->name('create');
+        Route::post('/', [ContractController::class, 'store'])->middleware('module:contracts,manage')->name('store');
+        Route::get('/{contract}/edit', [ContractController::class, 'edit'])->middleware('module:contracts,manage')->name('edit');
+        Route::patch('/{contract}', [ContractController::class, 'update'])->middleware('module:contracts,manage')->name('update');
+        Route::delete('/{contract}', [ContractController::class, 'destroy'])->middleware('module:contracts,manage')->name('destroy');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
