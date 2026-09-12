@@ -30,6 +30,7 @@ use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeR
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
+use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
 use App\Http\Controllers\Owner\DashboardAccessController;
@@ -287,6 +288,22 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
             Route::patch('/task/{item}', [WorkTrackerBoardController::class, 'updateItem'])->middleware('module:work,manage')->name('items.update');
             Route::delete('/task/{item}', [WorkTrackerBoardController::class, 'destroyItem'])->middleware('module:work,manage')->name('items.destroy');
             Route::patch('/task/{item}/progress', [WorkTrackerBoardController::class, 'updateProgress'])->middleware('module:work,manage')->name('items.progress');
+        });
+
+        // --- Fase 9 lanjutan: MoM terstruktur (Meeting + action item) ---
+        // Beda dari Memo type=mom di atas (catatan cepat) — ini yang
+        // punya attendee relasi asli, action item per-baris (PIC +
+        // due date), dan bisa nge-generate task ke Work Tracker
+        // otomatis. Lihat catatan lengkap di MeetingController.
+        Route::prefix('meetings')->name('meetings.')->group(function () {
+            Route::get('/', [MeetingController::class, 'index'])->middleware('module:work,view')->name('index');
+            Route::get('/create', [MeetingController::class, 'create'])->middleware('module:work,manage')->name('create');
+            Route::post('/', [MeetingController::class, 'store'])->middleware('module:work,manage')->name('store');
+            Route::get('/{meeting}', [MeetingController::class, 'show'])->middleware('module:work,view')->name('show');
+            Route::get('/{meeting}/edit', [MeetingController::class, 'edit'])->middleware('module:work,manage')->name('edit');
+            Route::patch('/{meeting}', [MeetingController::class, 'update'])->middleware('module:work,manage')->name('update');
+            Route::delete('/{meeting}', [MeetingController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
+            Route::post('/{meeting}/blast', [MeetingController::class, 'blast'])->middleware(['module:work,manage', 'throttle:10,1'])->name('blast');
         });
     });
 

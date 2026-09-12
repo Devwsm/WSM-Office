@@ -29,6 +29,9 @@
         <a href="{{ route('dashboard.work.tracker.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
             Tracker</a>
+        <a href="{{ route('dashboard.work.meetings.index') }}"
+            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Rapat
+            &amp; Action Item</a>
     </div>
 
     @if ($memos->isEmpty())
