@@ -63,10 +63,14 @@ sembarangan.**
       request/approval, mode Lapangan/Gigs multi-sesi, shortage per blok
       60 menit, dan pengaturan kantor dari UI Owner/HR.
 - [x] Data Layer Fase 9–16 sudah disiapkan sebagai fondasi database/model.
-- [x] **Fase 9 (App Mode):** Home personalization penuh (Milestones, Paid
-      Leave banner, My KPI, My Work Tracker, Shared Calendar, Latest
-      Attendance), plus **Inbox header** (ikon amplop + badge unread,
-      audit ronde 6 2026-09-09) yang kelihatan di semua halaman App Mode.
+- [~] **Fase 9 (App Mode):** Home personalization sebagian (Milestones,
+  Paid Leave banner, My KPI, My Work Tracker, Shared Calendar, Latest
+  Attendance), plus **Inbox header** (ikon amplop + badge unread,
+  audit ronde 6 2026-09-09) yang kelihatan di semua halaman App Mode.
+  **BUKAN penuh** — metric-grid Home, posisi kartu Memo, WFO Overtime
+  Rule box, dan Profile Milestones/leave banner masih belum ada per
+  audit ronde 9 (2026-09-12), lihat bagian "Audit App Mode — Ronde 9"
+  di bawah.
 - [x] **Fase 9 (Admin — Work Control Lanjutan):** Projects CRUD (via modal
       "Kelola Projects") dan Work Tracker board kanban drag-drop
       (`dashboard/work/tracker`) — audit ronde 6, 2026-09-09. Timeline
@@ -1265,29 +1269,30 @@ sama persis kayak kemarin** di modul lain.
     — apapun benar-salahnya kode PHP kita sendiri, gak akan pernah
     sempat kejalanin.
 
-             **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
-             sendiri, jadi gak perlu downgrade major version.** Laravel 13
-             ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
-             8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
-             Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
-             padahal constraint Laravel 13 sendiri ke paket itu masih
-             `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
-             memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
-             8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
-             (versi terbaru yang tersedia) karena constraint di `composer.json`
-             gak mengunci versi Symfony-nya secara eksplisit.
+                 **Update 2026-09-08 (ronde 4) — akar masalahnya BUKAN Laravel 13
+                 sendiri, jadi gak perlu downgrade major version.** Laravel 13
+                 ("illuminate/\*") sebenarnya cuma butuh PHP 8.3 minimum (naik dari
+                 8.2 di Laravel 12, bukan ke 8.4) — dicek langsung ke rilis resminya.
+                 Yang butuh 8.4 itu spesifik `symfony/http-foundation` versi 8.x,
+                 padahal constraint Laravel 13 sendiri ke paket itu masih
+                 `^5.4|^6.4|^7.3|^8` — artinya Symfony **7.3/7.4 juga tetap
+                 memenuhi** syarat Laravel 13, dan Symfony 7.x itu cuma butuh PHP
+                 8.2+ (bukan 8.4). Composer kemarin kebetulan resolve ke Symfony 8.x
+                 (versi terbaru yang tersedia) karena constraint di `composer.json`
+                 gak mengunci versi Symfony-nya secara eksplisit.
 
-             **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
-             eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
+                 **Fix yang sudah diterapkan di `composer.json`:** nambahin pin
+                 eksplisit `"symfony/console": "^7.3"`, `"symfony/http-foundation":
 
-        "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
+            "^7.3"`, dan komponen Symfony lain yang dipakai Laravel 13 (mailer,
 
-    mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
-    gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
-    diverifikasi jalan di sandbox ini** (Composer & akses ke
-    `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
-    dicek manual**: hapus folder`vendor/`lama, jalankan`composer
-update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
+        mime, routing, http-kernel, dst.) semua ke `^7.3`— biar Composer
+        gak lagi milih Symfony 8.x pas resolve dependency. **BELUM bisa
+        diverifikasi jalan di sandbox ini** (Composer & akses ke
+        `packagist.org`gak tersedia di sini), jadi **WAJIB dijalankan &
+        dicek manual**: hapus folder`vendor/`lama, jalankan`composer
+
+    update`di lokal (PHP 8.3), pastikan`composer.lock`yang baru
     resolve semua paket Symfony ke garis`7.3.x`/`7.4.x`(bukan`8.x`
     lagi), lalu ulang smoke-test dasar (`php artisan --version`, buka
     halaman Home). Kalau masih ada 1-2 paket dependency lain yang
@@ -2300,3 +2305,69 @@ bukan cuma warning linter).
 grup route `tracker.*` (baris 276-283) ikut diganti — baris 91
 (`workTracker.calendar`, punya `Employee\WorkTrackerController`) SENGAJA
 TIDAK disentuh.
+
+## 🔍 Audit App Mode — Ronde 9 (2026-09-12)
+
+Audit ulang menyeluruh App Mode (Home, Riwayat, Request/Lembur, Profile,
+Inbox, bottom-nav) dari zip `WSM-Office.zip` + `WOS_2_0_App_v32.zip` yang
+baru diupload, dibandingkan lagi dengan fungsi `render*` versi PALING AKHIR
+di prototype (sama metodologi ronde 6).
+
+### ✅ Sudah ada & sesuai
+
+- **Bottom-nav App Mode**: 4 tab (Home, Riwayat, tombol tengah check-in,
+  Request, Profile) — struktur & jumlah tab sesuai prototype.
+- **Entry point Role Dashboard**: 1 tombol di header (bukan tab bottom-nav
+  terpisah), termasuk untuk Owner balik ke "App Saya" — sesuai keputusan
+  desain yang sudah didokumentasikan.
+- **Inbox header** (ikon amplop + badge unread, akses dari halaman mana
+  pun di App Mode) — sudah dibangun benar dan lengkap sejak Fase 9
+  lanjutan (ronde 6), dicek ulang masih utuh.
+- **Home**: Hero, Milestones, Paid Leave banner, Cuti Tim Bulan Ini,
+  warning lupa checkout, kartu absen (mode Kantor/WFH/Lapangan/Gigs + geo
+    - foto), My KPI, My Work Tracker, Team Moments, Latest Attendance — ada
+      dan sesuai.
+- **Fase 5** (Izin/Cuti/Koreksi Presensi/Lembur dasar) — sudah pernah
+  divalidasi E2E sebelumnya, tidak ada indikasi regresi dari pembacaan
+  kode ronde ini.
+- **README "Belum dibangun"** (Timeline Calendar Owner-side, Fase 10–18)
+  — status di dokumen masih akurat, tidak ada drift dokumentasi.
+
+### 🔁 Sudah ada tapi beda
+
+- **Work Tracker admin pakai board kanban drag-drop**, bukan grouped-list
+  per Project → Section seperti `trackerBoardMarkup()` di prototype.
+  **Sengaja** — keputusan eksplisit user saat ditanya di ronde 6, demi UX
+  yang lebih familiar buat pengelolaan task harian (sudah dicatat juga di
+  bagian "Update — Fase 9 selesai dieksekusi").
+- **Struktur halaman Request tetap 2 halaman terpisah** (Izin/Cuti di
+  `leave/index`, Lembur di `overtime/index`), bukan 1 form gabungan
+  seperti versi akhir prototype. Dicatat sejak ronde 6 sebagai keputusan
+  arsitektur Laravel yang sah (`LeaveRequest` vs `OvertimeRequest` tabel
+  terpisah lebih rapi daripada 1 tabel polymorphic kayak `state.requests`
+  prototype) — **bukan penyimpangan yang perlu disamakan balik**, tapi
+  efeknya "Koreksi Presensi" tidak tersedia sebagai self-request karyawan
+  (cuma bisa dikoreksi Manajer/HRD/Owner lewat Rekap), beda dari flow
+  approval di prototype.
+
+### ❌ Belum ada / belum dikerjakan (regresi dari fix yang sudah pernah dibuat)
+
+Tiga perbaikan berikut sudah pernah dikerjakan di sesi sebelumnya (ronde 7,
+2026-09-09) tapi **hilang lagi** di dua upload zip beruntun (ronde 8 &
+ronde 9) — indikasi kuat ada working copy/branch berbeda di sisi user yang
+belum ketemu sama working copy yang berisi fix-fix ini:
+
+- **Metric-grid Home** ("Working Hours Today" + "This Month") — tidak ada
+  di `HomeController`/`home.blade.php`.
+- **Posisi kartu Memo/"Info dari Owner"** — masih di paling bawah Home
+  (setelah Team Moments), bukan persis setelah Hero seperti prototype.
+- **WFO Overtime Rule box + flat rate karyawan** — tidak ditampilkan di
+  halaman Lembur, padahal kolom `overtime_flat_rate` sudah ada di model.
+
+Dua temuan dari ronde 8 juga masih belum dikerjakan:
+
+- **Profile tanpa kartu Milestones** dan info cuti masih 1 baris teks
+  ("Sisa Cuti Tahunan: X hari"), bukan banner kaya (entitlement/terpakai/
+  tanggal reset) seperti di Home.
+- **"Koreksi Presensi" belum ada sebagai request self-service karyawan**
+  (lihat bagian "Sudah ada tapi beda" di atas untuk konteks lengkap).
