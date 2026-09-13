@@ -165,7 +165,13 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 14 — Legal _(desain baru, terinspirasi tapi bukan porting 1:1)_
 
-⭕ **Belum dikerjakan** dari sisi controller/view. Tabel `legal_documents` sudah ada (padanan `state.legalDocs`), sengaja dipisah dari `employee_contracts` (Fase 11) karena beda konteks (Album Contracts & Royalty Agreements vs kontrak kerja karyawan). Modul `legal` sudah terdaftar di Dashboard Access (➕ tambahan, lihat Fase 6) tapi isinya masih placeholder.
+✅ **Selesai (2026-09-13).** `LegalController` (`dashboard/legal/*`) — CRUD `LegalDocument` (padanan `state.legalDocs`), 2 kategori (`album`/`royalty`, alias Album Contracts & Royalty Agreements) disatuin dalam 1 tabel + 1 controller, dibedain lewat kolom `category` — sama pola persis `Memo.type` ('memo' vs 'mom') dan filter status di `RoyaltyController` (Fase 13). Prototype v18 punya 2 halaman terpisah buat 2 kategori ini tapi cuma 1 level akses; di sini disatuin jadi 1 index dengan filter kategori (bukan porting 1:1, keputusan desain WSM Office sendiri).
+
+- Upload file beneran ke `Storage::disk('public')` (`legal/{category}/...`) — sama mekanisme `ContractController` (Fase 11), bukan blob base64 kayak prototype
+- Field: kategori, judul, pihak terkait (label/artist/publisher, opsional), tanggal mulai/selesai (opsional), catatan (opsional)
+- Badge "Segera Berakhir" (≤30 hari) lewat `LegalDocument::isExpiringSoon()` — method baru, sama pola & window kayak `EmployeeContract::isExpiringSoon()`
+- Gate `module:legal,view|manage` — modul `legal` sudah terdaftar di Dashboard Access sejak Fase 6, sekarang isinya udah bukan placeholder
+- Landing `/dashboard` di-fix (match statement `DashboardController::index()`) biar kartu modul Legal ngarah ke `dashboard.legal.index`, bukan placeholder generik
 
 ---
 
@@ -215,12 +221,12 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 11   | Employee Contracts                                             | ✅                                      |
 | 12   | Payroll                                                        | ✅                                      |
 | 13   | Project Budgeting & Royalty                                    | ✅                                      |
-| 14   | Legal                                                          | ⭕ (tabel only)                         |
+| 14   | Legal                                                          | ✅                                      |
 | 15   | IT (Audit Log & Changelog)                                     | ⭕ (tabel only)                         |
 | 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–13 (fondasi + KPI + Contracts + Payroll + Budget/Royalty) sudah solid dan sesuai/lebih detail dari prototype (dengan penyesuaian arsitektur permission-based). Fase 14–15 (Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
+**Pola yang kelihatan:** Fase 1–14 (fondasi + KPI + Contracts + Payroll + Budget/Royalty + Legal) sudah solid dan sesuai/lebih detail dari prototype (dengan penyesuaian arsitektur permission-based). Fase 15 (IT) **data layer-nya udah lengkap duluan** (sama pola kayak Legal sebelum dikerjakan) tapi **controller & view-nya belum ada** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
 
 ## Rekomendasi Urutan Kerja Berikutnya
 
@@ -229,9 +235,10 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 ~~3. Contracts (Fase 11)~~ — ✅ selesai 2026-09-12 (`ContractController`, views `dashboard/contracts/*`, upload file beneran ke storage).
 ~~4. Payroll (Fase 12)~~ — ✅ selesai 2026-09-12 (`PayrollController`, views `dashboard/payroll/*`, generate per-periode + alur draft/finalized/paid).
 ~~5. Budget & Royalty (Fase 13)~~ — ✅ selesai 2026-09-12 (`BudgetController` + `RoyaltyController`, views `dashboard/budget/*` & `dashboard/royalty/*`).
+~~6. Legal (Fase 14)~~ — ✅ selesai 2026-09-13 (`LegalController`, views `dashboard/legal/*`, 2 kategori Album Contracts/Royalty Agreements dalam 1 tabel+controller).
 
-1. **Legal (Fase 14)**, **IT (Fase 15)** — dua modul terakhir yang masih placeholder, dampak ke UX harian lebih kecil dari modul-modul sebelumnya
-2. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
+1. **IT (Fase 15)** — satu-satunya modul yang masih placeholder, dampak ke UX harian lebih kecil dari modul-modul sebelumnya
+2. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
 

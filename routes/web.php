@@ -33,6 +33,7 @@ use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
+use App\Http\Controllers\Dashboard\Legal\LegalController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
@@ -375,6 +376,21 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{royalty}/edit', [RoyaltyController::class, 'edit'])->middleware('module:royalty,manage')->name('edit');
         Route::patch('/{royalty}', [RoyaltyController::class, 'update'])->middleware('module:royalty,manage')->name('update');
         Route::delete('/{royalty}', [RoyaltyController::class, 'destroy'])->middleware('module:royalty,manage')->name('destroy');
+    });
+
+    // --- Fase 14: Legal (Album Contracts & Royalty Agreements) ---
+    // Sama pola persis grup 'work'/'kpi'/'contracts'/'payroll'/'budget'/
+    // 'royalty' — harus terdaftar SEBELUM '/{module}' generik di bawah.
+    // 1 controller buat 2 kategori (`album`/`royalty`), filter lewat
+    // query string `category` di index — sama pola RoyaltyController
+    // yang filter per `status`.
+    Route::prefix('legal')->name('legal.')->group(function () {
+        Route::get('/', [LegalController::class, 'index'])->middleware('module:legal,view')->name('index');
+        Route::get('/create', [LegalController::class, 'create'])->middleware('module:legal,manage')->name('create');
+        Route::post('/', [LegalController::class, 'store'])->middleware('module:legal,manage')->name('store');
+        Route::get('/{legal}/edit', [LegalController::class, 'edit'])->middleware('module:legal,manage')->name('edit');
+        Route::patch('/{legal}', [LegalController::class, 'update'])->middleware('module:legal,manage')->name('update');
+        Route::delete('/{legal}', [LegalController::class, 'destroy'])->middleware('module:legal,manage')->name('destroy');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
