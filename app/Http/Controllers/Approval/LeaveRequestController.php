@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Approval;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelLeaveRequestRequest;
 use App\Http\Requests\Approval\RejectLeaveRequestRequest;
+use App\Models\AuditLog;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,6 +23,9 @@ use Illuminate\Support\Facades\Auth;
  * - Owner -> semua orang, kapan aja, termasuk yang punya Manajer
  *   (tercatat `approver_id` = Owner biar jelas siapa yang beneran
  *   mutusin, bukan manajernya).
+ *
+ * Fase 15 (instrumentasi, 2026-09-13) — approve/reject/cancel dicatat
+ * ke AuditLog::record().
  * ---------------------------------------------------------------------
  */
 class LeaveRequestController extends Controller
@@ -63,6 +67,8 @@ class LeaveRequestController extends Controller
 
         $leave->approveBy($me);
 
+        AuditLog::record('Izin/cuti disetujui', "Pengajuan {$leave->user->name} ({$leave->type}) disetujui oleh {$me->name}.", $me);
+
         return back()->with('status', "Pengajuan {$leave->user->name} disetujui.");
     }
 
@@ -78,6 +84,8 @@ class LeaveRequestController extends Controller
 
         $leave->rejectBy($me, $request->validated('decision_note'));
 
+        AuditLog::record('Izin/cuti ditolak', "Pengajuan {$leave->user->name} ({$leave->type}) ditolak oleh {$me->name}.", $me);
+
         return back()->with('status', "Pengajuan {$leave->user->name} ditolak.");
     }
 
@@ -92,6 +100,8 @@ class LeaveRequestController extends Controller
         }
 
         $leave->cancelBy($me, $request->validated('cancellation_reason'));
+
+        AuditLog::record('Izin/cuti dibatalkan', "Izin/cuti {$leave->user->name} ({$leave->type}) dibatalkan oleh {$me->name}.", $me);
 
         return back()->with('status', "Izin/cuti {$leave->user->name} dibatalkan.");
     }

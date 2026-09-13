@@ -177,14 +177,22 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 15 — IT (Audit Log & System Changelog) _(desain baru)_
 
-🟡 **Sebagian selesai (2026-09-13).** 2 sub-halaman, sama pola `work` (tracker/meetings) — 1 gate `module:it`, landing `/dashboard/it` = Audit Log:
+✅ **Selesai (2026-09-13, termasuk instrumentasi).** 2 sub-halaman, sama pola `work` (tracker/meetings) — 1 gate `module:it`, landing `/dashboard/it` = Audit Log:
 
-- **Audit Log** (`AuditLogController`, `dashboard/it/index`) — listing `AuditLog`, READ-ONLY total (gak ada create/edit/delete dari UI, cuma gate `view`). Search sederhana (action/detail/nama). **PENTING:** `AuditLog::record()` (helper yang udah ada dari migration awal Fase 15) **BELUM dipanggil dari controller manapun** di sistem ini — jadi listing ini kosong sampai instrumentasi itu ditambahin. Nyambungin `record()` ke aksi-aksi penting (CRUD karyawan, approve izin/cuti, ubah dashboard access, dll) SENGAJA di luar scope kerjaan ini — itu perubahan lintas-controller yang besar, beda sifat dari "bangun UI di atas tabel siap pakai".
+- **Audit Log** (`AuditLogController`, `dashboard/it/index`) — listing `AuditLog`, READ-ONLY total (gak ada create/edit/delete dari UI, cuma gate `view`). Search sederhana (action/detail/nama).
 - **System Changelog** (`SystemChangelogController`, `dashboard/it/changelog/*`) — CRUD penuh, padanan `saveCustomChangeLog()`. `modules` (pisah koma) & `changes` (1 baris = 1 bullet) tetap input teks biasa di form, di-split jadi array (kolom JSON) di controller — sama persis behaviour prototype. Filter per status (`Planned`/`Released`).
 - Landing `/dashboard` di-fix (match statement `DashboardController::index()`) biar kartu modul IT ngarah ke `dashboard.it.index`.
-- 🟡 (bukan ✅ penuh) karena Audit Log secara fungsi belum berguna sampai instrumentasi `record()` dikerjakan — itemnya masuk rekomendasi kerja berikutnya di bawah.
 
----
+**Instrumentasi `AuditLog::record()` (2026-09-13)** — SENGAJA cuma nyambungin ke aksi-aksi "penting" (istilah dari catatan sebelumnya), BUKAN semua mutasi di semua controller (itu gak akan pernah selesai & bikin log berisik nyampur hal remeh kayak edit catatan draft payroll tiap detik). Yang udah dicatat:
+
+- **`Owner\EmployeeController`** — tambah/edit/nonaktifkan/aktifkan-kembali karyawan (paling sensitif: langsung ubah siapa punya akun/role apa)
+- **`Owner\DashboardAccessController::update()`** — perubahan akses modul per-user (ringkasan modul:level yang di-set masuk ke `detail`)
+- **`Approval\LeaveRequestController`** — approve/reject/cancel izin-cuti
+- **`Approval\OvertimeRequestController`** — approve/reject/cancel lembur
+- **`Dashboard\Payroll\PayrollController`** — generate (ringkasan jumlah + periode), update (penyesuaian manual), finalize, markPaid, destroy (data finansial, semua status transition dicatat)
+- **`Owner\OfficeSettingController::update()`** — pengaturan kantor (acuan absensi/lembur/payroll seluruh sistem)
+
+**BELUM diinstrumentasi** (keputusan sadar, bukan kelupaan): CRUD di modul Legal/Contracts/Budget/Royalty/KPI/Work/Recruitment, login/logout, dan lock/unlock dashboard (aksi UI rutin, bukan perubahan data) — kalau nanti dianggap perlu, tinggal tambah `AuditLog::record()` 1-2 baris di controller terkait, pola udah jelas dari 6 controller di atas.
 
 ## Fase 16 — CEO Dashboard IA Restructure & Settings
 
@@ -227,11 +235,11 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 12   | Payroll                                                        | ✅                                      |
 | 13   | Project Budgeting & Royalty                                    | ✅                                      |
 | 14   | Legal                                                          | ✅                                      |
-| 15   | IT (Audit Log & Changelog)                                     | 🟡 UI selesai, log belum keisi          |
+| 15   | IT (Audit Log & Changelog)                                     | ✅                                      |
 | 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–15 (fondasi + KPI + Contracts + Payroll + Budget/Royalty + Legal + IT) semua sudah punya controller & view — gak ada lagi modul dashboard_access yang placeholder generik total. Sisanya 2 hal: (1) System Changelog (Fase 15) sudah fungsional penuh; Audit Log (Fase 15) UI-nya jadi tapi butuh instrumentasi `AuditLog::record()` dipanggil dari controller-controller lain biar keisi datanya — item kerja terpisah, bukan "bangun UI di atas tabel siap pakai" lagi; (2) Fase 16 (CEO Dashboard IA Restructure) masih baru sebagian kecil.
+**Pola yang kelihatan:** Fase 1–15 (fondasi + KPI + Contracts + Payroll + Budget/Royalty + Legal + IT) semua sudah punya controller & view — gak ada lagi modul dashboard_access yang placeholder generik total, dan Audit Log sekarang beneran keisi lewat instrumentasi `AuditLog::record()` di 6 controller berdampak paling besar (karyawan, dashboard access, approval izin/cuti/lembur, payroll, pengaturan kantor). Sisanya cuma Fase 16 (CEO Dashboard IA Restructure) yang masih baru sebagian kecil.
 
 ## Rekomendasi Urutan Kerja Berikutnya
 
@@ -241,10 +249,9 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 ~~4. Payroll (Fase 12)~~ — ✅ selesai 2026-09-12 (`PayrollController`, views `dashboard/payroll/*`, generate per-periode + alur draft/finalized/paid).
 ~~5. Budget & Royalty (Fase 13)~~ — ✅ selesai 2026-09-12 (`BudgetController` + `RoyaltyController`, views `dashboard/budget/*` & `dashboard/royalty/*`).
 ~~6. Legal (Fase 14)~~ — ✅ selesai 2026-09-13 (`LegalController`, views `dashboard/legal/*`, 2 kategori Album Contracts/Royalty Agreements dalam 1 tabel+controller).
-~~7. IT (Fase 15)~~ — 🟡 selesai sebagian 2026-09-13 (`AuditLogController` read-only + `SystemChangelogController` CRUD penuh, views `dashboard/it/*`; Audit Log masih kosong sampai `AuditLog::record()` disambungin ke controller lain).
+~~7. IT (Fase 15)~~ — ✅ selesai 2026-09-13 (`AuditLogController` read-only + `SystemChangelogController` CRUD penuh, views `dashboard/it/*`; instrumentasi `AuditLog::record()` di 6 controller berdampak besar — lihat detail di Fase 15).
 
-1. **Instrumentasi `AuditLog::record()`** — sambungin helper yang udah ada ke aksi-aksi penting (CRUD karyawan, approve izin/cuti/lembur, ubah dashboard access, generate/finalisasi payroll, dll) biar Audit Log (Fase 15) beneran keisi, bukan cuma UI kosong
-2. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
+1. **CEO Dashboard IA Restructure (Fase 16)** — satu-satunya sisa kerja, baiknya dikerjain sekarang karena semua modul udah ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
 

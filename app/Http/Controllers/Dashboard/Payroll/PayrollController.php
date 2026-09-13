@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Payroll\GeneratePayrollRequest;
 use App\Http\Requests\Dashboard\Payroll\UpdatePayrollRecordRequest;
 use App\Models\Attendance;
+use App\Models\AuditLog;
 use App\Models\OfficeSetting;
 use App\Models\OvertimeRequest;
 use App\Models\PayrollRecord;
@@ -51,6 +52,10 @@ use Illuminate\Support\Facades\Auth;
  * Karyawan tanpa `salary_base` terisi SENGAJA dilewati dari daftar
  * generate — bukan dianggap gaji Rp 0. Gate 'view'/'manage' modul
  * 'payroll' — sama pola persis ContractController/KpiController.
+ *
+ * Fase 15 (instrumentasi, 2026-09-13) — generate/update/finalize/
+ * markPaid/destroy dicatat ke AuditLog::record() (payroll = data
+ * finansial, aksi paling sensitif buat modul Audit Log).
  * ---------------------------------------------------------------------
  */
 class PayrollController extends Controller
@@ -142,6 +147,10 @@ class PayrollController extends Controller
             $message .= " {$skippedLocked} dilewati karena sudah difinalisasi/dibayar (regenerate gak nimpa histori final).";
         }
 
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Payroll digenerate', "{$generated} payroll periode {$period} digenerate oleh {$actor->name}" . ($skippedLocked > 0 ? " ({$skippedLocked} dilewati, sudah terkunci)." : '.'), $actor);
+
         return redirect()->route('dashboard.payroll.index', ['period' => $period])->with('status', $message);
     }
 
@@ -179,6 +188,10 @@ class PayrollController extends Controller
         $payroll->recalculateTotal();
         $payroll->save();
 
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Payroll disesuaikan', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) disesuaikan oleh {$actor->name}.", $actor);
+
         return redirect()->route('dashboard.payroll.show', $payroll)->with('status', 'Penyesuaian payroll disimpan.');
     }
 
@@ -189,6 +202,10 @@ class PayrollController extends Controller
         }
 
         $payroll->update(['status' => 'finalized']);
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Payroll difinalisasi', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) difinalisasi oleh {$actor->name}.", $actor);
 
         return back()->with('status', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) difinalisasi. Angka terkunci, gak bisa digenerate ulang/diedit lagi.");
     }
@@ -201,6 +218,10 @@ class PayrollController extends Controller
 
         $payroll->update(['status' => 'paid']);
 
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Payroll ditandai dibayar', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) ditandai dibayar oleh {$actor->name}.", $actor);
+
         return back()->with('status', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) ditandai sudah dibayar.");
     }
 
@@ -212,7 +233,12 @@ class PayrollController extends Controller
         }
 
         $period = $payroll->period;
+        $employeeName = $payroll->user->name;
         $payroll->delete();
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Payroll draft dihapus', "Payroll draft {$employeeName} (periode {$period}) dihapus oleh {$actor->name}.", $actor);
 
         return redirect()->route('dashboard.payroll.index', ['period' => $period])->with('status', 'Payroll draft dihapus.');
     }

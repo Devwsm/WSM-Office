@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\DashboardAccess;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -20,6 +21,12 @@ use Illuminate\Support\Facades\DB;
  * Owner sendiri gak kelihatan di daftar karyawan yang bisa diedit di
  * sini karena akses Owner udah otomatis 'manage' semua modul
  * (User::accessLevel()) — gak ada yang perlu di-assign.
+ *
+ * Fase 15 (instrumentasi, 2026-09-13) — `update()` dicatat ke
+ * AuditLog::record(), ringkasan modul yang levelnya di-set (view/manage)
+ * dimasukkan ke `detail`, modul yang di-set balik ke 'none' (dihapus)
+ * gak disebut satu-satu di ringkasan (biar gak kepanjangan), cukup
+ * dicek manual lewat halaman assign kalau perlu detail lengkap.
  * ---------------------------------------------------------------------
  */
 class DashboardAccessController extends Controller
@@ -73,6 +80,11 @@ class DashboardAccessController extends Controller
                 );
             }
         });
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        $summary = collect($levels)->filter()->map(fn($level, $module) => "{$module}:{$level}")->implode(', ') ?: 'semua modul dicabut';
+        AuditLog::record('Dashboard access diubah', "Akses {$employee->name} diubah oleh {$actor->name} — {$summary}.", $actor);
 
         return redirect()->route('owner.employees.index')
             ->with('status', "Dashboard access {$employee->name} berhasil diperbarui.");

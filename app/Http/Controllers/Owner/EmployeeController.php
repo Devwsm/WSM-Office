@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Owner;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Owner\StoreEmployeeRequest;
 use App\Http\Requests\Owner\UpdateEmployeeRequest;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\Hash;
  * soft delete (kolom deleted_at) supaya riwayat (payroll, kontrak, dst.
  * di fase-fase selanjutnya) tidak ikut hilang — bahasanya di UI sengaja
  * "Nonaktifkan", bukan "Hapus".
+ *
+ * Fase 15 (instrumentasi, 2026-09-13) — semua aksi mutasi di controller
+ * ini dicatat ke AuditLog::record() (tambah/edit/nonaktifkan/aktifkan
+ * karyawan), aksi PALING sensitif buat modul Audit Log karena langsung
+ * ubah siapa yang punya akun/role apa di sistem.
  * ---------------------------------------------------------------------
  */
 class EmployeeController extends Controller
@@ -65,7 +71,11 @@ class EmployeeController extends Controller
         $data = $request->validated();
         $data['password'] = Hash::make($data['password']);
 
-        User::create($data);
+        $employee = User::create($data);
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Karyawan ditambahkan', "{$employee->name} ({$employee->role}) ditambahkan oleh {$actor->name}.", $actor);
 
         return redirect()->route('owner.employees.index')->with('status', 'Karyawan baru berhasil ditambahkan.');
     }
@@ -89,6 +99,10 @@ class EmployeeController extends Controller
 
         $employee->update($data);
 
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Karyawan diperbarui', "Data {$employee->name} diperbarui oleh {$actor->name}.", $actor);
+
         return redirect()->route('owner.employees.index')->with('status', 'Data karyawan berhasil diperbarui.');
     }
 
@@ -104,6 +118,10 @@ class EmployeeController extends Controller
 
         $employee->delete();
 
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Karyawan dinonaktifkan', "{$employee->name} dinonaktifkan oleh {$actor->name}.", $actor);
+
         return back()->with('status', "{$employee->name} dinonaktifkan.");
     }
 
@@ -111,6 +129,10 @@ class EmployeeController extends Controller
     {
         $user = User::onlyTrashed()->findOrFail($employee);
         $user->restore();
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        AuditLog::record('Karyawan diaktifkan kembali', "{$user->name} diaktifkan kembali oleh {$actor->name}.", $actor);
 
         return back()->with('status', "{$user->name} diaktifkan kembali.");
     }
