@@ -125,7 +125,7 @@
                         class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'contact-messages' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'contact-messages'])>
                         <span>Pesan Kontak</span>
-                        @php($unreadContactCount = \App\Models\ContactMessage::unreadCount())
+                        @php $unreadContactCount = \App\Models\ContactMessage::unreadCount(); @endphp
                         @if ($unreadContactCount > 0)
                             <span
                                 class="ml-2 rounded-full bg-[#e0483e] px-2 py-0.5 text-[10px] font-black text-white">{{ $unreadContactCount }}</span>
