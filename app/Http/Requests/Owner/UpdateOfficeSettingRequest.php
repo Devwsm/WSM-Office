@@ -42,6 +42,13 @@ class UpdateOfficeSettingRequest extends FormRequest
             'required_work_minutes' => ['required', 'integer', 'min:60', 'max:960'],
             // Fase 12 — rate potongan Payroll per blok 60 menit shortage.
             'shortage_deduction_rate' => ['required', 'numeric', 'min:0'],
+            // Fase 16 — warna aksen sidebar (padanan pengaturan warna
+            // CEO Dashboard/Work Control v18). Validasi hex 6-digit
+            // ketat (#RRGGBB) — dipakai langsung sebagai CSS custom
+            // property di layouts/app.blade.php, jadi nilai gak valid
+            // bisa bikin CSS rusak diam-diam kalau gak divalidasi ketat.
+            'ceo_accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'work_accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ];
     }
 

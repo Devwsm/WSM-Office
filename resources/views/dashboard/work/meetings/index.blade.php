@@ -30,7 +30,8 @@
         <a href="{{ route('dashboard.work.tracker.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
             Tracker</a>
-        <span class="rounded-2xl bg-ink px-3.5 py-2 text-[11px] font-extrabold text-white">Rapat & Action Item</span>
+        <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
+            style="background-color: var(--work-accent)">Rapat & Action Item</span>
     </div>
 
     @if ($meetings->isEmpty())

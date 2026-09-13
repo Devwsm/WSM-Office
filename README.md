@@ -2,7 +2,7 @@
 
 Dokumen ini bandingin **WSM-Office** (Laravel, web resmi yang bakal di-deploy public) sama **WOS_2_0_App_v32** (`index.html`, standalone HTML prototype — CEO/COO/Owner Control Center + Employee App). Tujuannya: satu tempat buat lihat apa yang udah sesuai, apa yang udah ada tapi beda, dan apa yang belum dikerjain — per fase, biar gampang nentuin urutan kerja berikutnya.
 
-Update terakhir: cek kode per 2026-09-12 (controller, migration, route, view) — termasuk Fase 13 Budget & Royalty yang baru selesai dibangun hari ini.
+Update terakhir: cek kode per 2026-09-13 (controller, migration, route, view) — semua 16 fase yang direncanakan sekarang ✅ selesai, termasuk Fase 16 CEO Dashboard IA Restructure & Settings yang baru kelar hari ini. Lihat bagian "Kesimpulan" di bawah buat status akhir proyek.
 
 ## Cara Baca
 
@@ -196,9 +196,17 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 16 — CEO Dashboard IA Restructure & Settings
 
-🟡 **Baru sebagian kecil.** Kolom `ceo_accent_color`/`work_accent_color` di `office_settings` sudah ditambah (padanan pengaturan warna di prototype v18), tapi ini baru "satu-satunya bagian yang butuh kolom baru" — sisa restrukturisasi IA Owner Dashboard (sidebar CEO prototype: Dashboard, Attendance, Requests, KPI & Performance, Work Tracker, Memo Blast, Karyawan, Contracts, Payroll, Settings — satu shell navigasi terpadu) **belum digarap**. Saat ini Owner area di WSM-Office masih berupa halaman-halaman terpisah (`/owner/dashboard`, `/owner/employees`, `/owner/organisasi`, dst) tanpa sidebar navigasi CEO Control Center yang menyatukan semua modul seperti di prototype.
+✅ **Selesai (2026-09-13)**, dengan koreksi penting dari catatan lama di atas: pas dicek ulang kodenya, **"satu shell navigasi terpadu" ternyata udah ada dari lama** — bukan sengaja direstrukturisasi ulang di fase ini, tapi kebentuk ORGANIK sepanjang Fase 6a–15. `layouts/app.blade.php` udah jadi satu sidebar yang dipakai bareng oleh SEMUA halaman Owner (`/owner/*`) DAN semua 9 modul dashboard (`work`/`kpi`/`contracts`/`payroll`/`budget`/`royalty`/`legal`/`it`, plus `people` lewat Absensi & Persetujuan) — tiap fase nambahin link modulnya sendiri ke sidebar yang sama, bukan bikin shell baru. Owner otomatis lihat SEMUA modul itu langsung di sidebar (satu klik, gak perlu ke halaman hub terpisah), karena `accessLevel()` Owner hardcode 'manage' semua modul. Catatan lama di README ini ("Owner area masih terpisah-pisah tanpa sidebar navigasi terpadu") udah GAK AKURAT — dikoreksi di update ini.
 
-- 🟡 Owner Dashboard saat ini (`/owner/dashboard`) cuma kartu ringkasan (total karyawan, hadir hari ini, pengajuan pending — digabung izin/cuti pending + absen lupa checkout jadi satu angka). Prototype CEO Dashboard jauh lebih kaya: stat cards + akses cepat ke semua 10 modul dari satu sidebar.
+Yang BENERAN dikerjain di fase ini:
+
+- **2 kartu Owner Dashboard yang dari Fase 0 masih placeholder ("—", "Data aktif mulai Fase 7"/"Fase 9") akhirnya diisi data beneran** — "Tugas Berjalan" (`WorkItem` yang belum Done/Postpone) dan "Kontrak Akan Habis" (`EmployeeContract::isExpiringSoon()`, ≤30 hari). Ini murni bug lama yang kelewat — fitur-fitur yang direferensikan (Work Tracker Fase 9, Contracts Fase 11) udah lama kelar, cuma kartunya gak pernah balik di-update.
+- **Warna aksen (`ceo_accent_color`/`work_accent_color`) akhirnya beneran dipakai** — sebelumnya cuma kolom DB nganggur dari Fase 7:
+    - Ditambah ke form Pengaturan Kantor (color picker + validasi hex ketat `#RRGGBB`)
+    - Diinject sebagai CSS custom property (`--ceo-accent`/`--work-accent`) di `<head>` layout
+    - `--ceo-accent` nge-tint pill aktif 4 link Owner-only (Dashboard/Karyawan/Struktur Organisasi/Pengaturan Kantor)
+    - `--work-accent` nge-tint tab aktif di Work Control (3 tempat: `dashboard/work/index.blade.php`, `tracker/index.blade.php`, `meetings/index.blade.php`) + pill modul "work" di sidebar
+    - **Sengaja dibatasi cuma 2 area itu** — modul lain (KPI, Payroll, Budget, dst) tetap hitam standar (`bg-ink`), sesuai prototype v18 yang emang cuma CEO Dashboard & Work Control yang punya accent color terpisah, bukan semua halaman
 
 ---
 
@@ -236,22 +244,24 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 13   | Project Budgeting & Royalty                                    | ✅                                      |
 | 14   | Legal                                                          | ✅                                      |
 | 15   | IT (Audit Log & Changelog)                                     | ✅                                      |
-| 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
+| 16   | CEO Dashboard IA Restructure                                   | ✅                                      |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–15 (fondasi + KPI + Contracts + Payroll + Budget/Royalty + Legal + IT) semua sudah punya controller & view — gak ada lagi modul dashboard_access yang placeholder generik total, dan Audit Log sekarang beneran keisi lewat instrumentasi `AuditLog::record()` di 6 controller berdampak paling besar (karyawan, dashboard access, approval izin/cuti/lembur, payroll, pengaturan kantor). Sisanya cuma Fase 16 (CEO Dashboard IA Restructure) yang masih baru sebagian kecil.
+**Semua 16 fase yang direncanakan sekarang ✅ selesai** (2 catatan minor gak ngeblok: form kontak publik Fase 1 belum nyimpen ke DB, import CSV/XLSX bulk item Fase 9 belum di-porting — dua-duanya kecil, dicatat di bagian QA masing-masing). Audit Log beneran keisi lewat instrumentasi `AuditLog::record()` di 6 controller berdampak paling besar (karyawan, dashboard access, approval izin/cuti/lembur, payroll, pengaturan kantor). Sidebar navigasi ternyata udah terpadu dari lama (terbentuk organik sepanjang Fase 6a–15, bukan direstrukturisasi ulang di Fase 16) — koreksi dari catatan lama README ini.
 
-## Rekomendasi Urutan Kerja Berikutnya
+## Kesimpulan
 
-~~1. MoM (Meeting)~~ — ✅ selesai 2026-09-12 (`MeetingController`, views `dashboard/work/meetings/*`, tab "Rapat & Action Item").
-~~2. KPI (Fase 10)~~ — ✅ selesai 2026-09-12 (`KpiController`, views `dashboard/kpi/*`, kartu "My KPI" di Home sekarang keisi).
-~~3. Contracts (Fase 11)~~ — ✅ selesai 2026-09-12 (`ContractController`, views `dashboard/contracts/*`, upload file beneran ke storage).
-~~4. Payroll (Fase 12)~~ — ✅ selesai 2026-09-12 (`PayrollController`, views `dashboard/payroll/*`, generate per-periode + alur draft/finalized/paid).
-~~5. Budget & Royalty (Fase 13)~~ — ✅ selesai 2026-09-12 (`BudgetController` + `RoyaltyController`, views `dashboard/budget/*` & `dashboard/royalty/*`).
-~~6. Legal (Fase 14)~~ — ✅ selesai 2026-09-13 (`LegalController`, views `dashboard/legal/*`, 2 kategori Album Contracts/Royalty Agreements dalam 1 tabel+controller).
-~~7. IT (Fase 15)~~ — ✅ selesai 2026-09-13 (`AuditLogController` read-only + `SystemChangelogController` CRUD penuh, views `dashboard/it/*`; instrumentasi `AuditLog::record()` di 6 controller berdampak besar — lihat detail di Fase 15).
+WSM-Office sekarang solid dan sejalan (bahkan di beberapa modul lebih detail) dari prototype WOS_2_0_App_v32, dengan penyesuaian arsitektur yang disengaja: dashboard permission-based (bukan role-based) sejak 2026-09-09, dan beberapa modul baru di luar scope prototype (Rekrutmen, Legal, IT) yang sengaja ditambah biar Owner bisa delegasikan lebih banyak ke staf lain.
 
-1. **CEO Dashboard IA Restructure (Fase 16)** — satu-satunya sisa kerja, baiknya dikerjain sekarang karena semua modul udah ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada
+Yang masih perlu diperhatikan sebelum dianggap 100% siap produksi (bukan "belum jadi", tapi "belum dicek/disempurnakan") — rangkuman dari semua catatan QA di bawah:
+
+1. **Symlink `storage:link` di hosting production** — PALING PENTING. Contract Monitoring (Fase 11) & Legal (Fase 14) upload file beneran ke `Storage::disk('public')`, butuh symlink `public/storage → storage/app/public` yang biasanya dibuat lewat `php artisan storage:link`. Hosting cPanel tanpa akses terminal kemungkinan besar belum punya ini — cek ke Rumahweb sebelum dua modul itu dipakai beneran (lihat detail di Fase 11).
+2. **Form kontak publik (Fase 1)** belum nyimpen ke DB/kirim notifikasi — masih `TODO` di `PageController::storeContact()`.
+3. **Import CSV/XLSX bulk item** (Fase 9) belum di-porting dari prototype — nambah item Work Tracker masih satu-satu manual.
+4. **Belum ada test otomatis** di seluruh fitur baru (Fase 9 lanjutan s.d. 16) — konsisten sama controller lama di codebase ini yang juga belum ada test, bukan kelalaian khusus.
+5. Beberapa keputusan desain sengaja beda dari prototype (Payroll dikunci `draft→finalized→paid`, Royalty bebas ganti status, dll) — semuanya didokumentasikan di bagian "Belum Sempurna" masing-masing fase di atas, worth di-review Arga buat mastiin sesuai kebutuhan beneran.
+
+Selebihnya, per-modul checklist detail + catatan QA jujur ada di atas — dokumen ini yang jadi acuan kalau mau audit ulang atau lanjut ke fitur di luar 16 fase yang direncanakan dari awal.
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
 
@@ -285,4 +295,11 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 - Budget: gak ada validasi "actual gak boleh lebih besar dari budget" — sengaja dibiarin bebas (over budget itu justru info penting yang mau ditampilin, bukan dicegah)
 - Royalty: transisi status (`Estimated → Reported → Ready to Pay → Paid`) BEBAS diubah ke mana aja lewat dropdown edit, gak ada lock kayak Payroll (`draft → finalized → paid` satu arah) — kalau ke depannya mau dikunci juga, ini beda desain yang sengaja dipilih karena Royalty datanya emang lebih sering direvisi (angka gross dari platform suka telat/direvisi laporannya)
 - Belum ada grafik/ringkasan Total Net Payable di seluruh entries (listing cuma nunjukin net per baris, gak ada agregat di atas)
+- Belum ada test otomatis, sama alasan kayak fase-fase lain di atas
+
+## Belum Sempurna dari CEO Dashboard IA Restructure (catatan QA jujur)
+
+- Gak ada validasi kontras warna — kalau Owner pilih `ceo_accent_color`/`work_accent_color` yang terlalu terang (mis. putih/kuning pucat), teks putih di atasnya ("Dashboard", "Work Tracker", dst) bisa jadi susah dibaca. Gak ada warning/preview kontras di form Pengaturan Kantor
+- Warna aksen SENGAJA cuma nge-tint 2 area (nav Owner-only + tab Work Control) — tombol hitam lain (`btn-wsm-black`) di seluruh sistem TETAP hitam standar, gak ikut warna aksen. Ini scope yang sengaja dibatasi (sesuai prototype v18), bukan kelupaan
+- Belum ada halaman "hub" dengan kartu akses cepat ke semua 9 modul dari satu layar (kayak CEO Dashboard prototype) — dianggap gak terlalu perlu karena Owner udah dapet akses 1-klik ke semua modul langsung dari sidebar, tapi ini keputusan yang worth di-review Arga kalau mau tampilan "command center" yang lebih visual
 - Belum ada test otomatis, sama alasan kayak fase-fase lain di atas

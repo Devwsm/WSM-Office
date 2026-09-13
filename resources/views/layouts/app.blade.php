@@ -31,6 +31,18 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Dashboard' }} — WSM Office System</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Fase 16 — warna aksen dari Pengaturan Kantor, diinject sebagai
+         CSS custom property biar dipakein tanpa perlu fetch OfficeSetting
+         di tiap view yang butuh (nav Owner-only di sidebar ini +
+         tab bar Work Control di dashboard/work/*). Kolomnya udah ada
+         dari Fase 7 tapi baru sekarang dipakein. --}}
+    @php $accentSetting = \App\Models\OfficeSetting::current(); @endphp
+    <style>
+        :root {
+            --ceo-accent: {{ $accentSetting->ceo_accent_color }};
+            --work-accent: {{ $accentSetting->work_accent_color }};
+        }
+    </style>
 </head>
 
 <body class="bg-cream text-ink antialiased">
@@ -86,19 +98,23 @@
                 </a>
                 @if (auth()->user()->isOwner())
                     <a href="{{ route('owner.dashboard') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
                         Dashboard
                     </a>
                     <a href="{{ route('owner.employees.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
                         Karyawan
                     </a>
                     <a href="{{ route('owner.organization') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'organization'])>
                         Struktur Organisasi
                     </a>
                     <a href="{{ route('owner.office-settings.edit') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'office-settings' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'office-settings' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'office-settings'])>
                         Pengaturan Kantor
                     </a>
                 @endif
@@ -164,7 +180,8 @@
                                     : 0;
                         @endphp
                         <a href="{{ $moduleKey === 'work' ? route('dashboard.work.index') : route('dashboard.show', $moduleKey) }}"
-                            class="flex items-center justify-between gap-2 rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            class="flex items-center justify-between gap-2 rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? ($moduleKey === 'work' ? 'text-white' : 'bg-ink text-white') : 'text-[#5e5951] hover:bg-white' }}"
+                            @style(['background-color: var(--work-accent)' => $moduleActive && $moduleKey === 'work'])>
                             <span>
                                 <span
                                     class="mr-1.5 inline-block w-4 text-center">{{ \App\Models\DashboardAccess::MODULES[$moduleKey]['icon'] }}</span>

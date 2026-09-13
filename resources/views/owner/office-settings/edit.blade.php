@@ -121,6 +121,47 @@
             </div>
         </div>
 
+        {{-- Fase 16 — warna aksen sidebar, sebelumnya cuma kolom DB
+             nganggur dari Fase 7 (padanan pengaturan warna CEO
+             Dashboard/Work Control di prototype v18). "CEO" nge-tint
+             active pill link Owner-only (Dashboard/Karyawan/Struktur
+             Organisasi/Pengaturan Kantor), "Work" nge-tint tab aktif
+             di Work Control (MoM & Memo/Work Tracker/Rapat & Action
+             Item) — lihat layouts/app.blade.php & tab bar
+             dashboard/work/*. Modul lain (KPI, Payroll, dst) TETAP
+             hitam standar, gak ikut warna ini — sengaja cuma 2 area
+             itu yang dulu punya accent terpisah di prototype. --}}
+        <div>
+            <h3 class="mb-3 text-sm font-extrabold">Warna Aksen Sidebar</h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Aksen Dashboard (Owner)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" name="ceo_accent_color"
+                            value="{{ old('ceo_accent_color', $setting->ceo_accent_color) }}"
+                            class="h-10 w-14 cursor-pointer rounded-lg border border-line bg-white p-1">
+                        <span class="text-xs text-muted">{{ old('ceo_accent_color', $setting->ceo_accent_color) }}</span>
+                    </div>
+                    @error('ceo_accent_color')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Aksen Work Control</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" name="work_accent_color"
+                            value="{{ old('work_accent_color', $setting->work_accent_color) }}"
+                            class="h-10 w-14 cursor-pointer rounded-lg border border-line bg-white p-1">
+                        <span
+                            class="text-xs text-muted">{{ old('work_accent_color', $setting->work_accent_color) }}</span>
+                    </div>
+                    @error('work_accent_color')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
         <button type="submit" class="btn-wsm-black justify-self-start">Simpan Pengaturan</button>
     </form>
 @endsection

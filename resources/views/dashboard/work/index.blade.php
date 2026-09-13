@@ -25,7 +25,8 @@
          Control" sekarang 2 sub-halaman: MoM & Memo (ini) dan Work
          Tracker (board kanban Project/Task). --}}
     <div class="mb-5 flex gap-2">
-        <span class="rounded-2xl bg-ink px-3.5 py-2 text-[11px] font-extrabold text-white">MoM &amp; Memo</span>
+        <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
+            style="background-color: var(--work-accent)">MoM &amp; Memo</span>
         <a href="{{ route('dashboard.work.tracker.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
             Tracker</a>

@@ -1,7 +1,9 @@
 {{--
     owner/dashboard.blade.php
     ---------------------------------------------------------------------
-    Shell/placeholder (Fase 0). Isi tiap kartu tiap modul terkait selesai.
+    Fase 16 — 2 kartu terakhir ("Tugas Berjalan"/"Kontrak Akan Habis")
+    akhirnya diisi data beneran (lihat DashboardController), gak lagi
+    "—" placeholder dari Fase 0.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Dashboard', 'navActive' => 'dashboard'])
@@ -35,15 +37,19 @@
         <div class="stat-wsm-green">
             <span class="stat-wsm-label">Tugas Berjalan</span>
             <div>
-                <strong class="stat-wsm-value">—</strong>
-                <p class="stat-wsm-note mt-1">Data aktif mulai Fase 7</p>
+                <strong class="stat-wsm-value">{{ $tugasBerjalan }}</strong>
+                <p class="stat-wsm-note mt-1">Belum Done/Postpone ·
+                    <a href="{{ route('dashboard.work.tracker.index') }}" class="underline">Lihat board →</a>
+                </p>
             </div>
         </div>
         <div class="stat-wsm-lime">
             <span class="stat-wsm-label">Kontrak Akan Habis</span>
             <div>
-                <strong class="stat-wsm-value">—</strong>
-                <p class="stat-wsm-note mt-1">Data aktif mulai Fase 9</p>
+                <strong class="stat-wsm-value">{{ $kontrakAkanHabis }}</strong>
+                <p class="stat-wsm-note mt-1">≤30 hari lagi ·
+                    <a href="{{ route('dashboard.contracts.index') }}" class="underline">Lihat →</a>
+                </p>
             </div>
         </div>
     </div>
