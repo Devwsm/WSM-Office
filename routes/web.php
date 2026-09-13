@@ -34,6 +34,8 @@ use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardControl
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
+use App\Http\Controllers\Dashboard\It\AuditLogController;
+use App\Http\Controllers\Dashboard\It\SystemChangelogController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
@@ -391,6 +393,25 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{legal}/edit', [LegalController::class, 'edit'])->middleware('module:legal,manage')->name('edit');
         Route::patch('/{legal}', [LegalController::class, 'update'])->middleware('module:legal,manage')->name('update');
         Route::delete('/{legal}', [LegalController::class, 'destroy'])->middleware('module:legal,manage')->name('destroy');
+    });
+
+    // --- Fase 15: IT (Audit Log & System Changelog) ---
+    // Sama pola persis grup 'work'/'kpi'/.../'legal' — harus terdaftar
+    // SEBELUM '/{module}' generik di bawah. 2 sub-halaman kayak 'work'
+    // (tracker/meetings): landing '/dashboard/it' = Audit Log (READ-ONLY,
+    // gate 'view' doang, gak ada 'manage' — lihat AuditLogController),
+    // '/dashboard/it/changelog' = System Changelog (CRUD penuh).
+    Route::prefix('it')->name('it.')->group(function () {
+        Route::get('/', [AuditLogController::class, 'index'])->middleware('module:it,view')->name('index');
+
+        Route::prefix('changelog')->name('changelog.')->group(function () {
+            Route::get('/', [SystemChangelogController::class, 'index'])->middleware('module:it,view')->name('index');
+            Route::get('/create', [SystemChangelogController::class, 'create'])->middleware('module:it,manage')->name('create');
+            Route::post('/', [SystemChangelogController::class, 'store'])->middleware('module:it,manage')->name('store');
+            Route::get('/{changelog}/edit', [SystemChangelogController::class, 'edit'])->middleware('module:it,manage')->name('edit');
+            Route::patch('/{changelog}', [SystemChangelogController::class, 'update'])->middleware('module:it,manage')->name('update');
+            Route::delete('/{changelog}', [SystemChangelogController::class, 'destroy'])->middleware('module:it,manage')->name('destroy');
+        });
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');

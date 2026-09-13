@@ -52,10 +52,10 @@ class DashboardController extends Controller
                     'desc' => $meta['desc'],
                     'level' => $user->accessLevel($key),
                     // 'work', 'kpi', 'contracts', 'payroll', 'budget',
-                    // 'royalty' & 'legal' udah punya konten beneran
-                    // (Fase 6b/9, 10, 11, 12, 13, 14) — 1 modul lain
-                    // ('it', Fase 15) masih placeholder generik sampai
-                    // dibangun.
+                    // 'royalty', 'legal' & 'it' udah punya konten beneran
+                    // (Fase 6b/9, 10, 11, 12, 13, 14, 15) — semua 9
+                    // modul dashboard_access sekarang udah gak ada yang
+                    // placeholder generik lagi.
                     'route' => match ($key) {
                         'work' => route('dashboard.work.index'),
                         'kpi' => route('dashboard.kpi.index'),
@@ -64,6 +64,7 @@ class DashboardController extends Controller
                         'budget' => route('dashboard.budget.index'),
                         'royalty' => route('dashboard.royalty.index'),
                         'legal' => route('dashboard.legal.index'),
+                        'it' => route('dashboard.it.index'),
                         default => route('dashboard.show', $key),
                     },
                 ];
