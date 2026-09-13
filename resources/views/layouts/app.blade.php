@@ -117,6 +117,20 @@
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'office-settings'])>
                         Pengaturan Kantor
                     </a>
+                    {{-- Fase 1 (susulan, 2026-09-13) — badge angka jumlah pesan
+                         status 'baru', numpang query ringan langsung di sini
+                         (sama pola sederhana kayak nav lain, belum ada shared
+                         view-composer khusus buat ini). --}}
+                    <a href="{{ route('owner.contact-messages.index') }}"
+                        class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'contact-messages' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'contact-messages'])>
+                        <span>Pesan Kontak</span>
+                        @php($unreadContactCount = \App\Models\ContactMessage::unreadCount())
+                        @if ($unreadContactCount > 0)
+                            <span
+                                class="ml-2 rounded-full bg-[#e0483e] px-2 py-0.5 text-[10px] font-black text-white">{{ $unreadContactCount }}</span>
+                        @endif
+                    </a>
                 @endif
                 {{-- 2026-09-09 — dulu `isHrd() || isOwner()`. SEKARANG
                      `canViewModule('recruitment')` (routes/web.php grup

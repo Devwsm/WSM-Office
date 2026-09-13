@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreJobApplicationRequest;
+use App\Models\ContactMessage;
 use App\Models\JobOpening;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,12 @@ use Illuminate\Http\Request;
  * Halaman publik — Beranda, Tentang Kami, Layanan, Karir, Kontak. Semua
  * tanpa login (route di luar middleware auth). Konten masih hardcode di
  * Blade; jadi dinamis (CMS ringan) baru Fase 12.
+ *
+ * Kontak (susulan, 2026-09-13) — sekarang tersimpan ke `contact_messages`
+ * (lihat migration `create_contact_messages_table`), ditinjau Owner
+ * lewat `Owner\ContactMessageController` (README §2.2). Belum kirim
+ * notifikasi email — Owner masih perlu buka dashboard buat lihat pesan
+ * baru, gak ada alert real-time.
  *
  * Karir (Fase 3) sekarang menampilkan lowongan asli dari tabel
  * `job_openings` yang status-nya `published` — draft/closed sengaja
@@ -72,15 +79,17 @@ class PageController extends Controller
 
     public function storeContact(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150'],
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
-        // TODO Fase 1.x: simpan ke tabel `contact_messages` dan/atau kirim
-        // notifikasi email ke tim — untuk sekarang cuma flash message,
-        // pesan TIDAK tersimpan di mana pun.
+        ContactMessage::create([
+            ...$data,
+            'status' => 'baru',
+        ]);
+
         return back()->with('status', 'Pesan kamu terkirim. Tim kami akan segera menghubungi balik.');
     }
 }

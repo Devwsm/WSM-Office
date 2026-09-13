@@ -55,6 +55,16 @@
     @if (auth()->user()->canManageModule('payroll'))
         <div class="card-wsm-white mb-5">
             <p class="mb-3.5 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Generate Payroll</p>
+            @if ($shortageRate <= 0)
+                <div
+                    class="mb-3.5 rounded-2xl border border-[#f2c94c] bg-[#fff8e1] px-3.5 py-3 text-[11px] font-bold text-[#8a6d00]">
+                    ⚠️ Rate potongan kurang jam kerja (<em>shortage deduction rate</em>) di Pengaturan Kantor masih
+                    <strong>Rp 0</strong>. Kalau lanjut generate sekarang, semua potongan kurang jam kerja bakal
+                    ke-nol-in, bukan dihitung beneran.
+                    <a href="{{ route('owner.office-settings.edit') }}" class="underline">Isi rate-nya dulu di
+                        Pengaturan Kantor</a> kalau memang mau dihitung.
+                </div>
+            @endif
             <form method="POST" action="{{ route('dashboard.payroll.generate') }}" class="grid gap-3">
                 @csrf
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-end">
@@ -75,7 +85,8 @@
                 </div>
                 <p class="text-[11px] text-muted">Karyawan yang record-nya di periode ini sudah
                     <em>final</em>/<em>dibayar</em>
-                    otomatis dilewati, gak ditimpa — regenerate cuma nyentuh yang masih <em>draft</em>.</p>
+                    otomatis dilewati, gak ditimpa — regenerate cuma nyentuh yang masih <em>draft</em>.
+                </p>
             </form>
         </div>
     @endif

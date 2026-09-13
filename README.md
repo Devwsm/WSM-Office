@@ -11,12 +11,13 @@ Dokumen ini adalah acuan kerja WSM-Office (Laravel, web resmi Whisnu Santika Mus
 - Semua user (termasuk Owner) mendarat di **App Mobile** dulu; dari situ ada 1 tombol "Role Dashboard" yang muncul kalau user punya minimal 1 akses modul.
 - Item yang tadinya jadi PR (dari "Kesimpulan" README versi lama) sekarang statusnya:
     1. **Symlink `storage:link` di hosting production** — ✅ **sudah dipasang** (dikonfirmasi user). Upload file Contract Monitoring & Legal sekarang aman diakses lewat `asset('storage/...')`.
-    2. **Form kontak publik** — masih ⭕ cuma render, belum nyimpen ke DB. Sudah ada arah keputusan, lihat §2.
-    3. **Import/Export bulk** — masih ⭕ belum ada sama sekali (Work Tracker). Arah keputusan: digabung 1 halaman, lihat §2.
+    2. **Form kontak publik** — ✅ **selesai dieksekusi (2026-09-13)**. Sekarang tersimpan ke tabel `contact_messages`, ada halaman tersendiri di dashboard Owner (`/owner/pesan-kontak`) + badge unread di sidebar.
+    3. **Import/Export bulk** — masih ⭕ belum ada sama sekali (Work Tracker). Arah keputusan sudah ada (digabung 1 halaman, lihat §2.2), **belum dieksekusi**.
     4. **Test otomatis** — masih ⭕ di seluruh sistem, menyusul (belum jadi prioritas sekarang).
-    5. **UI/UX & mobile-friendliness** — ini yang jadi **prioritas utama fase berikutnya**, scope-nya proyek-lebar bukan cuma tempelan per modul. Lihat §2.
+    5. **UI/UX & mobile-friendliness** — ✅ **audit awal selesai (2026-09-13)** atas 2 layout inti — hasilnya kabar cukup baik (pola mobile dasar udah banyak yang bener), 4 temuan konkret ditemukan buat dibenahi. Detail & urutan fix ada di §2.1. **Perbaikannya sendiri belum dieksekusi**, baru audit.
+    6. **Quick win Payroll (`shortage_deduction_rate` = 0 tanpa warning)** — ✅ **selesai dieksekusi (2026-09-13)**. Form Generate Payroll sekarang nampilin warning eksplisit kalau rate ini masih 0.
 
-Ringkasan checklist per-fase (versi lengkap ada di §5) tetap semuanya ✅, minus 2 catatan minor (form kontak & import/export) yang statusnya di atas.
+Ringkasan checklist per-fase (versi lengkap ada di §5) tetap semuanya ✅, minus 1 catatan minor (import/export) yang statusnya di atas.
 
 ---
 
@@ -26,15 +27,20 @@ Ringkasan checklist per-fase (versi lengkap ada di §5) tetap semuanya ✅, minu
 
 Ini keputusan nomor 5 dari user: penyesuaian UI/UX **tidak diperlakukan sebagai polesan per-modul satu-satu**, tapi sebagai **overhaul lintas-project** — karena semua modul dashboard (`work`, `kpi`, `people`, dst) numpang 1 layout (`layouts/app.blade.php`) dan semua fitur karyawan numpang 1 layout (`layouts/employee.blade.php`), perbaikan di level layout/komponen otomatis ngangkat semua modul sekaligus, lebih efisien daripada benerin satu-satu.
 
-Rencana kerja (diusulkan, urutan prioritas):
+✅ **Audit langkah 1 sudah dieksekusi (2026-09-13, baca-baca, belum ubah kode)** — detail lengkap di file `AUDIT_UIUX_MOBILE_2026-09-13.md`. Ringkasan:
 
-1. **Audit responsive di 2 layout inti dulu** (`layouts/app.blade.php` untuk dashboard/Owner, `layouts/employee.blade.php` untuk App Mobile) — sidebar dashboard kemungkinan besar belum punya pola mobile yang bener (collapse/hamburger/bottom-sheet), sementara App Mobile sudah lebih mobile-native dari awal (bottom-nav) jadi risikonya lebih rendah.
-2. **Standarisasi komponen berulang** (tombol, badge status, form input, tabel/list, modal, empty state) jadi partial/komponen Blade yang dipakai bareng semua modul — supaya benerin 1 komponen = kebenerin di 9 modul sekaligus, bukan 9x kerjaan terpisah.
-3. **Tabel-tabel admin (Rekap Absensi, Payroll, Budget, Royalty, Contracts, Legal, Audit Log)** kemungkinan besar masih layout tabel desktop biasa — perlu pola scroll-horizontal/stacked-card di layar sempit.
-4. **Form-form panjang** (Karyawan, Payroll Generate, Meeting) perlu dicek spacing & ukuran tap-target di mobile.
+- **Kabar baik**: `layouts/app.blade.php` ternyata **sudah** punya pola mobile yang benar (sidebar off-canvas + hamburger + overlay), `layouts/employee.blade.php` memang dari awal mobile-first (bottom-nav). Tap target tombol juga udah aman ukurannya. 5 dari 6 tabel admin & board Kanban udah scroll-horizontal.
+- **Yang perlu dibenahi** (belum dieksekusi, urutan prioritas): (a) 10 lokasi `grid grid-cols-2` tanpa breakpoint responsive di 6 file form/modal (Work Tracker tracker modal, Office Settings, Leave form, Recap show, Home publik) — bikin cramped di HP sempit; (b) 1 tabel (`attendance/recap/index.blade.php`) belum dibungkus `overflow-x-auto`; (c) belum ada custom `@media` terpusat di `app.css` (masih aman sekarang, dicatat buat jaga-jaga); (d) sidebar dashboard yang makin panjang perlu dicoba manual di HP asli, bukan cuma di-cek dari CSS.
+
+Rencana kerja lanjutan (diusulkan, urutan prioritas):
+
+1. ✅ ~~Audit responsive di 2 layout inti~~ — **selesai**, lihat ringkasan di atas & file audit.
+2. **Fix 10 lokasi `grid-cols-2` + 1 tabel tanpa scroll** dari hasil audit — quick, low-risk, pola perbaikannya udah ada contoh yang benar di file lain (`owner/employees/_form.blade.php`).
+3. **Standarisasi komponen berulang** (tombol, badge status, form input, tabel/list, modal, empty state) jadi partial/komponen Blade yang dipakai bareng semua modul — supaya benerin 1 komponen = kebenerin di 9 modul sekaligus, bukan 9x kerjaan terpisah.
+4. **Form-form panjang** (Karyawan, Payroll Generate, Meeting) — cek ulang spacing setelah poin 2 selesai.
 5. **Konsistensi warna aksen** (`ceo_accent_color`/`work_accent_color`, Fase 16) — dipertimbangkan ulang apakah scope-nya diperluas pas overhaul ini jalan, bukan cuma 2 area seperti sekarang.
 
-Ini **belum dieksekusi**, baru arah kerja — sengaja didaftar dulu di README biar jadi acuan sebelum coding jalan.
+Poin 2-5 **belum dieksekusi**, baru arah kerja berikutnya.
 
 ### 2.2 Keputusan per-item yang sudah dibantu diputuskan
 
@@ -42,8 +48,8 @@ Menjawab poin-poin README versi lama:
 
 | #   | Item                          | Keputusan                                                                                                                                                                                                                                                                                                                                                                                                  |
 | --- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Symlink `storage:link`        | Sudah terpasang di hosting — tidak perlu tindakan lagi, upload file Contract/Legal aman dipakai produksi.                                                                                                                                                                                                                                                                                                  |
-| 2   | Form kontak publik            | Disambungkan ke DB (tabel `contact_messages` baru: nama, kontak, pesan, status baru/dibaca, timestamp) + dibuatkan halaman tersendiri di dashboard (bukan numpang modul lain) — kandidat modul baru `inbox-publik` atau ditaruh di bawah akses Owner dulu sebelum didelegasikan lewat Dashboard Access.                                                                                                    |
+| 1   | Symlink `storage:link`        | ✅ Sudah terpasang di hosting — tidak perlu tindakan lagi, upload file Contract/Legal aman dipakai produksi.                                                                                                                                                                                                                                                                                               |
+| 2   | Form kontak publik            | ✅ **Selesai dieksekusi (2026-09-13)**. Disambungkan ke DB (tabel `contact_messages`: nama, email, pesan, status baru/dibaca) + halaman tersendiri `Owner\ContactMessageController` (`/owner/pesan-kontak`) + badge unread di sidebar. Masih Owner-only dulu (belum jadi modul `dashboard_access`), sesuai keputusan awal.                                                                                 |
 | 3   | Import/Export bulk            | Digabung jadi **1 halaman terpusat** ("Data Import/Export"), bukan tersebar per-modul. Halaman ini jadi hub: pilih modul tujuan (Work Tracker item dulu sebagai yang pertama, karena ini yang paling jelas kebutuhannya dari prototype) → upload CSV/XLSX → preview → commit. Modul lain (Budget, Payroll, dll) bisa nyusul nempel ke hub yang sama nanti, bukan bikin halaman import terpisah-pisah lagi. |
 | 4   | Test otomatis                 | Menyusul — belum jadi prioritas sekarang, tetap dicatat sebagai utang teknis (lihat §5 bagian "Belum Sempurna").                                                                                                                                                                                                                                                                                           |
 | 5   | Keputusan UI/UX               | Diperlakukan sebagai inisiatif lintas-project (layout & komponen bersama), bukan per-modul — detail rencana di §2.1.                                                                                                                                                                                                                                                                                       |
@@ -51,7 +57,7 @@ Menjawab poin-poin README versi lama:
 
 Keputusan detail per catatan "Belum Sempurna" (poin 6):
 
-- **Payroll — `shortage_deduction_rate` default 0 tanpa warning** → **quick win, layak dieksekusi duluan**: tambah warning eksplisit di form Generate Payroll kalau rate ini masih 0, biar Owner sadar sebelum generate massal yang salah.
+- **Payroll — `shortage_deduction_rate` default 0 tanpa warning** → ✅ **selesai dieksekusi (2026-09-13)**: form Generate Payroll sekarang nampilin warning eksplisit + link ke Pengaturan Kantor kalau rate ini masih 0.
 - **Payroll — karyawan belum bisa lihat slip sendiri dari App Mobile** → **prioritas tinggi**, karena ini langsung nyambung ke prioritas mobile-friendly (§2.1): tambah kartu "Slip Gaji" read-only di Profile/Home App Mobile.
 - **Payroll — slip PDF/print** → ditunda (butuh library PDF baru), dicatat di backlog.
 - **Contracts — notifikasi kontrak mau habis, versioning file** → ditunda, cukup badge "Segera Berakhir" yang sudah ada dulu; versioning butuh keputusan storage yang lebih besar (histori file), bukan quick win.

@@ -41,6 +41,7 @@ use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
+use App\Http\Controllers\Owner\ContactMessageController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
@@ -166,6 +167,12 @@ Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')
     // yang ubah + deploy ulang) — sekarang Owner bisa ubah sendiri.
     Route::get('/pengaturan-kantor', [OfficeSettingController::class, 'edit'])->name('office-settings.edit');
     Route::patch('/pengaturan-kantor', [OfficeSettingController::class, 'update'])->name('office-settings.update');
+
+    // --- Fase 1 (susulan, 2026-09-13): Pesan Kontak publik ---
+    // Belum jadi modul dashboard_access — cuma Owner dulu yang bisa
+    // lihat, sampai ada keputusan lanjutan mau didelegasikan ke mana.
+    Route::get('/pesan-kontak', [ContactMessageController::class, 'index'])->name('contact-messages.index');
+    Route::post('/pesan-kontak/{contactMessage}/baca', [ContactMessageController::class, 'markRead'])->name('contact-messages.markRead');
 
     // Fase 4 (rekap absensi) ada di grup 'attendance.recap.' di bawah,
     // bareng Manajer & HRD — Fase 5 & 7 (approval izin/cuti/lembur) ada

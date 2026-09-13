@@ -56,6 +56,12 @@ use Illuminate\Support\Facades\Auth;
  * Fase 15 (instrumentasi, 2026-09-13) — generate/update/finalize/
  * markPaid/destroy dicatat ke AuditLog::record() (payroll = data
  * finansial, aksi paling sensitif buat modul Audit Log).
+ *
+ * Quick win (2026-09-13) — index() sekarang ngirim `shortageRate` ke
+ * view biar form Generate bisa nunjukin warning eksplisit kalau
+ * `shortage_deduction_rate` masih 0 (Owner belum pernah isi di
+ * Pengaturan Kantor). Sebelumnya generate pertama kali BAKAL nol-in
+ * semua potongan kurang jam kerja tanpa Owner sadar.
  * ---------------------------------------------------------------------
  */
 class PayrollController extends Controller
@@ -77,6 +83,7 @@ class PayrollController extends Controller
         $eligibleEmployees = User::query()->whereNotNull('salary_base')->orderBy('name')->get(['id', 'name']);
         $notYetGeneratedCount = $eligibleEmployees->pluck('id')->diff($generatedUserIds)->count();
         $missingSalaryCount = User::query()->whereNull('salary_base')->count();
+        $shortageRate = (float) (OfficeSetting::current()->shortage_deduction_rate ?? 0);
 
         return view('dashboard.payroll.index', [
             'period' => $period,
@@ -85,6 +92,7 @@ class PayrollController extends Controller
             'notYetGeneratedCount' => $notYetGeneratedCount,
             'missingSalaryCount' => $missingSalaryCount,
             'eligibleEmployees' => $eligibleEmployees,
+            'shortageRate' => $shortageRate,
         ]);
     }
 
