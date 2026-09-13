@@ -28,11 +28,13 @@
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
 use App\Http\Controllers\Attendance\RecapController;
+use App\Http\Controllers\Dashboard\Budget\BudgetController;
 use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
+use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
@@ -351,6 +353,28 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::post('/{payroll}/finalisasi', [PayrollController::class, 'finalize'])->middleware('module:payroll,manage')->name('finalize');
         Route::post('/{payroll}/tandai-dibayar', [PayrollController::class, 'markPaid'])->middleware('module:payroll,manage')->name('mark-paid');
         Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->middleware('module:payroll,manage')->name('destroy');
+    });
+
+    // --- Fase 13: Project Budgeting & Royalty ---
+    // Sama pola persis grup 'work'/'kpi'/'contracts'/'payroll' — harus
+    // terdaftar SEBELUM '/{module}' generik di bawah. 2 modul terpisah
+    // (gate beda: 'budget' vs 'royalty'), meski dibangun bareng.
+    Route::prefix('budget')->name('budget.')->group(function () {
+        Route::get('/', [BudgetController::class, 'index'])->middleware('module:budget,view')->name('index');
+        Route::get('/create', [BudgetController::class, 'create'])->middleware('module:budget,manage')->name('create');
+        Route::post('/', [BudgetController::class, 'store'])->middleware('module:budget,manage')->name('store');
+        Route::get('/{budget}/edit', [BudgetController::class, 'edit'])->middleware('module:budget,manage')->name('edit');
+        Route::patch('/{budget}', [BudgetController::class, 'update'])->middleware('module:budget,manage')->name('update');
+        Route::delete('/{budget}', [BudgetController::class, 'destroy'])->middleware('module:budget,manage')->name('destroy');
+    });
+
+    Route::prefix('royalty')->name('royalty.')->group(function () {
+        Route::get('/', [RoyaltyController::class, 'index'])->middleware('module:royalty,view')->name('index');
+        Route::get('/create', [RoyaltyController::class, 'create'])->middleware('module:royalty,manage')->name('create');
+        Route::post('/', [RoyaltyController::class, 'store'])->middleware('module:royalty,manage')->name('store');
+        Route::get('/{royalty}/edit', [RoyaltyController::class, 'edit'])->middleware('module:royalty,manage')->name('edit');
+        Route::patch('/{royalty}', [RoyaltyController::class, 'update'])->middleware('module:royalty,manage')->name('update');
+        Route::delete('/{royalty}', [RoyaltyController::class, 'destroy'])->middleware('module:royalty,manage')->name('destroy');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');

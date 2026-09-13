@@ -2,7 +2,7 @@
 
 Dokumen ini bandingin **WSM-Office** (Laravel, web resmi yang bakal di-deploy public) sama **WOS_2_0_App_v32** (`index.html`, standalone HTML prototype — CEO/COO/Owner Control Center + Employee App). Tujuannya: satu tempat buat lihat apa yang udah sesuai, apa yang udah ada tapi beda, dan apa yang belum dikerjain — per fase, biar gampang nentuin urutan kerja berikutnya.
 
-Update terakhir: cek kode per 2026-09-12 (controller, migration, route, view) — termasuk Fase 12 Payroll yang baru selesai dibangun & di-review hari ini (ada 1 bug kecil di `routes/web.php` yang ke-fix pas review, lihat Fase 12).
+Update terakhir: cek kode per 2026-09-12 (controller, migration, route, view) — termasuk Fase 13 Budget & Royalty yang baru selesai dibangun hari ini.
 
 ## Cara Baca
 
@@ -153,7 +153,13 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 13 — Project Budgeting & Royalty
 
-⭕ **Belum dikerjakan.** Tabel `project_budgets` (padanan `saveBudgetEntry`) dan `royalty_entries` (padanan `saveRoyaltyEntry`) sudah ada, belum ada controller/view. Modul `budget` & `royalty` di Dashboard masih placeholder generik.
+✅ **Selesai (2026-09-12).** Dua controller terpisah (gate beda: `budget` vs `royalty`), tapi dibangun bareng karena satu fase:
+
+- **`BudgetController`** (`dashboard/budget/*`) — CRUD baris budget-vs-actual per project (padanan `saveBudgetEntry()`), listing dikelompokkan per project dengan subtotal Budget/Actual/Variance (variance minus = over budget, dikasih warna merah)
+- **`RoyaltyController`** (`dashboard/royalty/*`) — CRUD royalty entry (padanan `saveRoyaltyEntry()`), Net Payable dihitung live lewat `RoyaltyEntry::net()` (gross × share% − recoup), filter per status (`Estimated`/`Reported`/`Ready to Pay`/`Paid`)
+- Cuma level `royaltyEntries` yang di-porting — subsistem `royaltyFinance` (revenue ledger per-lagu, lebih detail) SENGAJA gak diikutin, sesuai catatan migration
+- Landing `/dashboard` di-fix buat kedua modul (sama pola fix yang berulang di fase-fase sebelumnya)
+- Format Rupiah di kedua modul numpang `PayrollRecord::formatRupiah()` yang udah ada dari Fase 12 — sengaja gak bikin helper baru, satu sumber format currency buat seluruh sistem
 
 ---
 
@@ -208,13 +214,13 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 10   | KPI & Performance                                              | ✅                                      |
 | 11   | Employee Contracts                                             | ✅                                      |
 | 12   | Payroll                                                        | ✅                                      |
-| 13   | Project Budgeting & Royalty                                    | ⭕ (tabel only)                         |
+| 13   | Project Budgeting & Royalty                                    | ✅                                      |
 | 14   | Legal                                                          | ⭕ (tabel only)                         |
 | 15   | IT (Audit Log & Changelog)                                     | ⭕ (tabel only)                         |
 | 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–12 (fondasi + KPI + Contracts + Payroll) sudah solid dan sesuai/lebih detail dari prototype (dengan penyesuaian arsitektur permission-based). Fase 13–15 (Budget, Royalty, Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
+**Pola yang kelihatan:** Fase 1–13 (fondasi + KPI + Contracts + Payroll + Budget/Royalty) sudah solid dan sesuai/lebih detail dari prototype (dengan penyesuaian arsitektur permission-based). Fase 14–15 (Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
 
 ## Rekomendasi Urutan Kerja Berikutnya
 
@@ -222,8 +228,9 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 ~~2. KPI (Fase 10)~~ — ✅ selesai 2026-09-12 (`KpiController`, views `dashboard/kpi/*`, kartu "My KPI" di Home sekarang keisi).
 ~~3. Contracts (Fase 11)~~ — ✅ selesai 2026-09-12 (`ContractController`, views `dashboard/contracts/*`, upload file beneran ke storage).
 ~~4. Payroll (Fase 12)~~ — ✅ selesai 2026-09-12 (`PayrollController`, views `dashboard/payroll/*`, generate per-periode + alur draft/finalized/paid).
+~~5. Budget & Royalty (Fase 13)~~ — ✅ selesai 2026-09-12 (`BudgetController` + `RoyaltyController`, views `dashboard/budget/*` & `dashboard/royalty/*`).
 
-1. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa dikerjain, dampak ke UX harian lebih kecil dari modul-modul sebelumnya
+1. **Legal (Fase 14)**, **IT (Fase 15)** — dua modul terakhir yang masih placeholder, dampak ke UX harian lebih kecil dari modul-modul sebelumnya
 2. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
@@ -251,4 +258,11 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 - Karyawan sendiri belum bisa lihat slip payroll-nya dari Employee App (Home/Profile) — sekarang murni sisi Owner/Manajer doang lewat `/dashboard/payroll`
 - Belum ada notifikasi ke karyawan pas payroll-nya difinalisasi/ditandai dibayar
 - `shortage_deduction_rate` default 0 kalau Owner belum pernah isi — berarti generate pertama kali BAKAL nol-in semua potongan kurang jam kerja sampai Owner sadar isi angkanya di Pengaturan Kantor; gak ada warning eksplisit di form Generate yang ngingetin ini
+- Belum ada test otomatis, sama alasan kayak fase-fase lain di atas
+
+## Belum Sempurna dari Budget & Royalty (catatan QA jujur)
+
+- Budget: gak ada validasi "actual gak boleh lebih besar dari budget" — sengaja dibiarin bebas (over budget itu justru info penting yang mau ditampilin, bukan dicegah)
+- Royalty: transisi status (`Estimated → Reported → Ready to Pay → Paid`) BEBAS diubah ke mana aja lewat dropdown edit, gak ada lock kayak Payroll (`draft → finalized → paid` satu arah) — kalau ke depannya mau dikunci juga, ini beda desain yang sengaja dipilih karena Royalty datanya emang lebih sering direvisi (angka gross dari platform suka telat/direvisi laporannya)
+- Belum ada grafik/ringkasan Total Net Payable di seluruh entries (listing cuma nunjukin net per baris, gak ada agregat di atas)
 - Belum ada test otomatis, sama alasan kayak fase-fase lain di atas
