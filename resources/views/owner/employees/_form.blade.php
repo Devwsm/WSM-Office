@@ -94,3 +94,42 @@
             value="{{ old('birth_date', optional($employee?->birth_date)->format('Y-m-d')) }}" class="input-wsm">
     </div>
 </div>
+
+{{-- Fase 12 — data Payroll, ditunda dari Fase 7. Ketiga field ini opsional:
+     karyawan tanpa "Gaji Pokok" diisi otomatis dilewati pas generate
+     Payroll (lihat PayrollController::generate()), bukan dianggap 0. --}}
+<div class="mt-5 border-t border-[#eee8df] pt-4">
+    <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Data Payroll (opsional)</p>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+            <label class="field-label-wsm mb-1.5">Gaji Pokok (Rp)</label>
+            <input type="number" name="salary_base" min="0" step="1000"
+                value="{{ old('salary_base', $employee->salary_base ?? '') }}" class="input-wsm">
+            <p class="mt-1 text-[11px] text-muted">Kosongkan kalau karyawan ini belum digaji lewat sistem
+                (gak akan muncul di daftar generate Payroll).</p>
+            @error('salary_base')
+                <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label class="field-label-wsm mb-1.5">Target Jam Kerja/Hari</label>
+            <input type="number" name="target_hours_per_day" min="1" max="24"
+                value="{{ old('target_hours_per_day', $employee->target_hours_per_day ?? '') }}" class="input-wsm">
+            @error('target_hours_per_day')
+                <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label class="field-label-wsm mb-1.5">Flat Rate Lembur (Rp/pengajuan)</label>
+            <input type="number" name="flat_overtime_rate" min="0" step="1000"
+                value="{{ old('flat_overtime_rate', $employee->flat_overtime_rate ?? '') }}" class="input-wsm">
+            <p class="mt-1 text-[11px] text-muted">Dikali jumlah Lembur disetujui bulan itu — bukan dihitung per
+                jam durasi.</p>
+            @error('flat_overtime_rate')
+                <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+            @enderror
+        </div>
+    </div>
+</div>

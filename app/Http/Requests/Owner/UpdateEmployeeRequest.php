@@ -44,6 +44,10 @@ class UpdateEmployeeRequest extends FormRequest
             'join_date' => ['nullable', 'date'],
             'annual_leave_entitlement' => ['nullable', 'integer', 'min:0', 'max:60'],
             'birth_date' => ['nullable', 'date', 'before:today'],
+            // Fase 12 — field payroll, ditunda dari Fase 7 (lihat README).
+            'salary_base' => ['nullable', 'numeric', 'min:0'],
+            'target_hours_per_day' => ['nullable', 'integer', 'min:1', 'max:24'],
+            'flat_overtime_rate' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

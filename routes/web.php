@@ -32,6 +32,7 @@ use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
+use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
@@ -335,6 +336,21 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{contract}/edit', [ContractController::class, 'edit'])->middleware('module:contracts,manage')->name('edit');
         Route::patch('/{contract}', [ContractController::class, 'update'])->middleware('module:contracts,manage')->name('update');
         Route::delete('/{contract}', [ContractController::class, 'destroy'])->middleware('module:contracts,manage')->name('destroy');
+    });
+
+    // --- Fase 12: Payroll ---
+    // Sama pola persis grup 'work'/'kpi'/'contracts' — harus terdaftar
+    // SEBELUM '/{module}' generik di bawah. 'generate' & 'finalisasi'/
+    // 'tandai-dibayar' SENGAJA method POST (bukan idempotent GET) biar
+    // gak ketrigger gak sengaja lewat prefetch/refresh browser.
+    Route::prefix('payroll')->name('payroll.')->group(function () {
+        Route::get('/', [PayrollController::class, 'index'])->middleware('module:payroll,view')->name('index');
+        Route::post('/generate', [PayrollController::class, 'generate'])->middleware('module:payroll,manage')->name('generate');
+        Route::get('/{payroll}', [PayrollController::class, 'show'])->middleware('module:payroll,view')->name('show');
+        Route::patch('/{payroll}', [PayrollController::class, 'update'])->middleware('module:payroll,manage')->name('update');
+        Route::post('/{payroll}/finalisasi', [PayrollController::class, 'finalize'])->middleware('module:payroll,manage')->name('finalize');
+        Route::post('/{payroll}/tandai-dibayar', [PayrollController::class, 'markPaid'])->middleware('module:payroll,manage')->name('mark-paid');
+        Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->middleware('module:payroll,manage')->name('destroy');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Model PayrollRecord
@@ -65,5 +66,37 @@ class PayrollRecord extends Model
         );
 
         return $this->total;
+    }
+
+    /** Label status buat badge (Bahasa Indonesia) — sama pola LeaveRequest/OvertimeRequest::statusLabel(). */
+    public function statusLabel(): string
+    {
+        return match ($this->status) {
+            'finalized' => 'Final',
+            'paid' => 'Dibayar',
+            default => 'Draft',
+        };
+    }
+
+    /** Nama class badge yang udah ada di app.css (.badge-wsm-*). */
+    public function statusBadgeClass(): string
+    {
+        return match ($this->status) {
+            'finalized' => 'badge-wsm-blue',
+            'paid' => 'badge-wsm-green',
+            default => 'badge-wsm-gray',
+        };
+    }
+
+    /** Format rupiah ringkas ("Rp 5.000.000") — dipakai di semua view Payroll. */
+    public static function formatRupiah(?float $value): string
+    {
+        return 'Rp ' . number_format($value ?? 0, 0, ',', '.');
+    }
+
+    /** Label periode manusiawi ("September 2026") dari kolom `period` (format YYYY-MM). */
+    public function periodLabel(): string
+    {
+        return Carbon::createFromFormat('Y-m', $this->period)->translatedFormat('F Y');
     }
 }

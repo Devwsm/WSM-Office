@@ -16,7 +16,11 @@ use Illuminate\Support\Carbon;
  * (`Owner\OfficeSettingController`) — sebelumnya cuma lewat seeder.
  * `ceo_accent_color`/`work_accent_color` (Fase 16) numpang di tabel
  * yang sama karena sama-sama "pengaturan global sistem" — gak dibikin
- * tabel `settings` baru cuma buat 2 kolom warna.
+ * tabel `settings` baru cuma buat 2 kolom warna. `shortage_deduction_rate`
+ * (Fase 12, migration `add_shortage_deduction_rate_to_office_settings`)
+ * numpang di sini dengan alasan sama — rate rupiah per blok "Kurang Jam
+ * Kerja" buat Payroll, kebijakan perusahaan yang sama buat semua
+ * karyawan (beda dari `flat_overtime_rate` di `User` yang per-orang).
  * ---------------------------------------------------------------------
  */
 #[Fillable([
@@ -33,6 +37,7 @@ use Illuminate\Support\Carbon;
     'required_work_minutes',
     'ceo_accent_color',
     'work_accent_color',
+    'shortage_deduction_rate',
 ])]
 class OfficeSetting extends Model
 {
@@ -43,6 +48,7 @@ class OfficeSetting extends Model
             'longitude' => 'float',
             'geo_attendance_enabled' => 'boolean',
             'enforce_radius' => 'boolean',
+            'shortage_deduction_rate' => 'float',
         ];
     }
 
@@ -67,6 +73,7 @@ class OfficeSetting extends Model
             'required_work_minutes' => 480,
             'ceo_accent_color' => '#111111',
             'work_accent_color' => '#3558f4',
+            'shortage_deduction_rate' => 0,
         ]);
     }
 

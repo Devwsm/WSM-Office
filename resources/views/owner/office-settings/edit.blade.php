@@ -108,6 +108,16 @@
                         ke window normal) masuk status "Kurang Jam Kerja" & diakumulasi per blok 60 menit di rekap
                         bulanan.</p>
                 </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Rate Potongan Kurang Jam (Rp / blok
+                        60 menit)</label>
+                    <input type="number" name="shortage_deduction_rate"
+                        value="{{ old('shortage_deduction_rate', $setting->shortage_deduction_rate) }}" min="0"
+                        step="1000" class="input-wsm" required>
+                    <p class="mt-1 text-[11px] text-muted">Dipakai Payroll (Fase 12) buat hitung potongan otomatis
+                        dari akumulasi blok "Kurang Jam Kerja" bulanan tiap karyawan — belum ada acuan pasti dari
+                        prototype, jadi rate rupiahnya Owner yang tentukan di sini.</p>
+                </div>
             </div>
         </div>
 

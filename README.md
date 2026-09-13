@@ -2,7 +2,7 @@
 
 Dokumen ini bandingin **WSM-Office** (Laravel, web resmi yang bakal di-deploy public) sama **WOS_2_0_App_v32** (`index.html`, standalone HTML prototype — CEO/COO/Owner Control Center + Employee App). Tujuannya: satu tempat buat lihat apa yang udah sesuai, apa yang udah ada tapi beda, dan apa yang belum dikerjain — per fase, biar gampang nentuin urutan kerja berikutnya.
 
-Update terakhir: cek kode per 2026-09-12 (controller, migration, route, view) — termasuk MoM terstruktur yang baru selesai dibangun hari ini.
+Update terakhir: cek kode per 2026-09-12 (controller, migration, route, view) — termasuk Fase 12 Payroll yang baru selesai dibangun & di-review hari ini (ada 1 bug kecil di `routes/web.php` yang ke-fix pas review, lihat Fase 12).
 
 ## Cara Baca
 
@@ -84,7 +84,7 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 - ✅ Pengaturan Kantor (`/owner/pengaturan-kantor`) — titik lokasi, radius toleransi absen, jam kerja normal, bisa diubah Owner sendiri lewat UI (sebelumnya cuma lewat seeder)
 - ✅ Pengajuan & approval Lembur (self-service, flow sama kayak Izin/Cuti)
-- 🟡 Field `overtime_flat_rate` (flat rate per approved overtime, bukan hitungan durasi — persis `oeOvertimeFlat` prototype) **sengaja ditunda** ke Fase 12 Payroll, jadi belum nempel ke kalkulasi apa pun sekarang
+- 🟡 Field `flat_overtime_rate` (flat rate per approved overtime, bukan hitungan durasi — persis `oeOvertimeFlat` prototype) **sengaja ditunda** ke Fase 12 Payroll — sekarang sudah dilengkapi (lihat Fase 12), dulu belum nempel ke kalkulasi apa pun
 
 ---
 
@@ -138,7 +138,16 @@ Catatan penting soal arsitektur: sejak **2026-09-09** ada refactor besar "**perm
 
 ## Fase 12 — Payroll
 
-⭕ **Belum dikerjakan.** Tabel `payroll_records` + field payroll di `users` (termasuk `overtime_flat_rate` dari Fase 7) sudah disiapkan, tapi belum ada controller/view. Catatan dari migration: breakdown Payroll di WSM-Office **sengaja didesain beda** dari prototype (prototype cuma nampilin angka ringkasan di tabel, breakdown detailnya belum ada acuan) — jadi pas fase ini digarap, kemungkinan besar hasilnya bakal 🟡 (beda), bukan porting 1:1.
+✅ **Selesai (2026-09-12).** `PayrollController` (`app/Http/Controllers/Dashboard/Payroll/`) + views `dashboard/payroll/*` — **sengaja didesain beda** dari prototype (bukan porting 1:1), sesuai catatan migration `create_payroll_records_table`: prototype cuma hitung "estimate" on-the-fly tiap buka CEO Dashboard, gak pernah disimpan; di sini payroll digenerate jadi baris `payroll_records` permanen per (karyawan, periode).
+
+- **Generate per-periode** — satu form men-generate payroll buat semua karyawan yang punya "Gaji Pokok" terisi sekaligus (atau subset lewat multi-select), bukan satu-satu manual
+- **Komponen dihitung otomatis**: `base_salary` (salinan `users.salary_base` saat generate), `overtime_amount` (jumlah Lembur disetujui periode itu × `flat_overtime_rate` per-karyawan), `shortage_deduction` (`Attendance::monthlyShortageBlocks()` dari Fase 7 × rate perusahaan baru — lihat poin berikutnya)
+- **Field baru yang dilengkapi buat nutup Fase 12**: `salary_base`/`target_hours_per_day`/`flat_overtime_rate` (per-karyawan, ditambah ke form Karyawan Fase 2 — field ini emang sengaja ditunda dari Fase 7) dan `shortage_deduction_rate` (kebijakan perusahaan, satu rate rupiah per blok 60 menit kurang jam kerja, ditambah ke form Pengaturan Kantor Fase 7 — Owner yang nentuin sendiri angkanya, gak ada acuan dari prototype)
+- **Alur status satu arah**: `draft → finalized → paid`. Cuma `draft` yang boleh di-regenerate ulang/diedit (`other_adjustment` + catatan)/dihapus — sekali `finalized`, angka terkunci permanen sebagai histori, gak ketimpa walau data sumbernya (gaji, setting) direvisi belakangan
+- **Halaman detail (slip)** nunjukin breakdown lengkap (jumlah lembur & blok shortage mentah, bukan cuma nominal akhir) — ini justru LEBIH detail dari prototype yang cuma nampilin angka ringkasan `thp`
+- Karyawan tanpa "Gaji Pokok" terisi sengaja dilewati dari generate (bukan dianggap Rp 0), dan dashboard payroll nunjukin counter berapa karyawan yang masih kosong datanya
+
+🔧 **1 bug kecil ke-fix pas review:** `routes/web.php` sempet ada duplikasi `Route::get('/{module}', ...)->name('show')` dua kali persis (baris terakhir grup `dashboard.`). Gak fatal (request tetap kena match ke baris pertama, cuma baris kedua jadi dead code), tapi udah dibersihin.
 
 ---
 
@@ -198,24 +207,24 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 | 9    | Import CSV/XLSX bulk item                                      | ⭕                                      |
 | 10   | KPI & Performance                                              | ✅                                      |
 | 11   | Employee Contracts                                             | ✅                                      |
-| 12   | Payroll                                                        | ⭕ (tabel only)                         |
+| 12   | Payroll                                                        | ✅                                      |
 | 13   | Project Budgeting & Royalty                                    | ⭕ (tabel only)                         |
 | 14   | Legal                                                          | ⭕ (tabel only)                         |
 | 15   | IT (Audit Log & Changelog)                                     | ⭕ (tabel only)                         |
 | 16   | CEO Dashboard IA Restructure                                   | 🟡 sebagian kecil                       |
 | —    | Refactor permission-based                                      | ✅                                      |
 
-**Pola yang kelihatan:** Fase 1–10 (fondasi + KPI) sudah solid dan sesuai prototype (dengan penyesuaian arsitektur permission-based). Fase 11–15 (Contracts, Payroll, Budget, Royalty, Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
+**Pola yang kelihatan:** Fase 1–12 (fondasi + KPI + Contracts + Payroll) sudah solid dan sesuai/lebih detail dari prototype (dengan penyesuaian arsitektur permission-based). Fase 13–15 (Budget, Royalty, Legal, IT) **data layer-nya udah lengkap duluan** tapi **controller & view-nya belum ada satu pun** — jadi kerjaan berikutnya murni "bangun UI di atas tabel yang udah siap", bukan desain ulang dari nol.
 
 ## Rekomendasi Urutan Kerja Berikutnya
 
 ~~1. MoM (Meeting)~~ — ✅ selesai 2026-09-12 (`MeetingController`, views `dashboard/work/meetings/*`, tab "Rapat & Action Item").
 ~~2. KPI (Fase 10)~~ — ✅ selesai 2026-09-12 (`KpiController`, views `dashboard/kpi/*`, kartu "My KPI" di Home sekarang keisi).
 ~~3. Contracts (Fase 11)~~ — ✅ selesai 2026-09-12 (`ContractController`, views `dashboard/contracts/*`, upload file beneran ke storage).
+~~4. Payroll (Fase 12)~~ — ✅ selesai 2026-09-12 (`PayrollController`, views `dashboard/payroll/*`, generate per-periode + alur draft/finalized/paid).
 
-1. **Payroll (Fase 12)** — butuh `overtime_flat_rate` yang udah disiapkan dari Fase 7
-2. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa nyusul, dampak ke UX harian lebih kecil
-3. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
+1. **Budget & Royalty (Fase 13)**, **Legal (Fase 14)**, **IT (Fase 15)** — bisa dikerjain, dampak ke UX harian lebih kecil dari modul-modul sebelumnya
+2. **CEO Dashboard IA Restructure (Fase 16)** — baiknya dikerjain setelah modul-modul di atas ada isinya, biar sidebar/shell yang dibangun langsung nyambung ke halaman yang beneran ada, bukan bikin shell duluan lalu nunggu isi
 
 ## Belum Sempurna dari MoM Terstruktur (catatan QA jujur)
 
@@ -235,3 +244,11 @@ Ini bukan fitur baru, tapi perubahan arsitektur lintas-fase yang penting buat ko
 - Belum ada versi/histori kontrak — ganti file pas edit LANGSUNG timpa yang lama (dihapus dari storage), gak ada arsip revisi sebelumnya
 - Verifikasi symlink `storage:link` di hosting production — lihat catatan ⚠️ di Fase 11 di atas, ini paling penting dicek SEBELUM Contract Monitoring dipakai beneran
 - Belum ada test otomatis, sama alasan kayak MoM & KPI di atas
+
+## Belum Sempurna dari Payroll (catatan QA jujur)
+
+- Belum ada slip payroll versi PDF/print buat dikasih ke karyawan — halaman detail (`show.blade.php`) cuma bisa dilihat lewat browser, belum bisa didownload/diprint rapi
+- Karyawan sendiri belum bisa lihat slip payroll-nya dari Employee App (Home/Profile) — sekarang murni sisi Owner/Manajer doang lewat `/dashboard/payroll`
+- Belum ada notifikasi ke karyawan pas payroll-nya difinalisasi/ditandai dibayar
+- `shortage_deduction_rate` default 0 kalau Owner belum pernah isi — berarti generate pertama kali BAKAL nol-in semua potongan kurang jam kerja sampai Owner sadar isi angkanya di Pengaturan Kantor; gak ada warning eksplisit di form Generate yang ngingetin ini
+- Belum ada test otomatis, sama alasan kayak fase-fase lain di atas

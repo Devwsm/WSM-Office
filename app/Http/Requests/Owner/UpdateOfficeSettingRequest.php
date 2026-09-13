@@ -40,6 +40,8 @@ class UpdateOfficeSettingRequest extends FormRequest
             'normal_end_time' => ['required', 'date_format:H:i'],
             'late_tolerance_minutes' => ['required', 'integer', 'min:0', 'max:120'],
             'required_work_minutes' => ['required', 'integer', 'min:60', 'max:960'],
+            // Fase 12 — rate potongan Payroll per blok 60 menit shortage.
+            'shortage_deduction_rate' => ['required', 'numeric', 'min:0'],
         ];
     }
 
