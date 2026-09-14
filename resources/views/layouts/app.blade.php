@@ -96,26 +96,15 @@
                     class="rounded-2xl px-3.5 py-3 font-extrabold text-[#5e5951] hover:bg-white">
                     ← App Saya
                 </a>
-                @if (auth()->user()->isOwner())
+                @php
+                    /** @var \App\Models\User $u */
+                    $u = auth()->user();
+                @endphp
+                @if ($u->isOwner())
                     <a href="{{ route('owner.dashboard') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
                         Dashboard
-                    </a>
-                    <a href="{{ route('owner.employees.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
-                        Karyawan
-                    </a>
-                    <a href="{{ route('owner.organization') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'organization'])>
-                        Struktur Organisasi
-                    </a>
-                    <a href="{{ route('owner.office-settings.edit') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'office-settings' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'office-settings'])>
-                        Pengaturan Kantor
                     </a>
                     {{-- Fase 1 (susulan, 2026-09-13) — badge angka jumlah pesan
                          status 'baru', numpang query ringan langsung di sini
@@ -132,83 +121,225 @@
                         @endif
                     </a>
                 @endif
-                {{-- 2026-09-09 — dulu `isHrd() || isOwner()`. SEKARANG
-                     `canViewModule('recruitment')` (routes/web.php grup
-                     'recruitment.*' juga udah pindah ke module:recruitment). --}}
-                @if (auth()->user()->canViewModule('recruitment'))
-                    <a href="{{ route('recruitment.applications.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'applications' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                        Pelamar
-                    </a>
-                    <a href="{{ route('recruitment.openings.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'openings' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                        Lowongan
-                    </a>
-                @endif
+
                 {{--
-                    2026-09-09 — INI BUG YANG DILAPORKAN: link "Absensi" di
-                    bawah ini SEBELUMNYA SAMA SEKALI TANPA @if (nol gate),
-                    nempel gitu aja di luar kondisi manapun. Efeknya: SIAPA
-                    PUN yang somehow nyampe layouts.app (misal Aldora — role
-                    'karyawan' biasa — lewat modul 'work' yang dia PUNYA
-                    akses beneran) otomatis lihat link ke Rekap Absensi juga,
-                    padahal nggak ada dashboard_access ke situ sama sekali.
-                    Sekarang digerbang `canViewModule('people')` — sama modul
-                    yang gerbangin route attendance.recap.* (routes/web.php).
+                    2026-09-14 — Sidebar dirombak biar SAMA kayak prototype
+                    captur-ui-wos: bukan lagi daftar flat "1 pill per modul
+                    dashboard_access", tapi dikelompokin jadi section
+                    berwarna bernomor (PEOPLE, WORK CONTROL, FINANCE,
+                    ROYALTY, HR ADMIN, LEGAL, IT) yang beberapa di antaranya
+                    GABUNGIN lintas beberapa modul jadi 1 grup visual — sama
+                    persis pola prototype-nya (mis. "HR ADMIN" isinya modul
+                    'people' + 'kpi' + 'contracts' + 'payroll' + halaman
+                    Owner-only "Karyawan" sekaligus).
+
+                    Nomor section ("1 · ", "2 · ", dst) DIHITUNG ULANG per
+                    user (bukan angka mati kayak prototype) — soalnya siapa
+                    yang lihat section mana beda-beda tergantung
+                    dashboard_access, jadi kalau di-hardcode "5 · HR ADMIN"
+                    buat user yang cuma punya akses HR Admin doang, bakal
+                    aneh mulai dari angka 5. $sectionNo jalan cuma pas
+                    section-nya beneran dirender.
+
+                    Item "Projects" (prototype, section Work Control) SENGAJA
+                    gak ada linknya sendiri — di app ini "Projects" udah
+                    dilebur jadi bagian dari Work Tracker board (Fase 9),
+                    bukan halaman terpisah. "Executive People Overview"
+                    (prototype, section People) SENGAJA di-skip dulu — gak
+                    ada padanan halaman yang jelas di app ini. Badge
+                    "LIMITED" & "v21" (versi statis di prototype) juga
+                    SENGAJA belum diporting — belum ada keputusan gimana itu
+                    harus dipetakan ke sistem akses view/manage yang
+                    sekarang, jangan asal comot.
+
+                    Section "RECRUITMENT" TIDAK ADA di prototype asli (fitur
+                    baru di app ini, lihat catatan DashboardAccess::MODULES)
+                    — ditambahin sebagai section ke-8 di urutan paling
+                    bawah atas permintaan Arga (2026-09-14), gak ada padanan
+                    posisi di prototype buat dijadiin acuan taruh di mana.
                 --}}
-                @if (auth()->user()->canViewModule('people'))
-                    <a href="{{ route('attendance.recap.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                        Absensi
-                    </a>
-                    {{-- 2026-09-09 — dulu `isManajer() || isOwner()` (HRD
-                         sengaja dikecualikan, kesepakatan Fase 5, TETAP
-                         berlaku — lihat routes/web.php grup
-                         'approval.leave.'). SEKARANG sama-sama gerbang
-                         `canViewModule('people')` kayak Absensi di atas
-                         (approve/reject beneran tetap dicek manager_id di
-                         controller, link ini cuma nampilin/nyembunyiin
-                         entry point-nya). --}}
-                    <a href="{{ route('approval.leave.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'approval' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                        Persetujuan
+                @php $sectionNo = 0; @endphp
+
+                {{-- 1 · PEOPLE — cuma "Organization" (Owner-only, padanan
+                     Struktur Organisasi). "Executive People Overview"
+                     di-skip, lihat catatan di atas. --}}
+                @if ($u->isOwner())
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#dff3ee">{{ $sectionNo }} · PEOPLE</p>
+                    <a href="{{ route('owner.organization') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'organization'])>
+                        <span class="mr-1.5 inline-block w-4 text-center">⌘</span>Organization
                     </a>
                 @endif
 
-                @php $accessibleModules = collect(\App\Models\DashboardAccess::MODULES)->keys()->filter(fn($m) => auth()->user()->canViewModule($m)); @endphp
-                @if ($accessibleModules->isNotEmpty())
-                    <p class="mt-3 px-3.5 text-[10px] font-extrabold uppercase tracking-wide text-muted">Modul</p>
-                    @foreach ($accessibleModules as $moduleKey)
-                        @php
-                            $moduleActive =
-                                $moduleKey === 'work'
-                                    ? request()->routeIs('dashboard.work.*')
-                                    : request()->routeIs('dashboard.show') && request()->route('module') === $moduleKey;
-                            // Fase 8: badge unread cuma di "Work Control" (Memo
-                            // Forum ada di situ) & cuma buat yang manage-level
-                            // (padanan badge ceo-response-badge di prototype,
-                            // yang cuma muncul buat Owner/CEO).
-                            $unreadBadge =
-                                $moduleKey === 'work' && auth()->user()->canManageModule('work')
-                                    ? \App\Models\MemoThreadMessage::unreadForManagementCount()
-                                    : 0;
-                        @endphp
-                        <a href="{{ $moduleKey === 'work' ? route('dashboard.work.index') : route('dashboard.show', $moduleKey) }}"
-                            class="flex items-center justify-between gap-2 rounded-2xl px-3.5 py-3 font-extrabold {{ $moduleActive ? ($moduleKey === 'work' ? 'text-white' : 'bg-ink text-white') : 'text-[#5e5951] hover:bg-white' }}"
-                            @style(['background-color: var(--work-accent)' => $moduleActive && $moduleKey === 'work'])>
-                            <span>
-                                <span
-                                    class="mr-1.5 inline-block w-4 text-center">{{ \App\Models\DashboardAccess::MODULES[$moduleKey]['icon'] }}</span>
-                                {{ \App\Models\DashboardAccess::MODULES[$moduleKey]['label'] }}
-                            </span>
-                            @if ($unreadBadge > 0)
-                                <span
-                                    class="grid h-5 min-w-5 flex-none place-items-center rounded-full bg-[#a83d35] px-1 text-[10px] font-black text-white">
-                                    {{ $unreadBadge }}
-                                </span>
-                            @endif
+                {{-- 2 · WORK CONTROL — Work Tracker (nyakup Projects),
+                     Timeline Calendar (kalender-tim, sisi employee.*, gak
+                     digerbang module:work tapi ditaruh di grup ini biar
+                     nyambung visual sama prototype), MoM/Meeting, Memo
+                     Forum. --}}
+                @if ($u->canViewModule('work'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#e2e9ff">{{ $sectionNo }} · WORK CONTROL</p>
+                    <a href="{{ route('dashboard.work.tracker.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.tracker.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.tracker.*')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">☷</span>Work Tracker
+                    </a>
+                    <a href="{{ route('employee.workTracker.calendar') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('employee.workTracker.calendar') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('employee.workTracker.calendar')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">▦</span>Timeline Calendar
+                    </a>
+                    <a href="{{ route('dashboard.work.meetings.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.meetings.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.meetings.*')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">≡</span>Rapat &amp; Action Item
+                    </a>
+                    <a href="{{ route('dashboard.work.index') }}"
+                        class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit']) ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit'])])>
+                        <span><span class="mr-1.5 inline-block w-4 text-center">✦</span>Memo Forum</span>
+                        @php $workUnreadBadge = $u->canManageModule('work') ? \App\Models\MemoThreadMessage::unreadForManagementCount() : 0; @endphp
+                        @if ($workUnreadBadge > 0)
+                            <span
+                                class="ml-2 rounded-full bg-[#a83d35] px-2 py-0.5 text-[10px] font-black text-white">{{ $workUnreadBadge }}</span>
+                        @endif
+                    </a>
+                @endif
+
+                {{-- 3 · FINANCE — cuma modul 'budget' (Project Budgeting). --}}
+                @if ($u->canViewModule('budget'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#fff0ad">{{ $sectionNo }} · FINANCE</p>
+                    <a href="{{ route('dashboard.budget.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.budget.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">▦</span>Project Budgeting
+                    </a>
+                @endif
+
+                {{-- 4 · ROYALTY — cuma modul 'royalty'. --}}
+                @if ($u->canViewModule('royalty'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#eee3ff">{{ $sectionNo }} · ROYALTY</p>
+                    <a href="{{ route('dashboard.royalty.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.royalty.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">♪</span>Royalty Dashboard
+                    </a>
+                @endif
+
+                {{-- 5 · HR ADMIN — gabungan lintas modul: 'people'
+                     (Attendance/Requests), 'kpi', Owner-only "Karyawan &
+                     Access", 'contracts', 'payroll'. Header-nya nongol
+                     kalau MINIMAL SATU item di bawah kelihatan. --}}
+                @php
+                    $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwner() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
+                @endphp
+                @if ($hrAdminVisible)
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#e4f4dc">{{ $sectionNo }} · HR ADMIN</p>
+                    @if ($u->canViewModule('people'))
+                        <a href="{{ route('attendance.recap.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'attendance' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">⏱</span>Attendance
                         </a>
-                    @endforeach
+                        <a href="{{ route('approval.leave.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'approval' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">↗</span>Requests
+                        </a>
+                    @endif
+                    @if ($u->canViewModule('kpi'))
+                        <a href="{{ route('dashboard.kpi.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.kpi.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">◎</span>KPI &amp; Performance
+                        </a>
+                    @endif
+                    @if ($u->isOwner())
+                        <a href="{{ route('owner.employees.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                            @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
+                            <span class="mr-1.5 inline-block w-4 text-center">◉</span>Karyawan &amp; Access
+                        </a>
+                    @endif
+                    @if ($u->canViewModule('contracts'))
+                        <a href="{{ route('dashboard.contracts.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.contracts.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">▤</span>Employee Contracts
+                        </a>
+                    @endif
+                    @if ($u->canViewModule('payroll'))
+                        <a href="{{ route('dashboard.payroll.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.payroll.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">$</span>Payroll
+                        </a>
+                    @endif
+                @endif
+
+                {{-- Pill hitam "HR / Geo / Color Settings" — padanan
+                     Pengaturan Kantor (Owner-only), ditaruh persis kayak
+                     posisinya di prototype: antara HR ADMIN & LEGAL. --}}
+                @if ($u->isOwner())
+                    <a href="{{ route('owner.office-settings.edit') }}"
+                        class="mt-1 rounded-2xl bg-ink px-3.5 py-3 text-center font-extrabold text-white hover:bg-black">
+                        ⚙ HR / Geo / Color Settings
+                    </a>
+                @endif
+
+                {{-- 6 · LEGAL — 1 controller/1 route, 2 kategori dibedain
+                     query string `category` (lihat catatan LegalController),
+                     TAPI prototype nampilin 2 baris terpisah — disamain di
+                     sini lewat 2 link ke route yang sama. --}}
+                @if ($u->canViewModule('legal'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#ffe7d1">{{ $sectionNo }} · LEGAL</p>
+                    <a href="{{ route('dashboard.legal.index', ['category' => 'album']) }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.legal.*') && request('category', 'album') === 'album' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">♪</span>Song / Album Contracts
+                    </a>
+                    <a href="{{ route('dashboard.legal.index', ['category' => 'royalty']) }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.legal.*') && request('category') === 'royalty' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">▤</span>Royalty Agreements
+                    </a>
+                @endif
+
+                {{-- 7 · IT — Audit Log (read-only) + System Changelog. --}}
+                @if ($u->canViewModule('it'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#ece9e3">{{ $sectionNo }} · IT</p>
+                    <a href="{{ route('dashboard.it.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.index') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">▤</span>Audit Logs
+                    </a>
+                    <a href="{{ route('dashboard.it.changelog.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.changelog.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">⟳</span>System Change Log
+                    </a>
+                @endif
+
+                {{-- 8 · RECRUITMENT — GAK ADA di prototype asli, ditambahin
+                     atas permintaan Arga (2026-09-14). Pelamar & Lowongan
+                     udah lama punya route/controller sendiri, cuma
+                     sekarang dikasih section header berwarna juga biar
+                     konsisten visual sama section lain. --}}
+                @if ($u->canViewModule('recruitment'))
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#dceefb">{{ $sectionNo }} · RECRUITMENT</p>
+                    <a href="{{ route('recruitment.applications.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'applications' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">✎</span>Pelamar
+                    </a>
+                    <a href="{{ route('recruitment.openings.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'openings' ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">✎</span>Lowongan
+                    </a>
                 @endif
             </nav>
 
