@@ -280,13 +280,24 @@
                     @endif
                 @endif
 
-                {{-- Pill hitam "HR / Geo / Color Settings" — padanan
-                     Pengaturan Kantor (Owner-only), ditaruh persis kayak
-                     posisinya di prototype: antara HR ADMIN & LEGAL. --}}
+                {{-- "HR / Geo / Color Settings" — padanan Pengaturan Kantor
+                     (Owner-only), ditaruh persis kayak posisinya di
+                     prototype: antara HR ADMIN & LEGAL.
+                     Sekarang dikasih judul kelompok berwarna krem (sama
+                     pola kayak IT/LEGAL/dst di atas) biar kelihatan sebagai
+                     section sendiri, dan link di bawahnya balik ke pola
+                     standar semua link lain: nge-blend transparan di atas
+                     sidebar (gak ada bg sendiri) pas gak aktif, cuma hitam
+                     solid pas beneran lagi dibuka. Sebelumnya sempat
+                     dicoba versi outline hitam+putih permanen, tapi itu
+                     malah bikin beda sendiri dari pola section lain. --}}
                 @if ($u->isOwner())
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#f1ead9">{{ $sectionNo }} · SETTINGS</p>
                     <a href="{{ route('owner.office-settings.edit') }}"
-                        class="mt-1 rounded-2xl bg-ink px-3.5 py-3 text-center font-extrabold text-white hover:bg-black">
-                        ⚙ HR / Geo / Color Settings
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('owner.office-settings.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">⚙</span>HR / Geo / Color Settings
                     </a>
                 @endif
 
