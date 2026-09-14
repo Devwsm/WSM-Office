@@ -32,6 +32,110 @@
         @endif
     </div>
 
+    {{-- Polish (2026-09-13, dari audit prototype v32) -- posisi kartu
+         "Info dari Owner" (memo) DIPINDAH ke sini, tepat setelah hero,
+         SEBELUM Milestones/Paid Leave/kartu absen -- sebelumnya kartu
+         ini ditaruh paling bawah Home, padahal prototype (renderEmployeeHome
+         v18, employeeMemoMarkup) naronya di urutan paling awal. --}}
+    @php
+        $me = auth()->user();
+        $visibleMemos = $memos->reject(fn($m) => $m->isHiddenBy($me))->take(4);
+        $hiddenMemoCount = $memos->filter(fn($m) => $m->isHiddenBy($me))->count();
+    @endphp
+    <div x-data="{ showHidden: false }" class="card-wsm-white">
+        <div class="mb-1.5 flex items-center justify-between gap-3">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Info dari Owner</p>
+            @if ($hiddenMemoCount > 0)
+                <button type="button" @click="showHidden = !showHidden"
+                    class="text-[10px] font-extrabold text-muted underline decoration-dotted"
+                    x-text="showHidden ? 'Sembunyikan lagi' : '{{ $hiddenMemoCount }} disembunyikan'"></button>
+            @endif
+        </div>
+
+        @if ($memos->isEmpty())
+            <p class="text-xs text-muted">Belum ada memo.</p>
+        @else
+            <div class="grid gap-2.5">
+                @foreach ($visibleMemos as $memo)
+                    {{-- Polish (2026-09-13) — tiap memo sekarang kartu sendiri
+                         (bukan list bertumpuk 1 kartu), unread dikasih ring
+                         biru — padanan `.memo-v18-card.unread` di prototype
+                         (border-color #7891ff + inset ring). --}}
+                    <div
+                        class="rounded-2xl border bg-white p-3.5 {{ $memo->isReadBy($me) ? 'border-line' : 'border-brand-blue-light ring-1 ring-brand-blue-light/40' }}">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    @if ($memo->pinned)
+                                        <span class="text-[10px] font-extrabold text-[#a8873d]">📌</span>
+                                    @endif
+                                    <strong class="text-xs">{{ $memo->title }}</strong>
+                                </div>
+                                <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
+                                    {{ $memo->created_at->translatedFormat('d M Y') }}</span>
+                            </div>
+                            <span
+                                class="flex-none rounded-full px-2 py-0.5 text-[9px] font-extrabold {{ $memo->isReadBy($me) ? 'bg-[#eee8df] text-muted' : 'bg-brand-blue text-white' }}">
+                                {{ $memo->isReadBy($me) ? 'READ' : 'UNREAD' }}
+                            </span>
+                        </div>
+                        <p class="mt-1.5 whitespace-pre-line text-xs text-muted">{{ $memo->content }}</p>
+
+                        {{-- 2026-09-10 — tombol "Tandai Sudah/Belum Dibaca" manual
+                             DICABUT (permintaan Arga): kartu ini udah kelihatan
+                             penuh isinya begitu Home dibuka, jadi otomatis
+                             ke-mark read server-side (lihat
+                             HomeController::index() -> Memo::markAllReadFor()),
+                             gak perlu aksi manual lagi. "Sembunyikan" tetap ada,
+                             itu aksi beda (nyembunyiin dari daftar, bukan status
+                             baca). --}}
+                        <div class="mt-2 flex gap-3.5">
+                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
+                                @csrf
+                                <button type="submit"
+                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
+                                    Sembunyikan
+                                </button>
+                            </form>
+                        </div>
+
+                        @include('memo._thread', [
+                            'memo' => $memo,
+                            'replyRoute' => route('employee.memo.reply', $memo),
+                        ])
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Memo yang disembunyikan — sengaja tetap di-render di DOM
+                 (bukan lewat request baru), toggle-nya murni CSS/Alpine.
+                 Wajar buat 3-4 item/bulan kayak konteks perusahaan ini,
+                 lihat README kalau volume memo-nya jauh lebih besar
+                 nanti (baru perlu pindah ke query terpisah). --}}
+            @if ($hiddenMemoCount > 0)
+                <div x-show="showHidden" x-cloak class="mt-3 grid gap-3 border-t border-[#eee8df] pt-3">
+                    @foreach ($memos->filter(fn($m) => $m->isHiddenBy($me)) as $memo)
+                        <div class="opacity-60">
+                            <div class="flex items-center gap-1.5">
+                                <strong class="text-xs">{{ $memo->title }}</strong>
+                            </div>
+                            <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
+                                {{ $memo->created_at->translatedFormat('d M Y') }}</span>
+                            <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $memo->content }}</p>
+                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}" class="mt-1.5">
+                                @csrf
+                                <button type="submit"
+                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
+                                    Tampilkan Lagi
+                                </button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        @endif
+    </div>
+
     {{-- App Mode quick win (2026-09-09) — Milestones (Lama Bekerja,
          Birthday, Work Anniversary), padanan employeeCelebrationMarkup
          di prototype. Lihat employee/_milestones.blade.php. --}}
@@ -308,6 +412,31 @@
         </div>
     @endif
 
+    {{-- Polish (2026-09-13, dari audit prototype v32) — "metric-grid",
+         padanan 2 kartu kecil (Working Hours Today, This Month) yang
+         ternyata belum ada sama sekali sebelumnya. Posisi PERSIS
+         prototype: tepat setelah kartu absen, sebelum My KPI. Warna
+         nyamain prototype (yellow-card untuk jam hari ini, green-card
+         untuk hari hadir bulan ini) pakai class stat-wsm-* yang udah
+         ada (dipakai juga di Payroll Overview Owner). --}}
+    <div class="mb-3.5 grid grid-cols-2 gap-2.5">
+        <div class="stat-wsm-yellow min-h-0! p-4!">
+            <span class="stat-wsm-label">Working Hours Today</span>
+            <div>
+                <strong class="stat-wsm-value text-2xl!">{{ number_format($workedMinutesToday / 60, 1) }}<span
+                        class="text-sm">h</span></strong>
+                <p class="stat-wsm-note mt-1">{{ $sessions->count() }} session</p>
+            </div>
+        </div>
+        <div class="stat-wsm-green min-h-0! p-4!">
+            <span class="stat-wsm-label">This Month</span>
+            <div>
+                <strong class="stat-wsm-value text-2xl!">{{ $daysPresentThisMonth }}</strong>
+                <p class="stat-wsm-note mt-1">hari tercatat hadir</p>
+            </div>
+        </div>
+    </div>
+
     {{-- App Mode quick win (2026-09-09) — kartu "My KPI", padanan
          employeeKpiMarkup di prototype. Lihat employee/_kpi.blade.php.
          Kelihatan kosong sampai Fase 10 (Owner input KPI tim) selesai —
@@ -329,101 +458,6 @@
          prototype: My KPI -> My Work Tracker -> Team Moments -> Role
          Dashboard entry. Lihat employee/_team-moments.blade.php. --}}
     @include('employee._team-moments')
-
-    @php
-        $me = auth()->user();
-        $visibleMemos = $memos->reject(fn($m) => $m->isHiddenBy($me))->take(4);
-        $hiddenMemoCount = $memos->filter(fn($m) => $m->isHiddenBy($me))->count();
-    @endphp
-    <div x-data="{ showHidden: false }" class="card-wsm-white">
-        <div class="mb-1.5 flex items-center justify-between gap-3">
-            <p class="text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Info dari Owner</p>
-            @if ($hiddenMemoCount > 0)
-                <button type="button" @click="showHidden = !showHidden"
-                    class="text-[10px] font-extrabold text-muted underline decoration-dotted"
-                    x-text="showHidden ? 'Sembunyikan lagi' : '{{ $hiddenMemoCount }} disembunyikan'"></button>
-            @endif
-        </div>
-
-        @if ($memos->isEmpty())
-            <p class="text-xs text-muted">Belum ada memo.</p>
-        @else
-            <div class="grid gap-3">
-                @foreach ($visibleMemos as $memo)
-                    <div class="{{ !$loop->last ? 'border-b border-[#eee8df] pb-3' : '' }}">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-1.5">
-                                    @if ($memo->pinned)
-                                        <span class="text-[10px] font-extrabold text-[#a8873d]">📌</span>
-                                    @endif
-                                    <strong class="text-xs">{{ $memo->title }}</strong>
-                                </div>
-                                <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
-                                    {{ $memo->created_at->translatedFormat('d M Y') }}</span>
-                            </div>
-                            <span
-                                class="flex-none rounded-full px-2 py-0.5 text-[9px] font-extrabold {{ $memo->isReadBy($me) ? 'bg-[#eee8df] text-muted' : 'bg-brand-blue text-white' }}">
-                                {{ $memo->isReadBy($me) ? 'READ' : 'UNREAD' }}
-                            </span>
-                        </div>
-                        <p class="mt-1.5 whitespace-pre-line text-xs text-muted">{{ $memo->content }}</p>
-
-                        {{-- 2026-09-10 — tombol "Tandai Sudah/Belum Dibaca" manual
-                             DICABUT (permintaan Arga): kartu ini udah kelihatan
-                             penuh isinya begitu Home dibuka, jadi otomatis
-                             ke-mark read server-side (lihat
-                             HomeController::index() -> Memo::markAllReadFor()),
-                             gak perlu aksi manual lagi. "Sembunyikan" tetap ada,
-                             itu aksi beda (nyembunyiin dari daftar, bukan status
-                             baca). --}}
-                        <div class="mt-2 flex gap-3.5">
-                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
-                                @csrf
-                                <button type="submit"
-                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
-                                    Sembunyikan
-                                </button>
-                            </form>
-                        </div>
-
-                        @include('memo._thread', [
-                            'memo' => $memo,
-                            'replyRoute' => route('employee.memo.reply', $memo),
-                        ])
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- Memo yang disembunyikan — sengaja tetap di-render di DOM
-                 (bukan lewat request baru), toggle-nya murni CSS/Alpine.
-                 Wajar buat 3-4 item/bulan kayak konteks perusahaan ini,
-                 lihat README kalau volume memo-nya jauh lebih besar
-                 nanti (baru perlu pindah ke query terpisah). --}}
-            @if ($hiddenMemoCount > 0)
-                <div x-show="showHidden" x-cloak class="mt-3 grid gap-3 border-t border-[#eee8df] pt-3">
-                    @foreach ($memos->filter(fn($m) => $m->isHiddenBy($me)) as $memo)
-                        <div class="opacity-60">
-                            <div class="flex items-center gap-1.5">
-                                <strong class="text-xs">{{ $memo->title }}</strong>
-                            </div>
-                            <span class="text-[10px] text-muted">{{ $memo->creator->name }} ·
-                                {{ $memo->created_at->translatedFormat('d M Y') }}</span>
-                            <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $memo->content }}</p>
-                            <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}"
-                                class="mt-1.5">
-                                @csrf
-                                <button type="submit"
-                                    class="text-[10px] font-extrabold text-[#5e5951] underline decoration-dotted">
-                                    Tampilkan Lagi
-                                </button>
-                            </form>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-        @endif
-    </div>
 
     {{-- App Mode quick win (2026-09-09) — "Latest Attendance" langsung
          di Home (padanan historyCards(id,5) di prototype), lepas dari

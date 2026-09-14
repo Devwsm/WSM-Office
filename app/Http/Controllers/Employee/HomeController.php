@@ -76,6 +76,14 @@ use Illuminate\Support\Facades\Auth;
  *   prototype — WSM-Office belum punya logic accrual bulanan itu di
  *   modul Cuti manapun, jadi disamakan ke pola yang SUDAH ada di app
  *   ini dulu (lihat README, dicatat sebagai deviasi yang disengaja).
+ *
+ * Polish visual (2026-09-13, dari audit prototype v32) — 2 perubahan:
+ * (1) `$workedMinutesToday`/`$daysPresentThisMonth` BARU, padanan
+ * "metric-grid" (kartu "Working Hours Today" & "This Month") yang
+ * ternyata belum ada sama sekali di implementasi sebelumnya. (2) Posisi
+ * kartu "Info dari Owner" (memo) DIPINDAH di view — prototype naronya
+ * tepat setelah hero/tanggal, SEBELUM Milestones/Paid Leave/kartu
+ * absen, bukan di paling bawah Home kayak sebelumnya.
  * ---------------------------------------------------------------------
  */
 class HomeController extends Controller
@@ -213,6 +221,22 @@ class HomeController extends Controller
         $openWorkItems = $myWorkItems->where('progress', '!=', 'Done')->values();
         $doneWorkItemsCount = $myWorkItems->where('progress', '=', 'Done')->count();
 
+        // Polish (2026-09-13) — "metric-grid" (Working Hours Today / This
+        // Month), padanan 2 kartu kecil di prototype (renderEmployeeHome
+        // v18) yang ternyata belum ada sama sekali di Home: langsung
+        // setelah kartu absen, sebelum My KPI. `workedMinutesToday` pakai
+        // Attendance::workedMinutes() yang udah nanganin sesi yang masih
+        // terbuka (pakai now() kalau belum checkout) — dijumlah lintas
+        // SEMUA sesi hari ini (Lapangan/Gigs bisa multi-sesi).
+        $workedMinutesToday = $sessions->sum(fn(Attendance $a) => $a->workedMinutes() ?? 0);
+        $daysPresentThisMonth = Attendance::query()
+            ->where('user_id', Auth::id())
+            ->whereNotNull('clock_in_at')
+            ->whereYear('date', now()->year)
+            ->whereMonth('date', now()->month)
+            ->distinct('date')
+            ->count('date');
+
         return view('employee.home', [
             'attendance' => $attendance,
             'sessions' => $sessions,
@@ -227,6 +251,8 @@ class HomeController extends Controller
             'teamMoments' => $teamMoments,
             'openWorkItems' => $openWorkItems,
             'doneWorkItemsCount' => $doneWorkItemsCount,
+            'workedMinutesToday' => $workedMinutesToday,
+            'daysPresentThisMonth' => $daysPresentThisMonth,
         ]);
     }
 }

@@ -3,28 +3,32 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
+use App\Models\OfficeSetting;
+use App\Models\Project;
+use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Request;
 
 /**
  * WorkTrackerController (Employee)
  * ---------------------------------------------------------------------
  * App Mode (2026-09-09) — padanan `employeeTasksMarkup()` (My Work
  * Tracker, embedded di Home, lihat HomeController::index() &
- * employee/_work-tracker.blade.php) dan `openSharedWorkloadCalendar()`
- * (Shared Calendar, `calendar()` di bawah) di prototype v32.
+ * employee/_work-tracker.blade.php) dan "Shared Workload Calendar"
+ * (`calendar()` di bawah, padanan `renderEmployeeSharedCalendarV21` /
+ * `v21EmployeeCalendarGrid` di prototype v32).
  *
- * KOREKSI dari audit sebelumnya (README ronde 5): versi prototype
- * PALING AKHIR (v18/v32, baris ~1857-1858 di
- * WOS_2_0_STANDALONE_v32.html) TERNYATA gak punya filter Project/
- * Category/Progress di widget Home sama sekali — itu klaim yang salah
- * dari audit sebelumnya (ketuker sama versi v12 yang udah digantikan).
- * Widget Home versi final cuma nampilin item open (max 8) + tombol
- * "Shared Calendar", TANPA filter apa pun. Shared Calendar versi final
- * juga TANPA filter Project/PIC (klaim itu juga salah, gak pernah ada
- * di kode manapun yang ketemu). Diimplementasikan di sini PERSIS versi
- * final itu, BUKAN versi ber-filter yang disebut di audit sebelumnya.
+ * KOREKSI (2026-09-13) — audit sebelumnya (komentar lama di sini)
+ * bilang versi final prototype "cuma 14 hari ke depan, TANPA filter
+ * Project/PIC". Itu SALAH — dikonfirmasi langsung dari screenshot app
+ * prototype yang BENERAN JALAN (bukan cuma baca kode statis, yang
+ * gampang ketuker banyaknya versi function senama v9/v18/v21 di file
+ * yang sama): Shared Workload Calendar versi final itu FULL MONTH GRID
+ * (Minggu-Sabtu, 6 baris) dengan navigasi bulan (←/Today/→), filter
+ * Project & PIC, "weekly rhythm" strip (fokus kerja per hari
+ * Senin-Jumat), task berwarna sesuai project, dan legend warna project
+ * di bawah — persis `calendar()` versi ini sekarang.
  *
  * "My Work Tracker" = WorkItem dengan `pic_employee_id` = user yang
  * login. `additional_pic` (kolom string bebas, BUKAN FK) sengaja TIDAK
@@ -38,38 +42,145 @@ use Illuminate\Support\Facades\Auth;
  * dulu — nulis/ubah WorkItem butuh route+validasi+authorization
  * terpisah yang belum digarap, supaya gak nyampur sama quick win Team
  * Moments/Paid Leave yang murni read-only dari data yang udah ada.
+ *
+ * "Weekly Rhythm" (`WEEKLY_RHYTHM` konstanta di bawah) — hari & fokus
+ * kerja per hari SENGAJA hardcoded (prototype punya UI Owner buat ubah
+ * ini per hari, WSM-Office belum ada tempat nyimpennya di DB). TAPI
+ * jam kerjanya (2026-09-14, fix "belum pakai data asli") SEKARANG
+ * ambil dari `OfficeSetting::current()` yang beneran (bukan angka
+ * hardcoded terpisah yang bisa beda sama Pengaturan Kantor asli) —
+ * kalau Owner ubah jam kerja di sana, kalender ini otomatis ikut
+ * berubah. Hari WFH tetap "Flexible / remote" (gak ada kolom jam WFH
+ * di OfficeSetting, itu bukan kebijakan berbasis jam).
+ * "Project color" juga BELUM ada kolom `color` di tabel `projects` —
+ * dipakai palet warna WSM yang udah ada (`PROJECT_COLOR_PALETTE`),
+ * di-assign deterministik per `project_id % jumlah warna`, biar tiap
+ * project tetap konsisten warnanya tiap kali dibuka, tanpa migration
+ * baru.
  * ---------------------------------------------------------------------
  */
 class WorkTrackerController extends Controller
 {
     /**
-     * "Shared Calendar" — padanan `openSharedWorkloadCalendar()`.
-     * Prototype nampilinnya sebagai modal (SPA, sekali render penuh di
-     * client). WSM-Office adalah aplikasi multi-page (bukan SPA) —
-     * diadaptasi jadi halaman tersendiri (bukan modal overlay), pola
-     * yang sama seperti adaptasi "Kunci Dashboard" (dulu modal/
-     * sessionStorage di prototype, sekarang halaman + session
-     * server-side di sini). Fungsinya identik: 14 hari ke depan
-     * (termasuk hari ini), semua WorkItem seluruh TIM yang due di
-     * rentang itu dan belum Done — bukan cuma milik sendiri, makanya
-     * namanya "Shared".
+     * Padanan V19_DEFAULT_RHYTHM di prototype — fokus & mode kerja per
+     * hari (Minggu=0 s.d. Sabtu=6, cuma Senin-Jumat yang diisi). Jam
+     * kerja WFO-nya DIISI DINAMIS di calendar() dari OfficeSetting asli
+     * (lihat komentar class), bukan angka statis di sini.
+     */
+    private const WEEKLY_RHYTHM = [
+        1 => ['day' => 'Senin', 'focus' => 'Alignment & Planning', 'mode' => 'WFO'],
+        2 => ['day' => 'Selasa', 'focus' => 'Production & Decision', 'mode' => 'WFO'],
+        3 => ['day' => 'Rabu', 'focus' => 'Delivery & Execution', 'mode' => 'WFO'],
+        4 => ['day' => 'Kamis', 'focus' => 'Outreach & Development', 'mode' => 'WFH'],
+        5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH'],
+    ];
+
+    /** Palet warna WSM yang udah ada di design token (resources/css/app.css @theme). */
+    private const PROJECT_COLOR_PALETTE = [
+        '#3558f4', // brand-blue
+        '#deb92e', // brand-yellow
+        '#27c84d', // brand-green
+        '#b4ef4b', // brand-lime
+        '#f16c61', // brand-red
+        '#6e95f5', // brand-blue-light
+        '#f3e65c', // brand-yellow-light
+    ];
+
+    private static function projectColor(?int $projectId): string
+    {
+        if (! $projectId) {
+            return '#8b867e'; // muted, buat item tanpa project
+        }
+
+        return self::PROJECT_COLOR_PALETTE[$projectId % count(self::PROJECT_COLOR_PALETTE)];
+    }
+
+    /** Kontras teks di atas warna project — padanan v19Contrast() di prototype. */
+    private static function contrastFor(string $hexColor): string
+    {
+        $hex = ltrim($hexColor, '#');
+        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+        $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+
+        return $luminance > 0.6 ? '#17130a' : '#ffffff';
+    }
+
+    /**
+     * "Shared Workload Calendar" — full month grid, padanan
+     * `renderEmployeeSharedCalendarV21()`/`v21EmployeeCalendarGrid()`.
+     * `?month=YYYY-MM` buat navigasi, `?project=` & `?pic=` buat filter.
      */
     public function calendar()
     {
-        $start = Carbon::today();
-        $days = collect(range(0, 13))->map(fn(int $i) => $start->copy()->addDays($i));
+        $monthParam = Request::query('month');
+        $anchor = $monthParam
+            ? Carbon::createFromFormat('Y-m', $monthParam)->startOfMonth()
+            : Carbon::today()->startOfMonth();
 
-        $items = WorkItem::query()
-            ->whereBetween('due_date', [$start->toDateString(), $start->copy()->addDays(13)->toDateString()])
-            ->where('progress', '!=', 'Done')
+        $projectFilter = Request::query('project') ? (int) Request::query('project') : null;
+        $picFilter = Request::query('pic') ? (int) Request::query('pic') : null;
+
+        // Fix (2026-09-14) — jam kerja WFO diambil dari OfficeSetting
+        // ASLI (bukan hardcoded), biar sinkron sama Pengaturan Kantor.
+        $office = OfficeSetting::current();
+        $officeHours = Carbon::parse($office->work_start_time)->format('H:i') . '–' .
+            Carbon::parse($office->normal_end_time)->format('H:i');
+        $weeklyRhythm = collect(self::WEEKLY_RHYTHM)->map(fn(array $r) => [
+            ...$r,
+            'hours' => $r['mode'] === 'WFO' ? $officeHours : 'Flexible / remote',
+        ])->all();
+
+        // Grid 6 baris x 7 kolom (42 sel), mulai dari hari Minggu SEBELUM
+        // tanggal 1 — persis pola `start=new Date(y,m,1-first.getDay())`
+        // di prototype.
+        $firstOfMonth = $anchor->copy();
+        $gridStart = $firstOfMonth->copy()->subDays($firstOfMonth->dayOfWeek);
+
+        $rangeEnd = $gridStart->copy()->addDays(41);
+        $itemsByDate = WorkItem::query()
+            ->whereBetween('due_date', [$gridStart->toDateString(), $rangeEnd->toDateString()])
+            ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
+            ->when($picFilter, fn($q) => $q->where('pic_employee_id', $picFilter))
             ->with(['pic', 'project'])
             ->get()
             ->groupBy(fn(WorkItem $item) => $item->due_date->toDateString());
 
+        $weeks = collect(range(0, 5))->map(function (int $week) use ($gridStart, $itemsByDate, $anchor, $weeklyRhythm) {
+            return collect(range(0, 6))->map(function (int $dow) use ($week, $gridStart, $itemsByDate, $anchor, $weeklyRhythm) {
+                $date = $gridStart->copy()->addDays($week * 7 + $dow);
+                $dateKey = $date->toDateString();
+                $dayItems = $itemsByDate->get($dateKey, collect());
+
+                return [
+                    'date' => $date,
+                    'outside' => $date->month !== $anchor->month,
+                    'isToday' => $date->isToday(),
+                    'rhythm' => $weeklyRhythm[$date->dayOfWeek] ?? null,
+                    'items' => $dayItems->map(fn(WorkItem $item) => [
+                        'title' => $item->title,
+                        'pic' => $item->pic?->name,
+                        'color' => self::projectColor($item->project_id),
+                        'text' => self::contrastFor(self::projectColor($item->project_id)),
+                    ]),
+                ];
+            });
+        });
+
+        $projects = Project::query()->orderBy('name')->get(['id', 'name']);
+        $picOptions = User::query()
+            ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('employee.work-tracker.calendar', [
-            'days' => $days,
-            'items' => $items,
-            'meId' => Auth::id(),
+            'weeks' => $weeks,
+            'anchor' => $anchor,
+            'projects' => $projects,
+            'picOptions' => $picOptions,
+            'projectFilter' => $projectFilter,
+            'picFilter' => $picFilter,
+            'weeklyRhythm' => $weeklyRhythm,
+            'projectColor' => fn(?int $id) => self::projectColor($id),
         ]);
     }
 }
