@@ -18,14 +18,16 @@ use Illuminate\Http\Request;
  *
  * PENTING — SCOPE FASE 15: controller ini cuma bangun UI buat
  * NAMPILIN log yang udah ada di tabel `audit_logs`. `AuditLog::record()`
- * (helper yang udah ada dari migration awal) BELUM dipanggil dari
- * controller manapun di sistem ini (Karyawan, Owner, Dashboard, dst) —
- * jadi listing ini bakal KOSONG sampai instrumentasi itu ditambahin.
- * Nyambungin `record()` ke tiap aksi penting (CRUD karyawan, approve
- * izin/cuti, ubah dashboard access, dll) SENGAJA di luar scope fase
- * ini — itu perubahan lintas-controller yang besar, beda kerjaan dari
- * "bangun UI di atas tabel yang udah siap" (pola Fase 14/15 selama
- * ini). Lihat README buat catatan rekomendasi urutan kerja berikutnya.
+ * sekarang SUDAH dipanggil dari beberapa controller lain (bukan lagi
+ * kosong seperti catatan Fase 15 awal): `Owner\EmployeeController`
+ * (tambah/edit/nonaktifkan/aktifkan karyawan), `Owner\DashboardAccessController`
+ * (ubah akses modul), `Owner\OfficeSettingController` (ubah pengaturan
+ * kantor), `Approval\LeaveRequestController` & `Approval\OvertimeRequestController`
+ * (approve/reject/cancel), dan `Dashboard\Payroll\PayrollController`
+ * (generate/adjust/finalize/mark-paid/delete). Aksi lain (mis. CRUD
+ * Work Tracker/KPI/Budget/Royalty/Legal) BELUM disambungkan ke
+ * `record()` — kalau mau audit trail-nya lengkap, itu masih perlu
+ * ditambahin satu-satu ke controller-controller tersebut.
  * ---------------------------------------------------------------------
  */
 class AuditLogController extends Controller

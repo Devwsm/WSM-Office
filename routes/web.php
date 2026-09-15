@@ -181,7 +181,10 @@ Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')
     // bukan di sini. Fase 6a (dashboard_access) ada di atas
     // ('employees.access.*'). Fase 6b (MoM & Memo) ada di grup
     // 'dashboard.work.' di bawah.
-    // TODO Fase 8-18: lihat README bagian "Roadmap Modul & Role"
+    // Fase 8-18 semua sudah diimplementasikan (lihat modul-modul
+    // dashboard_access di bawah: work, kpi, contracts, payroll,
+    // budget, royalty, legal, it, recruitment) — grup 'owner.*' ini
+    // sendiri gak nambah apa-apa lagi di luar yang udah ada di atas.
 });
 
 // --- Rekrutmen (2026-09-09: permission bukan role, lihat README) ---
@@ -279,9 +282,12 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // di bawah, soalnya Laravel matching route dari atas ke bawah —
     // kalau kebalik, '/dashboard/work' bakal kena ke
     // ModuleDashboardController::show('work') (placeholder), bukan ke
-    // MemoController. 6 modul lain (budget, royalty, kpi, people,
-    // contracts, payroll) belum punya controller sendiri, jadi masih
-    // lewat placeholder generik itu.
+    // MemoController. (Status per Fase 15, bukan lagi kondisi awal
+    // Fase 6b: budget/royalty/kpi/contracts/payroll SEKARANG SUDAH
+    // punya controller sendiri masing-masing, lihat grup 'budget.',
+    // 'royalty.', 'kpi.', 'contracts.', 'payroll.' di bawah — cuma
+    // 'people' yang gak lewat prefix 'dashboard' ini sama sekali,
+    // dia punya route sendiri di grup 'attendance.recap.'/'approval.*'.)
     Route::prefix('work')->name('work.')->group(function () {
         Route::get('/', [MemoController::class, 'index'])->middleware('module:work,view')->name('index');
         Route::get('/create', [MemoController::class, 'create'])->middleware('module:work,manage')->name('create');
@@ -335,9 +341,10 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // --- Fase 10: KPI & Performance ---
     // Sama pola persis grup 'work' di atas: harus terdaftar SEBELUM
     // '/{module}' generik di bawah, soalnya Laravel matching route
-    // dari atas ke bawah. 5 modul lain (budget, royalty, people*,
-    // contracts, payroll) masih lewat placeholder generik itu.
-    // (*'people' punya controller sendiri juga, tapi di luar prefix
+    // dari atas ke bawah. (Status per Fase 15: budget/royalty/contracts/
+    // payroll SEKARANG SUDAH punya grup route sendiri juga — lihat
+    // di bawah — bukan lagi lewat placeholder generik.
+    // 'people' punya controller sendiri juga, tapi di luar prefix
     // 'dashboard' — lihat grup 'rekap-absensi'/'persetujuan-*' di atas.)
     Route::prefix('kpi')->name('kpi.')->group(function () {
         Route::get('/', [KpiController::class, 'index'])->middleware('module:kpi,view')->name('index');

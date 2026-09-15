@@ -1,9 +1,11 @@
 {{--
     public/contact.blade.php — Kontak
     ---------------------------------------------------------------------
-    Form kirim ke PageController@storeContact — validasi jalan, tapi
-    pesan BELUM disimpan/dikirim ke mana pun (lihat TODO di controller).
-    Alamat & telepon masih placeholder.
+    Form kirim ke PageController@storeContact — validasi jalan, pesan
+    tersimpan ke tabel `contact_messages` (susulan Fase 1, 2026-09-13)
+    dan ditinjau Owner lewat Owner\ContactMessageController. Belum kirim
+    notifikasi email — Owner masih perlu buka dashboard buat lihat
+    pesan baru. Alamat & telepon masih placeholder.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.public', ['title' => 'Kontak'])

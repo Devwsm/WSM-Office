@@ -1,11 +1,19 @@
 {{--
     dashboard/module.blade.php
     ---------------------------------------------------------------------
-    Fase 6a — placeholder generik. Modul 'work' TIDAK lewat sini lagi
-    sejak Fase 6b (punya controller & view sendiri di dashboard/work/*)
-    — lihat urutan route di routes/web.php. 6 modul sisanya masih
-    nunggu dibangun satu-satu di fase berikutnya (lihat README "Peta
-    Fase 6–12").
+    Fase 6a — placeholder generik. Semua 10 modul dashboard_access
+    (work, kpi, contracts, payroll, budget, royalty, legal, it, people,
+    recruitment) SEKARANG SUDAH punya halaman beneran masing-masing —
+    modul ini secara konsep sudah tidak perlu dipakai lagi.
+
+    ⚠️ BUG (belum diperbaiki, 2026-09-15 audit): `DashboardController::index()`
+    cuma nge-map 8 dari 10 modul (work/kpi/contracts/payroll/budget/
+    royalty/legal/it) ke route aslinya. `people` & `recruitment` TIDAK
+    ada di match()-nya, jadi kalau user klik card modul itu dari
+    /dashboard (bukan dari sidebar), dia tetap kelempar ke sini —
+    padahal halaman asli mereka (/absensi, /rekrutmen/lowongan) sudah
+    ada dan jalan. Perbaikan seharusnya nambah 'people' & 'recruitment'
+    ke match() di DashboardController::index(), bukan ngubah view ini.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => $label, 'navActive' => 'modules'])
