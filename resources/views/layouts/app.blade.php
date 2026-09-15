@@ -24,18 +24,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{-- Audit ronde 6 (2026-09-09) — dibutuhkan Work Tracker board buat
-         fetch() PATCH drag-drop (dashboard/work/tracker/index.blade.php).
-         SEBELUMNYA gak ada meta csrf-token sama sekali di layout ini
-         (semua interaksi lain pola form POST biasa + @csrf, gak butuh
-         token lewat JS) — board ini pertama yang butuh AJAX beneran. --}}
+        fetch() PATCH drag-drop (dashboard/work/tracker/index.blade.php).
+        SEBELUMNYA gak ada meta csrf-token sama sekali di layout ini
+        (semua interaksi lain pola form POST biasa + @csrf, gak butuh
+        token lewat JS) — board ini pertama yang butuh AJAX beneran. --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Dashboard' }} — WSM Office System</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{-- Fase 16 — warna aksen dari Pengaturan Kantor, diinject sebagai
-         CSS custom property biar dipakein tanpa perlu fetch OfficeSetting
-         di tiap view yang butuh (nav Owner-only di sidebar ini +
-         tab bar Work Control di dashboard/work/*). Kolomnya udah ada
-         dari Fase 7 tapi baru sekarang dipakein. --}}
+        CSS custom property biar dipakein tanpa perlu fetch OfficeSetting
+        di tiap view yang butuh (nav Owner-only di sidebar ini +
+        tab bar Work Control di dashboard/work/*). Kolomnya udah ada
+        dari Fase 7 tapi baru sekarang dipakein. --}}
     @php $accentSetting = \App\Models\OfficeSetting::current(); @endphp
     <style>
         :root {
@@ -88,10 +88,10 @@
                 jaga-jaga item individual juga gak ikut melar. --}}
             <nav class="grid content-start items-start flex-1 min-h-0 gap-1.5 overflow-y-auto text-sm">
                 {{-- 2026-09-09 — dulu di-@if (isManajer/isHrd/isOwner), padahal
-                     SIAPA PUN yang bisa nyampe layouts.app ini juga otomatis
-                     anggota grup route 'employee.*' (base /app), jadi link ini
-                     selalu valid buat siapa pun yang lihatnya — @if-nya dicabut,
-                     bukan diganti permission check. --}}
+                    SIAPA PUN yang bisa nyampe layouts.app ini juga otomatis
+                    anggota grup route 'employee.*' (base /app), jadi link ini
+                    selalu valid buat siapa pun yang lihatnya — @if-nya dicabut,
+                    bukan diganti permission check. --}}
                 <a href="{{ route('employee.home') }}"
                     class="rounded-2xl px-3.5 py-3 font-extrabold text-[#5e5951] hover:bg-white">
                     ← App Saya
@@ -107,9 +107,9 @@
                         Dashboard
                     </a>
                     {{-- Fase 1 (susulan, 2026-09-13) — badge angka jumlah pesan
-                         status 'baru', numpang query ringan langsung di sini
-                         (sama pola sederhana kayak nav lain, belum ada shared
-                         view-composer khusus buat ini). --}}
+                        status 'baru', numpang query ringan langsung di sini
+                        (sama pola sederhana kayak nav lain, belum ada shared
+                        view-composer khusus buat ini). --}}
                     <a href="{{ route('owner.contact-messages.index') }}"
                         class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'contact-messages' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'contact-messages'])>
@@ -161,8 +161,8 @@
                 @php $sectionNo = 0; @endphp
 
                 {{-- 1 · PEOPLE — cuma "Organization" (Owner-only, padanan
-                     Struktur Organisasi). "Executive People Overview"
-                     di-skip, lihat catatan di atas. --}}
+                    Struktur Organisasi). "Executive People Overview"
+                    di-skip, lihat catatan di atas. --}}
                 @if ($u->isOwner())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
@@ -174,30 +174,24 @@
                     </a>
                 @endif
 
-                {{-- 2 · WORK CONTROL — Work Tracker (nyakup Projects),
-                     Timeline Calendar (kalender-tim, sisi employee.*, gak
-                     digerbang module:work tapi ditaruh di grup ini biar
-                     nyambung visual sama prototype), MoM/Meeting, Memo
-                     Forum. --}}
+                {{-- 2 · WORK CONTROL — Memo Forum (MoM & Memo), Work
+                    Tracker (nyakup Projects), Timeline Calendar
+                    (kalender-tim, sisi employee.*, gak digerbang
+                    module:work tapi ditaruh di grup ini biar nyambung
+                    visual sama prototype), MoM/Meeting.
+
+                    Urutan (2026-09-15) SENGAJA disamain persis sama tab
+                    bar "Work Control" di dalam tiap halamannya
+                    (dashboard/work/{index,tracker/index,calendar,meetings/index}.blade.php):
+                    MoM & Memo -> Work Tracker -> Timeline Calendar ->
+                    Rapat & Action Item — sebelumnya beda urutan (Work
+                    Tracker taruh paling atas di sidebar, padahal tab
+                    bar-nya taruh MoM & Memo duluan), bikin bingung pas
+                    dibandingin. --}}
                 @if ($u->canViewModule('work'))
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
                         style="background-color:#e2e9ff">{{ $sectionNo }} · WORK CONTROL</p>
-                    <a href="{{ route('dashboard.work.tracker.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.tracker.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.tracker.*')])>
-                        <span class="mr-1.5 inline-block w-4 text-center">☷</span>Work Tracker
-                    </a>
-                    <a href="{{ route('employee.workTracker.calendar') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('employee.workTracker.calendar') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--work-accent)' => request()->routeIs('employee.workTracker.calendar')])>
-                        <span class="mr-1.5 inline-block w-4 text-center">▦</span>Timeline Calendar
-                    </a>
-                    <a href="{{ route('dashboard.work.meetings.index') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.meetings.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.meetings.*')])>
-                        <span class="mr-1.5 inline-block w-4 text-center">≡</span>Rapat &amp; Action Item
-                    </a>
                     <a href="{{ route('dashboard.work.index') }}"
                         class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit']) ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--work-accent)' => request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit'])])>
@@ -207,6 +201,28 @@
                             <span
                                 class="ml-2 rounded-full bg-[#a83d35] px-2 py-0.5 text-[10px] font-black text-white">{{ $workUnreadBadge }}</span>
                         @endif
+                    </a>
+                    <a href="{{ route('dashboard.work.tracker.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.tracker.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.tracker.*')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">☷</span>Work Tracker
+                    </a>
+                    {{-- 2026-09-15 — dulu ngarah ke employee.workTracker.calendar
+                        (App Mode, layouts.employee), jadi klik dari sidebar
+                        dashboard ini malah lompat keluar ke layout App Mode.
+                        Sekarang punya versi dashboard sendiri (layouts.app),
+                        lihat Dashboard\Work\CalendarController — App Mode-nya
+                        tetap ada & tetap dipakai dari employee/_work-tracker,
+                        cuma link sidebar ini yang dipindah. --}}
+                    <a href="{{ route('dashboard.work.calendar') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.calendar') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.calendar')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">▦</span>Timeline Calendar
+                    </a>
+                    <a href="{{ route('dashboard.work.meetings.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.meetings.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.meetings.*')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">≡</span>Rapat &amp; Action Item
                     </a>
                 @endif
 
@@ -233,9 +249,9 @@
                 @endif
 
                 {{-- 5 · HR ADMIN — gabungan lintas modul: 'people'
-                     (Attendance/Requests), 'kpi', Owner-only "Karyawan &
-                     Access", 'contracts', 'payroll'. Header-nya nongol
-                     kalau MINIMAL SATU item di bawah kelihatan. --}}
+                    (Attendance/Requests), 'kpi', Owner-only "Karyawan &
+                    Access", 'contracts', 'payroll'. Header-nya nongol
+                    kalau MINIMAL SATU item di bawah kelihatan. --}}
                 @php
                     $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwner() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
                 @endphp
@@ -281,16 +297,16 @@
                 @endif
 
                 {{-- "HR / Geo / Color Settings" — padanan Pengaturan Kantor
-                     (Owner-only), ditaruh persis kayak posisinya di
-                     prototype: antara HR ADMIN & LEGAL.
-                     Sekarang dikasih judul kelompok berwarna krem (sama
-                     pola kayak IT/LEGAL/dst di atas) biar kelihatan sebagai
-                     section sendiri, dan link di bawahnya balik ke pola
-                     standar semua link lain: nge-blend transparan di atas
-                     sidebar (gak ada bg sendiri) pas gak aktif, cuma hitam
-                     solid pas beneran lagi dibuka. Sebelumnya sempat
-                     dicoba versi outline hitam+putih permanen, tapi itu
-                     malah bikin beda sendiri dari pola section lain. --}}
+                    (Owner-only), ditaruh persis kayak posisinya di
+                    prototype: antara HR ADMIN & LEGAL.
+                    Sekarang dikasih judul kelompok berwarna krem (sama
+                    pola kayak IT/LEGAL/dst di atas) biar kelihatan sebagai
+                    section sendiri, dan link di bawahnya balik ke pola
+                    standar semua link lain: nge-blend transparan di atas
+                    sidebar (gak ada bg sendiri) pas gak aktif, cuma hitam
+                    solid pas beneran lagi dibuka. Sebelumnya sempat
+                    dicoba versi outline hitam+putih permanen, tapi itu
+                    malah bikin beda sendiri dari pola section lain. --}}
                 @if ($u->isOwner())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
@@ -302,9 +318,9 @@
                 @endif
 
                 {{-- 6 · LEGAL — 1 controller/1 route, 2 kategori dibedain
-                     query string `category` (lihat catatan LegalController),
-                     TAPI prototype nampilin 2 baris terpisah — disamain di
-                     sini lewat 2 link ke route yang sama. --}}
+                    query string `category` (lihat catatan LegalController),
+                    TAPI prototype nampilin 2 baris terpisah — disamain di
+                    sini lewat 2 link ke route yang sama. --}}
                 @if ($u->canViewModule('legal'))
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
@@ -335,10 +351,10 @@
                 @endif
 
                 {{-- 8 · RECRUITMENT — GAK ADA di prototype asli, ditambahin
-                     atas permintaan Arga (2026-09-14). Pelamar & Lowongan
-                     udah lama punya route/controller sendiri, cuma
-                     sekarang dikasih section header berwarna juga biar
-                     konsisten visual sama section lain. --}}
+                    atas permintaan Arga (2026-09-14). Pelamar & Lowongan
+                    udah lama punya route/controller sendiri, cuma
+                    sekarang dikasih section header berwarna juga biar
+                    konsisten visual sama section lain. --}}
                 @if ($u->canViewModule('recruitment'))
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
@@ -356,10 +372,10 @@
 
             <div class="mt-auto border-t border-line pt-3.5">
                 {{-- "Kunci Dashboard" — padanan tombol merah footer sidebar
-                     Owner di prototype (lockOwner()), diadaptasi ke password
-                     akun sendiri. Cuma role yang beneran masuk layouts.app
-                     yang lihat tombol ini (samain sama grup role rute
-                     dashboard.lock.*). --}}
+                    Owner di prototype (lockOwner()), diadaptasi ke password
+                    akun sendiri. Cuma role yang beneran masuk layouts.app
+                    yang lihat tombol ini (samain sama grup role rute
+                    dashboard.lock.*). --}}
                 <form method="POST" action="{{ route('dashboard.lock.lock') }}" class="mb-2.5"
                     data-confirm="Kamu perlu masukin password buat buka lagi." data-confirm-title="Kunci dashboard?"
                     data-confirm-button="Ya, kunci">

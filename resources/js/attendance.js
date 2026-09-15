@@ -65,6 +65,53 @@ function compressImage(file, maxSize = 720, quality = 0.75) {
     });
 }
 
+/**
+ * workingHoursToday — fix (2026-09-15) buat kartu "Working Hours Today"
+ * di employee/home.blade.php yang sebelumnya statis (dihitung sekali di
+ * server, gak jalan lagi selama user "Sedang Bekerja" sampai halaman
+ * di-refresh manual). Sekarang nge-tick tiap detik pakai Date.now() di
+ * browser kalau ada sesi yang masih terbuka (`openClockInAt`), ditambah
+ * `baseMinutes` (total menit dari sesi lain yang UDAH checkout hari itu
+ * — fixed, dihitung sekali di server, gak perlu ikut nge-tick). Kalau
+ * gak ada sesi terbuka (`openClockInAt` null — belum absen atau semua
+ * sesi hari ini udah checkout), gak ada interval yang jalan sama
+ * sekali, angkanya cuma nampilin `baseMinutes` apa adanya.
+ */
+Alpine.data("workingHoursToday", (config) => ({
+    baseMinutes: config.baseMinutes || 0,
+    openClockInAt: config.openClockInAt
+        ? new Date(config.openClockInAt).getTime()
+        : null,
+    liveMinutes: 0,
+    _timer: null,
+
+    init() {
+        if (!this.openClockInAt) return;
+
+        this.tick();
+        this._timer = setInterval(() => this.tick(), 1000);
+
+        // Alpine nge-dispatch event ini ke elemen pas komponennya
+        // di-teardown (mis. navigasi SPA-like/x-if) — jaga-jaga biar
+        // interval-nya ke-clear, walau di halaman Home ini elemennya
+        // biasanya hidup selama halaman terbuka.
+        this.$el.addEventListener("alpine:destroy", () => {
+            if (this._timer) clearInterval(this._timer);
+        });
+    },
+
+    tick() {
+        this.liveMinutes = Math.max(
+            0,
+            (Date.now() - this.openClockInAt) / 60000,
+        );
+    },
+
+    get hoursLabel() {
+        return ((this.baseMinutes + this.liveMinutes) / 60).toFixed(1);
+    },
+}));
+
 Alpine.data("attendanceWidget", (config) => ({
     mode: config.defaultMode || "kantor",
     workContext: "",

@@ -229,6 +229,25 @@ class HomeController extends Controller
         // terbuka (pakai now() kalau belum checkout) — dijumlah lintas
         // SEMUA sesi hari ini (Lapangan/Gigs bisa multi-sesi).
         $workedMinutesToday = $sessions->sum(fn(Attendance $a) => $a->workedMinutes() ?? 0);
+
+        // Fix (2026-09-15) — "Working Hours Today" sebelumnya cuma
+        // ke-hitung SEKALI pas request/render halaman ini (server-side
+        // now() dipanggil sekali), jadi kalau user lagi "Sedang Bekerja"
+        // (belum checkout) angkanya diam gak jalan sampai halaman
+        // di-refresh manual — padahal kartunya kelihatan seperti live
+        // counter. Sekarang dipecah 2: `workedMinutesTodayBase` = total
+        // menit dari sesi yang SUDAH checkout (fixed, gak perlu jalan),
+        // `openSessionClockInAt` = timestamp check-in sesi yang masih
+        // terbuka (kalau ada). Widget di home.blade.php
+        // (`workingHoursToday` di attendance.js) yang nge-tick elapsed
+        // time dari `openSessionClockInAt` tiap detik pakai `Date.now()`
+        // di browser, ditambah ke base — biar beneran real-time tanpa
+        // perlu refresh, tapi query & angka dari sesi yang udah selesai
+        // tetap dihitung sekali di server seperti biasa.
+        $workedMinutesTodayBase = $sessions
+            ->reject(fn(Attendance $a) => $a->isCurrentlyWorking())
+            ->sum(fn(Attendance $a) => $a->workedMinutes() ?? 0);
+        $openSessionClockInAt = $openSession?->clock_in_at?->toIso8601String();
         $daysPresentThisMonth = Attendance::query()
             ->where('user_id', Auth::id())
             ->whereNotNull('clock_in_at')
@@ -252,6 +271,8 @@ class HomeController extends Controller
             'openWorkItems' => $openWorkItems,
             'doneWorkItemsCount' => $doneWorkItemsCount,
             'workedMinutesToday' => $workedMinutesToday,
+            'workedMinutesTodayBase' => $workedMinutesTodayBase,
+            'openSessionClockInAt' => $openSessionClockInAt,
             'daysPresentThisMonth' => $daysPresentThisMonth,
         ]);
     }

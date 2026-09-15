@@ -420,10 +420,22 @@
          untuk hari hadir bulan ini) pakai class stat-wsm-* yang udah
          ada (dipakai juga di Payroll Overview Owner). --}}
     <div class="mb-3.5 grid grid-cols-2 gap-2.5">
-        <div class="stat-wsm-yellow min-h-0! p-4!">
+        {{-- Fix (2026-09-15) — dulu statis, cuma ke-hitung sekali pas
+             halaman di-render, jadi diam gak jalan selama "Sedang
+             Bekerja" sampai di-refresh manual. Sekarang `x-data` nge-tick
+             tiap detik dari `openClockInAt` (kalau ada sesi yang masih
+             terbuka) ditambah `baseMinutes` (sesi yang udah checkout,
+             fixed) — lihat `workingHoursToday()` di resources/js/attendance.js.
+             Kalau gak ada sesi terbuka, angkanya statis kayak semula
+             (gak ada yang perlu di-tick). --}}
+        <div class="stat-wsm-yellow min-h-0! p-4!" x-data="workingHoursToday({
+            baseMinutes: {{ \Illuminate\Support\Js::from($workedMinutesTodayBase) }},
+            openClockInAt: {{ \Illuminate\Support\Js::from($openSessionClockInAt) }},
+        })">
             <span class="stat-wsm-label">Working Hours Today</span>
             <div>
-                <strong class="stat-wsm-value text-2xl!">{{ number_format($workedMinutesToday / 60, 1) }}<span
+                <strong class="stat-wsm-value text-2xl!"><span
+                        x-text="hoursLabel">{{ number_format($workedMinutesToday / 60, 1) }}</span><span
                         class="text-sm">h</span></strong>
                 <p class="stat-wsm-note mt-1">{{ $sessions->count() }} session</p>
             </div>

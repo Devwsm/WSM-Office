@@ -38,6 +38,7 @@ use App\Http\Controllers\Dashboard\It\AuditLogController;
 use App\Http\Controllers\Dashboard\It\SystemChangelogController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
+use App\Http\Controllers\Dashboard\Work\CalendarController as DashboardWorkCalendarController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
@@ -289,6 +290,15 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::patch('/{memo}', [MemoController::class, 'update'])->middleware('module:work,manage')->name('update');
         Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
         Route::post('/{memo}/balas', [MemoController::class, 'reply'])->middleware(['module:work,manage', 'throttle:15,1'])->name('reply');
+
+        // --- Timeline Calendar versi dashboard (2026-09-15) ---
+        // Padanan "Shared Workload Calendar" App Mode
+        // (employee.workTracker.calendar), tapi dirender di layouts.app
+        // sebagai tab ke-2 "Work Control" — link sidebar "Timeline
+        // Calendar" di layouts.app SEKARANG ngarah ke sini, bukan lagi
+        // loncat ke route employee.* App Mode. Lihat catatan lengkap di
+        // Dashboard\Work\CalendarController.
+        Route::get('/kalender', [DashboardWorkCalendarController::class, 'index'])->middleware('module:work,view')->name('calendar');
 
         // --- Fase 9 lanjutan: Work Tracker board (audit ronde 6, 2026-09-09) ---
         // Sub-halaman lain di modul 'work' (Memo Forum di atas cuma

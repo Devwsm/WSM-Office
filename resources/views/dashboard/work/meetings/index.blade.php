@@ -23,13 +23,16 @@
         @endif
     </div>
 
-    <div class="mb-5 flex gap-2">
+    <div class="mb-5 flex flex-wrap gap-2">
         <a href="{{ route('dashboard.work.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">MoM
             &amp; Memo</a>
         <a href="{{ route('dashboard.work.tracker.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
             Tracker</a>
+        <a href="{{ route('dashboard.work.calendar') }}"
+            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Timeline
+            Calendar</a>
         <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
             style="background-color: var(--work-accent)">Rapat & Action Item</span>
     </div>
