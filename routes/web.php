@@ -311,6 +311,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         Route::get('/{memo}/edit', [MemoController::class, 'edit'])->middleware('module:work,manage')->name('edit');
         Route::patch('/{memo}', [MemoController::class, 'update'])->middleware('module:work,manage')->name('update');
         Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
+        Route::post('/{memo}/toggle-aktif', [MemoController::class, 'toggleActive'])->middleware('module:work,manage')->name('toggleActive');
         Route::post('/{memo}/balas', [MemoController::class, 'reply'])->middleware(['module:work,manage', 'throttle:15,1'])->name('reply');
 
         // --- Timeline Calendar versi dashboard (2026-09-15) ---

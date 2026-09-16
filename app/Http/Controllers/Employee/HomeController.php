@@ -139,12 +139,17 @@ class HomeController extends Controller
         // pengumuman ke tim, bukan modul kerja yang butuh akses. Fase 8:
         // eager-load status baca/sembunyi MILIK USER INI SAJA (bukan
         // semua user) + thread reply-nya.
+        // 2026-09-16 — ditambah ->active() (skip memo yang di-"Deactivate")
+        // & ->visibleTo() (skip memo yang audience-nya 'tertentu' dan
+        // nggak nyakup user ini).
         $memos = Memo::query()
             ->with([
                 'creator',
                 'threadMessages',
                 'reads' => fn($q) => $q->where('user_id', Auth::id()),
             ])
+            ->active()
+            ->visibleTo(Auth::user())
             ->latestFirst()
             ->get();
 

@@ -7,6 +7,7 @@ use App\Http\Requests\Dashboard\Work\MemoRequest;
 use App\Http\Requests\Memo\ReplyMemoThreadRequest;
 use App\Models\Memo;
 use App\Models\MemoThreadMessage;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -31,7 +32,7 @@ class MemoController extends Controller
     public function index()
     {
         $memos = Memo::query()
-            ->with(['creator', 'threadMessages', 'reads' => fn($q) => $q->where('user_id', Auth::id())])
+            ->with(['creator', 'threadMessages', 'recipients:id,name', 'reads' => fn($q) => $q->where('user_id', Auth::id())])
             ->latestFirst()
             ->paginate(15);
 
@@ -53,31 +54,49 @@ class MemoController extends Controller
 
     public function create()
     {
-        return view('dashboard.work.create');
+        return view('dashboard.work.create', [
+            'users' => User::query()->orderBy('name')->get(['id', 'name', 'division']),
+        ]);
     }
 
     public function store(MemoRequest $request)
     {
         $data = $request->validated();
+        $recipients = $data['recipients'] ?? [];
+        unset($data['recipients']);
         $data['created_by'] = Auth::id();
         $data['pinned'] = $request->boolean('pinned');
 
-        Memo::create($data);
+        $memo = Memo::create($data);
+
+        // 2026-09-16 — recipients cuma kepake kalau audience='tertentu',
+        // tapi tetap di-sync (bukan cuma di-attach) walau kosong, biar
+        // kalau audience-nya 'semua' gak ada baris nyangkut di
+        // memo_recipients dari percobaan sebelumnya.
+        $memo->recipients()->sync($recipients);
 
         return redirect()->route('dashboard.work.index')->with('status', 'Memo/MoM berhasil ditambahkan.');
     }
 
     public function edit(Memo $memo)
     {
-        return view('dashboard.work.edit', ['memo' => $memo]);
+        $memo->load('recipients:id');
+
+        return view('dashboard.work.edit', [
+            'memo' => $memo,
+            'users' => User::query()->orderBy('name')->get(['id', 'name', 'division']),
+        ]);
     }
 
     public function update(MemoRequest $request, Memo $memo)
     {
         $data = $request->validated();
+        $recipients = $data['recipients'] ?? [];
+        unset($data['recipients']);
         $data['pinned'] = $request->boolean('pinned');
 
         $memo->update($data);
+        $memo->recipients()->sync($recipients);
 
         return redirect()->route('dashboard.work.index')->with('status', 'Memo/MoM berhasil diperbarui.');
     }
@@ -87,6 +106,22 @@ class MemoController extends Controller
         $memo->delete();
 
         return back()->with('status', 'Memo/MoM berhasil dihapus.');
+    }
+
+    /**
+     * 2026-09-16 — tombol "Deactivate"/"Aktifkan" (prototype: Deactivate
+     * doang, di sini dibikin toggle 2 arah biar bisa diaktifin lagi
+     * tanpa buka form Edit). Memo nonaktif TETAP ada di listing
+     * manajemen ini, cuma disembunyikan dari kartu "Info dari Owner" App
+     * Mode (lihat Memo::scopeActive() & HomeController).
+     */
+    public function toggleActive(Memo $memo)
+    {
+        $memo->update(['active' => ! $memo->active]);
+
+        return back()->with('status', $memo->active
+            ? 'Memo/MoM diaktifkan lagi — muncul lagi di Home karyawan.'
+            : 'Memo/MoM dinonaktifkan — nggak muncul lagi di Home karyawan, tapi masih tersimpan di sini.');
     }
 
     /**

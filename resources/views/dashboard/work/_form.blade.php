@@ -6,8 +6,9 @@
     ---------------------------------------------------------------------
 --}}
 @php $memo ??= null; @endphp
+@php $selectedRecipients = old('recipients', $memo?->recipients->pluck('id')->all() ?? []); @endphp
 
-<div class="grid gap-4">
+<div class="grid gap-4" x-data="{ audience: '{{ old('audience', $memo->audience ?? 'semua') }}' }">
     <div>
         <label class="field-label-wsm mb-1.5">Jenis</label>
         <select name="type" class="input-wsm" required>
@@ -44,6 +45,35 @@
                 <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
             @enderror
         </div>
+    </div>
+
+    <div>
+        <label class="field-label-wsm mb-1.5">Penerima</label>
+        <select name="audience" class="input-wsm" x-model="audience">
+            <option value="semua">Semua Karyawan</option>
+            <option value="tertentu">Karyawan Tertentu</option>
+        </select>
+        @error('audience')
+            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div x-show="audience === 'tertentu'" x-cloak>
+        <label class="field-label-wsm mb-1.5">Pilih Karyawan</label>
+        <div class="max-h-56 overflow-y-auto rounded-wsm border border-line bg-white p-2">
+            @foreach ($users as $user)
+                <label class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-[#f7f4ee]">
+                    <input type="checkbox" name="recipients[]" value="{{ $user->id }}" @checked(in_array($user->id, $selectedRecipients))>
+                    <span class="font-bold">{{ $user->name }}</span>
+                    @if ($user->division)
+                        <span class="text-muted">· {{ $user->division }}</span>
+                    @endif
+                </label>
+            @endforeach
+        </div>
+        @error('recipients')
+            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+        @enderror
     </div>
 
     <div>

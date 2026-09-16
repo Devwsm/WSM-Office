@@ -5,8 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Model Memo
@@ -21,9 +23,16 @@ use Illuminate\Database\Eloquent\Builder;
  * Fase 8 nambah: baca/sembunyi per-user (`MemoRead`) & thread reply
  * (`MemoThreadMessage`) — kartu "Info dari Owner" di Home sekarang
  * interaktif (bukan cuma read-only), lihat employee/home.blade.php.
+ *
+ * 2026-09-16 nambah: `audience`/`memo_recipients` (target ke sebagian
+ * karyawan aja, bukan otomatis semua) & `active` (bisa "dimatiin" tanpa
+ * dihapus — lihat migration `memo_audience_and_active` buat penjelasan
+ * lengkap kenapa). Halaman manajemen (dashboard/work) TETAP nampilin
+ * memo nonaktif (biar bisa diaktifin lagi) — yang difilter cuma kartu
+ * "Info dari Owner" di App Mode lewat scopeActive()+scopeVisibleTo().
  * ---------------------------------------------------------------------
  */
-#[Fillable(['type', 'title', 'content', 'meeting_date', 'attendees', 'pinned', 'created_by'])]
+#[Fillable(['type', 'title', 'content', 'meeting_date', 'attendees', 'pinned', 'audience', 'active', 'created_by'])]
 class Memo extends Model
 {
     protected function casts(): array
@@ -31,6 +40,7 @@ class Memo extends Model
         return [
             'meeting_date' => 'date',
             'pinned' => 'boolean',
+            'active' => 'boolean',
         ];
     }
 
@@ -42,6 +52,12 @@ class Memo extends Model
     public function reads(): HasMany
     {
         return $this->hasMany(MemoRead::class);
+    }
+
+    /** Karyawan target kalau audience='tertentu'. Kosong (nggak dipakai sama sekali) kalau audience='semua'. */
+    public function recipients(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'memo_recipients')->withTimestamps();
     }
 
     /** Urutan tampil di thread: lama ke baru (percakapan), BEDA dari urutan listing memo yang terbaru duluan. */
@@ -80,10 +96,15 @@ class Memo extends Model
      * biar kunjungan yang lagi jalan tetap kelihatan status
      * unread-nya (user perlu tau ada yang baru), yang berubah cuma
      * status buat kunjungan BERIKUTNYA.
+     *
+     * 2026-09-16 — dibatesin ke memo yang active() & visibleTo($user)
+     * doang (sebelumnya static::query()->get() nyapu SEMUA memo tanpa
+     * peduli audience/status aktif, jadi nandain baca punya memo yang
+     * si user bahkan gak pernah lihat).
      */
     public static function markAllReadFor(User $user): void
     {
-        static::query()->get()->each(function (Memo $memo) use ($user) {
+        static::query()->active()->visibleTo($user)->get()->each(function (Memo $memo) use ($user) {
             if ($memo->isHiddenBy($user)) {
                 return;
             }
@@ -102,8 +123,83 @@ class Memo extends Model
         return $query->orderByDesc('pinned')->orderByDesc('created_at');
     }
 
+    /** Cuma memo yang belum "dimatiin" (tombol Deactivate) — dipakai di kartu Home App Mode, BUKAN di listing manajemen (yang nonaktif pun tetap harus kelihatan manajemen biar bisa diaktifin lagi). */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('active', true);
+    }
+
+    /**
+     * Cuma memo yang audience-nya nyakup $user: 'semua', ATAU $user ada
+     * di daftar recipients (audience='tertentu'), ATAU $user adalah
+     * pembuat memo-nya sendiri (pembuat selalu bisa lihat memo-nya
+     * sendiri walau nggak eksplisit nargetin diri sendiri).
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('audience', 'semua')
+                ->orWhere('created_by', $user->id)
+                ->orWhereHas('recipients', fn(Builder $r) => $r->where('users.id', $user->id));
+        });
+    }
+
+    /** Dipakai instance-by-instance (mis. dari collection udah di-load) — logikanya sama scopeVisibleTo(), bukan query. */
+    public function isVisibleTo(User $user): bool
+    {
+        if ($this->audience !== 'tertentu') {
+            return true;
+        }
+
+        if ($this->created_by === $user->id) {
+            return true;
+        }
+
+        return $this->recipients->contains('id', $user->id);
+    }
+
     public function typeLabel(): string
     {
         return $this->type === 'mom' ? 'Minutes of Meeting' : 'Memo';
+    }
+
+    public function audienceLabel(): string
+    {
+        if ($this->audience !== 'tertentu') {
+            return 'Semua Karyawan';
+        }
+
+        $names = $this->recipients->pluck('name');
+
+        return $names->isEmpty() ? 'Karyawan tertentu (belum dipilih)' : $names->join(', ');
+    }
+
+    /** Universe user yang jadi denominator Read/Hidden count — semua user aktif kalau audience='semua', recipients doang kalau 'tertentu'. */
+    public function audienceUserIds(): Collection
+    {
+        return $this->audience === 'tertentu'
+            ? $this->recipients()->pluck('users.id')
+            : User::query()->pluck('id');
+    }
+
+    public function audienceCount(): int
+    {
+        return $this->audienceUserIds()->count();
+    }
+
+    public function readCount(): int
+    {
+        return $this->reads()
+            ->whereNotNull('read_at')
+            ->whereIn('user_id', $this->audienceUserIds())
+            ->count();
+    }
+
+    public function hiddenCount(): int
+    {
+        return $this->reads()
+            ->whereNotNull('hidden_at')
+            ->whereIn('user_id', $this->audienceUserIds())
+            ->count();
     }
 }

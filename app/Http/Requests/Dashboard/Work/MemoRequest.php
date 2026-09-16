@@ -31,6 +31,12 @@ class MemoRequest extends FormRequest
             'meeting_date' => ['nullable', 'date'],
             'attendees' => ['nullable', 'string', 'max:255'],
             'pinned' => ['sometimes', 'boolean'],
+            // 2026-09-16 — target penerima. 'tertentu' WAJIB minimal 1
+            // recipient (kalau kosong, mending 'semua' aja daripada
+            // memo nyasar ke nggak ada satupun karyawan).
+            'audience' => ['required', Rule::in(['semua', 'tertentu'])],
+            'recipients' => ['required_if:audience,tertentu', 'array', 'min:1'],
+            'recipients.*' => ['exists:users,id'],
         ];
     }
 }
