@@ -16,7 +16,11 @@
             <p class="mt-1.5 text-xs text-muted">Diajukan ke atasan langsung kamu, atau Owner kalau kamu gak punya
                 atasan.</p>
         </div>
-        <a href="{{ route('employee.overtime.index') }}" class="btn-wsm-white flex-none py-2! px-3! text-[11px]!">Lembur →</a>
+        <div class="flex flex-none flex-col gap-1.5">
+            <a href="{{ route('employee.overtime.index') }}" class="btn-wsm-white py-2! px-3! text-[11px]!">Lembur →</a>
+            <a href="{{ route('employee.attendanceCorrection.index') }}"
+                class="btn-wsm-white py-2! px-3! text-[11px]!">Koreksi Presensi →</a>
+        </div>
     </div>
 
     <div class="stat-wsm-blue mb-4">

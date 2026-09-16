@@ -25,6 +25,7 @@
  * ---------------------------------------------------------------------
  */
 
+use App\Http\Controllers\Approval\AttendanceCorrectionRequestController as ApprovalAttendanceCorrectionRequestController;
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
 use App\Http\Controllers\Attendance\RecapController;
@@ -49,6 +50,7 @@ use App\Http\Controllers\Owner\EmployeeController;
 use App\Http\Controllers\Owner\OfficeSettingController;
 use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\AttendanceController;
+use App\Http\Controllers\Employee\AttendanceCorrectionController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Employee\LeaveRequestController;
 use App\Http\Controllers\Employee\MemoInteractionController;
@@ -92,6 +94,15 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
     Route::get('/lembur', [OvertimeRequestController::class, 'index'])->name('overtime.index');
     Route::post('/lembur', [OvertimeRequestController::class, 'store'])->middleware('throttle:10,1')->name('overtime.store');
     Route::post('/lembur/{overtime}/batalkan', [OvertimeRequestController::class, 'cancel'])->name('overtime.cancel');
+
+    // --- 2026-09-16: Pengajuan Koreksi Presensi (self-service) ---
+    // Padanan "Koreksi Presensi" di daftar Employee Requests prototype —
+    // sebelumnya cuma bisa dikoreksi LANGSUNG oleh Manajer/Owner lewat
+    // Attendance\RecapController::correct(), karyawan sendiri gak punya
+    // jalur resmi buat MENGAJUKAN koreksi (harus japri manual).
+    Route::get('/koreksi-presensi', [AttendanceCorrectionController::class, 'index'])->name('attendanceCorrection.index');
+    Route::post('/koreksi-presensi', [AttendanceCorrectionController::class, 'store'])->middleware('throttle:10,1')->name('attendanceCorrection.store');
+    Route::post('/koreksi-presensi/{correction}/batalkan', [AttendanceCorrectionController::class, 'cancel'])->name('attendanceCorrection.cancel');
 
     // --- Fase 9 (2026-09-09): "Shared Calendar" — padanan
     // openSharedWorkloadCalendar() di prototype. Lihat
@@ -181,10 +192,7 @@ Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')
     // bukan di sini. Fase 6a (dashboard_access) ada di atas
     // ('employees.access.*'). Fase 6b (MoM & Memo) ada di grup
     // 'dashboard.work.' di bawah.
-    // Fase 8-18 semua sudah diimplementasikan (lihat modul-modul
-    // dashboard_access di bawah: work, kpi, contracts, payroll,
-    // budget, royalty, legal, it, recruitment) — grup 'owner.*' ini
-    // sendiri gak nambah apa-apa lagi di luar yang udah ada di atas.
+    // TODO Fase 8-18: lihat README bagian "Roadmap Modul & Role"
 });
 
 // --- Rekrutmen (2026-09-09: permission bukan role, lihat README) ---
@@ -268,6 +276,17 @@ Route::middleware(['auth', 'module:people,view', 'dashboard.unlocked'])->prefix(
     Route::post('/{overtime}/batalkan', [ApprovalOvertimeRequestController::class, 'cancel'])->name('cancel');
 });
 
+// --- Persetujuan Koreksi Presensi (2026-09-16) — permission bukan role ---
+// Sama persis alasan & pola grup 'approval.leave.'/'approval.overtime.'
+// di atas. AttendanceCorrectionRequestController::canDecide() (relasi
+// manager_id) sama persis punya LeaveRequestController.
+Route::middleware(['auth', 'module:people,view', 'dashboard.unlocked'])->prefix('persetujuan-koreksi-presensi')->name('approval.attendanceCorrection.')->group(function () {
+    Route::get('/', [ApprovalAttendanceCorrectionRequestController::class, 'index'])->name('index');
+    Route::post('/{correction}/setujui', [ApprovalAttendanceCorrectionRequestController::class, 'approve'])->name('approve');
+    Route::post('/{correction}/tolak', [ApprovalAttendanceCorrectionRequestController::class, 'reject'])->name('reject');
+    Route::post('/{correction}/batalkan', [ApprovalAttendanceCorrectionRequestController::class, 'cancel'])->name('cancel');
+});
+
 // --- Semua role internal (Dashboard modul, Fase 6a) ---
 // SENGAJA dibuka buat role:karyawan,manajer,owner,hrd (bukan cuma
 // role tinggi) — akses beneran dicek per-modul di controller lewat
@@ -282,12 +301,9 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // di bawah, soalnya Laravel matching route dari atas ke bawah —
     // kalau kebalik, '/dashboard/work' bakal kena ke
     // ModuleDashboardController::show('work') (placeholder), bukan ke
-    // MemoController. (Status per Fase 15, bukan lagi kondisi awal
-    // Fase 6b: budget/royalty/kpi/contracts/payroll SEKARANG SUDAH
-    // punya controller sendiri masing-masing, lihat grup 'budget.',
-    // 'royalty.', 'kpi.', 'contracts.', 'payroll.' di bawah — cuma
-    // 'people' yang gak lewat prefix 'dashboard' ini sama sekali,
-    // dia punya route sendiri di grup 'attendance.recap.'/'approval.*'.)
+    // MemoController. 6 modul lain (budget, royalty, kpi, people,
+    // contracts, payroll) belum punya controller sendiri, jadi masih
+    // lewat placeholder generik itu.
     Route::prefix('work')->name('work.')->group(function () {
         Route::get('/', [MemoController::class, 'index'])->middleware('module:work,view')->name('index');
         Route::get('/create', [MemoController::class, 'create'])->middleware('module:work,manage')->name('create');
@@ -341,10 +357,9 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // --- Fase 10: KPI & Performance ---
     // Sama pola persis grup 'work' di atas: harus terdaftar SEBELUM
     // '/{module}' generik di bawah, soalnya Laravel matching route
-    // dari atas ke bawah. (Status per Fase 15: budget/royalty/contracts/
-    // payroll SEKARANG SUDAH punya grup route sendiri juga — lihat
-    // di bawah — bukan lagi lewat placeholder generik.
-    // 'people' punya controller sendiri juga, tapi di luar prefix
+    // dari atas ke bawah. 5 modul lain (budget, royalty, people*,
+    // contracts, payroll) masih lewat placeholder generik itu.
+    // (*'people' punya controller sendiri juga, tapi di luar prefix
     // 'dashboard' — lihat grup 'rekap-absensi'/'persetujuan-*' di atas.)
     Route::prefix('kpi')->name('kpi.')->group(function () {
         Route::get('/', [KpiController::class, 'index'])->middleware('module:kpi,view')->name('index');
