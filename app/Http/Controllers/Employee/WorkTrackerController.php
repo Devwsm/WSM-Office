@@ -52,11 +52,12 @@ use Illuminate\Support\Facades\Request;
  * kalau Owner ubah jam kerja di sana, kalender ini otomatis ikut
  * berubah. Hari WFH tetap "Flexible / remote" (gak ada kolom jam WFH
  * di OfficeSetting, itu bukan kebijakan berbasis jam).
- * "Project color" juga BELUM ada kolom `color` di tabel `projects` —
- * dipakai palet warna WSM yang udah ada (`PROJECT_COLOR_PALETTE`),
- * di-assign deterministik per `project_id % jumlah warna`, biar tiap
- * project tetap konsisten warnanya tiap kali dibuka, tanpa migration
- * baru.
+ * "Project color" (2026-09-16) SEKARANG baca `$project->color` asli
+ * (form "Kelola Projects" punya field Warna) lewat
+ * `Project::colorFor()`/`contrastTextFor()` — sebelumnya warna
+ * hardcoded/deterministik dari `project_id % jumlah palet` karena kolom
+ * `color`-nya belum ada sama sekali (lihat migration
+ * `add_color_to_projects_table`).
  * ---------------------------------------------------------------------
  */
 class WorkTrackerController extends Controller
@@ -75,35 +76,7 @@ class WorkTrackerController extends Controller
         5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH'],
     ];
 
-    /** Palet warna WSM yang udah ada di design token (resources/css/app.css @theme). */
-    private const PROJECT_COLOR_PALETTE = [
-        '#3558f4', // brand-blue
-        '#deb92e', // brand-yellow
-        '#27c84d', // brand-green
-        '#b4ef4b', // brand-lime
-        '#f16c61', // brand-red
-        '#6e95f5', // brand-blue-light
-        '#f3e65c', // brand-yellow-light
-    ];
-
-    private static function projectColor(?int $projectId): string
-    {
-        if (! $projectId) {
-            return '#8b867e'; // muted, buat item tanpa project
-        }
-
-        return self::PROJECT_COLOR_PALETTE[$projectId % count(self::PROJECT_COLOR_PALETTE)];
-    }
-
-    /** Kontras teks di atas warna project — padanan v19Contrast() di prototype. */
-    private static function contrastFor(string $hexColor): string
-    {
-        $hex = ltrim($hexColor, '#');
-        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
-        $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-
-        return $luminance > 0.6 ? '#17130a' : '#ffffff';
-    }
+    /** Palet warna & kontras teks project sekarang dipusatkan di Project::nextPaletteColor()/colorFor()/contrastTextFor() — lihat catatan class di atas. */
 
     /**
      * "Shared Workload Calendar" — full month grid, padanan
@@ -159,14 +132,14 @@ class WorkTrackerController extends Controller
                     'items' => $dayItems->map(fn(WorkItem $item) => [
                         'title' => $item->title,
                         'pic' => $item->pic?->name,
-                        'color' => self::projectColor($item->project_id),
-                        'text' => self::contrastFor(self::projectColor($item->project_id)),
+                        'color' => Project::colorFor($item->project),
+                        'text' => Project::contrastTextFor(Project::colorFor($item->project)),
                     ]),
                 ];
             });
         });
 
-        $projects = Project::query()->orderBy('name')->get(['id', 'name']);
+        $projects = Project::query()->orderBy('name')->get(['id', 'name', 'color']);
         $picOptions = User::query()
             ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
             ->orderBy('name')
@@ -180,7 +153,7 @@ class WorkTrackerController extends Controller
             'projectFilter' => $projectFilter,
             'picFilter' => $picFilter,
             'weeklyRhythm' => $weeklyRhythm,
-            'projectColor' => fn(?int $id) => self::projectColor($id),
+            'projectColor' => fn(?int $id) => Project::colorFor($projects->firstWhere('id', $id)),
         ]);
     }
 }

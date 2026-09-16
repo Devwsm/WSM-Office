@@ -41,34 +41,6 @@ class CalendarController extends Controller
         5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH'],
     ];
 
-    private const PROJECT_COLOR_PALETTE = [
-        '#3558f4', // brand-blue
-        '#deb92e', // brand-yellow
-        '#27c84d', // brand-green
-        '#b4ef4b', // brand-lime
-        '#f16c61', // brand-red
-        '#6e95f5', // brand-blue-light
-        '#f3e65c', // brand-yellow-light
-    ];
-
-    private static function projectColor(?int $projectId): string
-    {
-        if (! $projectId) {
-            return '#8b867e';
-        }
-
-        return self::PROJECT_COLOR_PALETTE[$projectId % count(self::PROJECT_COLOR_PALETTE)];
-    }
-
-    private static function contrastFor(string $hexColor): string
-    {
-        $hex = ltrim($hexColor, '#');
-        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
-        $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
-
-        return $luminance > 0.6 ? '#17130a' : '#ffffff';
-    }
-
     public function index()
     {
         $monthParam = Request::query('month');
@@ -113,14 +85,16 @@ class CalendarController extends Controller
                     'items' => $dayItems->map(fn(WorkItem $item) => [
                         'title' => $item->title,
                         'pic' => $item->pic?->name,
-                        'color' => self::projectColor($item->project_id),
-                        'text' => self::contrastFor(self::projectColor($item->project_id)),
+                        'color' => Project::colorFor($item->project),
+                        'text' => Project::contrastTextFor(Project::colorFor($item->project)),
                     ]),
                 ];
             });
         });
 
-        $projects = Project::query()->orderBy('name')->get(['id', 'name']);
+        // 2026-09-16 — 'color' ikut di-select biar $project->color kepake
+        // langsung di legend (calendar.blade.php) lewat closure di bawah.
+        $projects = Project::query()->orderBy('name')->get(['id', 'name', 'color']);
         $picOptions = User::query()
             ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
             ->orderBy('name')
@@ -134,7 +108,7 @@ class CalendarController extends Controller
             'projectFilter' => $projectFilter,
             'picFilter' => $picFilter,
             'weeklyRhythm' => $weeklyRhythm,
-            'projectColor' => fn(?int $id) => self::projectColor($id),
+            'projectColor' => fn(?int $id) => Project::colorFor($projects->firstWhere('id', $id)),
         ]);
     }
 }

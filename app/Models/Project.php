@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 #[Fillable([
     'slug',
     'name',
+    'color',
     'start_date',
     'end_date',
     'priority',
@@ -59,6 +60,15 @@ class Project extends Model
         static::creating(function (self $project) {
             if (! $project->slug) {
                 $project->slug = static::uniqueSlugFrom($project->name);
+            }
+
+            // 2026-09-16 — kalau form gak isi warna (mis. lewat Import
+            // XLS/CSV nanti, atau field-nya dikosongin), tetap kasih
+            // warna dari palet default biar kanban/kalender selalu ada
+            // warnanya — bukan asal abu netral (itu khusus NO_PROJECT_COLOR
+            // buat task yang project_id-nya NULL).
+            if (! $project->color) {
+                $project->color = static::nextPaletteColor();
             }
         });
     }
@@ -112,5 +122,58 @@ class Project extends Model
             'actual' => $actual,
             'remaining' => $budget - $actual,
         ];
+    }
+
+    /**
+     * 2026-09-16 — "Warna Project" (temuan audit prototype: form "Create
+     * Project" prototype punya field Project Color hex+picker, WSM-Office
+     * belum punya kolom `color` sama sekali — makanya warna project di
+     * Timeline Calendar & Work Tracker board SEBELUMNYA hardcoded/
+     * deterministik dari `$projectId % count($palette)`, BUKAN warna
+     * pilihan user beneran). Dipakai ganti PROJECT_COLOR_PALETTE yang
+     * dulu ada duplikat identik di Dashboard\Work\CalendarController &
+     * Employee\WorkTrackerController — sekarang cukup baca `$project->color`.
+     */
+    private const DEFAULT_COLOR_PALETTE = [
+        '#3558f4', // brand-blue
+        '#deb92e', // brand-yellow
+        '#27c84d', // brand-green
+        '#b4ef4b', // brand-lime
+        '#f16c61', // brand-red
+        '#6e95f5', // brand-blue-light
+        '#f3e65c', // brand-yellow-light
+    ];
+
+    /** Warna abu netral buat task TANPA project ("Tanpa Project") — bukan pilihan user, jadi bukan bagian dari DEFAULT_COLOR_PALETTE. */
+    public const NO_PROJECT_COLOR = '#8b867e';
+
+    /**
+     * Dipanggil pas project baru dibuat TANPA `color` eksplisit dari form
+     * (mis. lewat Import XLS/CSV nanti, atau kalau user ngosongin field
+     * warnanya) — assign dari palet default secara berurutan (bukan
+     * random) berdasar jumlah project yang udah ada, biar tiap project
+     * baru cenderung beda warna dari yang sebelumnya.
+     */
+    public static function nextPaletteColor(): string
+    {
+        $count = static::query()->count();
+
+        return self::DEFAULT_COLOR_PALETTE[$count % count(self::DEFAULT_COLOR_PALETTE)];
+    }
+
+    /** Warna project ini, atau abu netral kalau $this null (task tanpa project) — dipanggil statis lewat Project::colorFor($item->project). */
+    public static function colorFor(?self $project): string
+    {
+        return $project->color ?? self::NO_PROJECT_COLOR;
+    }
+
+    /** Hitamin atau putihin teks di atas warna project ini, biar kebaca (WCAG-ish luminance check sederhana) — dipakai buat badge/card warna project. */
+    public static function contrastTextFor(string $hexColor): string
+    {
+        $hex = ltrim($hexColor, '#');
+        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+        $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+
+        return $luminance > 0.6 ? '#17130a' : '#ffffff';
     }
 }

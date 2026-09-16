@@ -107,7 +107,10 @@
                                     ondragstart="event.dataTransfer.setData('text/plain', '{{ $item->id }}')"
                                     class="cursor-grab rounded-xl border border-line bg-white p-3 active:cursor-grabbing"
                                     x-data="{ open: false }">
-                                    <p class="truncate text-[9px] font-extrabold uppercase tracking-wide text-muted">
+                                    <p
+                                        class="flex items-center gap-1 truncate text-[9px] font-extrabold uppercase tracking-wide text-muted">
+                                        <span class="h-2 w-2 flex-none rounded-full"
+                                            style="background:{{ \App\Models\Project::colorFor($item->project) }}"></span>
                                         {{ $item->project?->name ?? 'Tanpa Project' }}
                                         @if ($item->section)
                                             · {{ $item->section }}
@@ -266,10 +269,14 @@
                 <div class="mb-4 grid gap-2">
                     @forelse ($projects as $project)
                         <div class="flex items-center justify-between rounded-2xl border border-line bg-white p-3">
-                            <div class="min-w-0">
-                                <p class="truncate text-xs font-black">{{ $project->name }}</p>
-                                <p class="text-[10px] text-muted">{{ $project->status }} ·
-                                    {{ $project->priority }}</p>
+                            <div class="flex min-w-0 items-center gap-2">
+                                <span class="h-3 w-3 flex-none rounded-full"
+                                    style="background:{{ $project->color }}"></span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-xs font-black">{{ $project->name }}</p>
+                                    <p class="text-[10px] text-muted">{{ $project->status }} ·
+                                        {{ $project->priority }}</p>
+                                </div>
                             </div>
                             <div class="flex flex-none gap-1.5">
                                 <button type="button" data-project="{{ $project->toJson() }}"
@@ -300,6 +307,20 @@
                         <label class="text-[10px] font-extrabold uppercase text-muted">Nama Project</label>
                         <input name="name" id="wtProjectName" required
                             class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
+                    </div>
+                    <div class="grid gap-1">
+                        <label class="text-[10px] font-extrabold uppercase text-muted">Warna</label>
+                        <div class="flex items-center gap-2.5">
+                            <input type="color" name="color" id="wtProjectColor" value="#3558f4"
+                                class="h-11 w-14 flex-none rounded-xl border border-line bg-white p-1"
+                                oninput="document.getElementById('wtProjectColorHex').value = this.value">
+                            <input id="wtProjectColorHex" value="#3558f4" placeholder="#3558f4"
+                                oninput="document.getElementById('wtProjectColor').value = this.value"
+                                class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm uppercase">
+                        </div>
+                        @error('color')
+                            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div class="grid gap-1">
@@ -418,6 +439,8 @@
             form.action = "{{ route('dashboard.work.tracker.projects.store') }}";
             document.getElementById('wtProjectFormMethod').innerHTML = '';
             form.reset();
+            document.getElementById('wtProjectColor').value = '#3558f4';
+            document.getElementById('wtProjectColorHex').value = '#3558f4';
         }
 
         function wtOpenEditProject(project) {
@@ -426,6 +449,9 @@
             form.action = `/dashboard/work/tracker/proyek/${project.id}`;
             document.getElementById('wtProjectFormMethod').innerHTML = '<input type="hidden" name="_method" value="PATCH">';
             document.getElementById('wtProjectName').value = project.name || '';
+            const color = project.color || '#3558f4';
+            document.getElementById('wtProjectColor').value = color;
+            document.getElementById('wtProjectColorHex').value = color;
             document.getElementById('wtProjectStart').value = project.start_date ? project.start_date.substring(0, 10) : '';
             document.getElementById('wtProjectEnd').value = project.end_date ? project.end_date.substring(0, 10) : '';
             document.getElementById('wtProjectPriority').value = project.priority || 'Medium';

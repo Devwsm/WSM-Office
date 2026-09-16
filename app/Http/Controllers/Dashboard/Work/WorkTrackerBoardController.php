@@ -79,6 +79,12 @@ class WorkTrackerBoardController extends Controller
     {
         $data = $request->validated();
         $data['slug'] = Project::uniqueSlugFrom($data['name']);
+        // 2026-09-16 — sama alasan kenapa `slug` diisi eksplisit di sini
+        // (bukan cuma andelin Project::booted()): hook `creating` TERNYATA
+        // gak selalu keisi ke query INSERT (lihat ⚠️ di Project model),
+        // jadi warna default juga diisi eksplisit di sini, bukan cuma
+        // ngandelin hook.
+        $data['color'] = $data['color'] ?: Project::nextPaletteColor();
         $data['created_by'] = $request->user()->id;
 
         Project::create($data);

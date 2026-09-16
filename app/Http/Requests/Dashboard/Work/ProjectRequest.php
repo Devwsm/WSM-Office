@@ -30,6 +30,7 @@ class ProjectRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:150'],
+            'color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'priority' => ['required', Rule::in(Project::PRIORITIES)],
