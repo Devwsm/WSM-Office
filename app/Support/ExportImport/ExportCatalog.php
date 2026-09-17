@@ -7,25 +7,21 @@ use App\Models\User;
 /**
  * ExportCatalog
  * ---------------------------------------------------------------------
- * Batch 0 (fondasi fitur Export & Import) — sumber kebenaran tunggal
- * buat "halaman mana yang punya export/import, format apa aja, dan
- * modul dashboard_access mana yang jadi gerbangnya", persis pola
- * DashboardAccess::MODULES.
+ * Batch 0 (fondasi) — sumber kebenaran tunggal buat "halaman mana yang
+ * punya export/import, format apa aja, dan modul dashboard_access mana
+ * yang jadi gerbangnya", persis pola DashboardAccess::MODULES.
  *
  * SENGAJA TIDAK bikin modul dashboard_access baru ('export_import' dkk)
  * — export/import 1 halaman numpang izin akses YANG SUDAH ADA buat
  * halaman itu (mis. export Payroll butuh akses modul 'payroll', bukan
- * modul baru). Alasannya: kalau seseorang sudah boleh LIHAT data
- * Payroll di layar, dia juga wajar boleh MENGUNDUHNYA — bikin modul
- * akses terpisah cuma bikin Owner harus assign akses 2x buat hal yang
- * sama.
+ * modul baru).
  *
- * 'implemented' => false berarti card-nya kelihatan di "Export & Import
- * Center" (biar orang tahu fitur ini lagi disiapkan) tapi tombolnya
- * nonaktif — flag ini diubah jadi true satu-satu pas modulnya beneran
- * dikerjakan (lihat rencana Batch 1/2/3), BARENGAN sama diisinya field
- * 'export_route'/'import_route'. Jangan isi field route sebelum
- * controller-nya beneran ada, nanti `route()` di Blade error.
+ * 'implemented_exports' => subset dari 'exports' yang BENERAN sudah
+ * jalan (route + controller + Export class-nya ada). Dicek TERPISAH
+ * dari 'import_implemented' karena beberapa entri (mis.
+ * 'attendance-recap') punya 2 format export yang dikerjakan di batch
+ * berbeda (Excel di Batch 1, PDF di Batch 2) — jangan tandai
+ * 'implemented_exports' penuh sebelum semua format-nya beneran ada.
  * ---------------------------------------------------------------------
  */
 class ExportCatalog
@@ -38,10 +34,9 @@ class ExportCatalog
             'module' => 'people',
             'owner_only' => false,
             'exports' => ['excel', 'pdf'],
+            'implemented_exports' => ['excel'], // Batch 1. PDF -> Batch 2.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'payroll' => [
             'label' => 'Payroll',
@@ -50,10 +45,9 @@ class ExportCatalog
             'module' => 'payroll',
             'owner_only' => false,
             'exports' => ['pdf', 'excel'],
+            'implemented_exports' => [], // Batch 2.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'kpi' => [
             'label' => 'KPI & Performance',
@@ -62,10 +56,9 @@ class ExportCatalog
             'module' => 'kpi',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false, // Batch 3.
         ],
         'budget' => [
             'label' => 'Project Budgeting',
@@ -74,10 +67,9 @@ class ExportCatalog
             'module' => 'budget',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false, // Batch 3.
         ],
         'royalty' => [
             'label' => 'Royalty Dashboard',
@@ -86,10 +78,9 @@ class ExportCatalog
             'module' => 'royalty',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'contracts' => [
             'label' => 'Employee Contracts',
@@ -98,10 +89,9 @@ class ExportCatalog
             'module' => 'contracts',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'legal' => [
             'label' => 'Legal Documents',
@@ -110,10 +100,9 @@ class ExportCatalog
             'module' => 'legal',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'audit-log' => [
             'label' => 'Audit Log',
@@ -122,10 +111,9 @@ class ExportCatalog
             'module' => 'it',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'employees' => [
             'label' => 'Manajemen Karyawan',
@@ -134,10 +122,9 @@ class ExportCatalog
             'module' => null,
             'owner_only' => true,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false, // Batch 3.
         ],
         'recruitment-applicants' => [
             'label' => 'Rekrutmen — Pelamar',
@@ -146,10 +133,9 @@ class ExportCatalog
             'module' => 'recruitment',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'work-tracker' => [
             'label' => 'Work Tracker',
@@ -158,10 +144,9 @@ class ExportCatalog
             'module' => 'work',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false, // Batch 3.
         ],
         'meetings' => [
             'label' => 'Meetings / MoM',
@@ -170,10 +155,9 @@ class ExportCatalog
             'module' => 'work',
             'owner_only' => false,
             'exports' => ['pdf'],
+            'implemented_exports' => [], // Batch 2.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
         'leave-recap' => [
             'label' => 'Rekap Izin/Cuti Tim',
@@ -182,10 +166,9 @@ class ExportCatalog
             'module' => 'people',
             'owner_only' => false,
             'exports' => ['excel'],
+            'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
-            'implemented' => false,
-            'export_route' => null,
-            'import_route' => null,
+            'import_implemented' => false,
         ],
     ];
 
@@ -210,11 +193,7 @@ class ExportCatalog
             ->all();
     }
 
-    /**
-     * Level akses user ke SATU entri catalog ('view'/'manage'/'none') —
-     * import selalu butuh minimal 'manage' (lihat catatan di
-     * index.blade.php), export cukup 'view'.
-     */
+    /** Level akses user ke SATU entri catalog ('view'/'manage'/'none'). */
     public static function accessLevelFor(User $user, string $key): string
     {
         $entry = self::CATALOG[$key] ?? null;
@@ -228,5 +207,17 @@ class ExportCatalog
         }
 
         return $user->accessLevel($entry['module']);
+    }
+
+    /** Shortcut yang dipakai controller export/import: true kalau boleh minimal LIHAT entri ini. */
+    public static function canView(User $user, string $key): bool
+    {
+        return self::accessLevelFor($user, $key) !== 'none';
+    }
+
+    /** Import butuh level 'manage', bukan cuma 'view' — nulis data beda urgensinya sama baca data. */
+    public static function canImport(User $user, string $key): bool
+    {
+        return self::accessLevelFor($user, $key) === 'manage';
     }
 }

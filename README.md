@@ -295,38 +295,70 @@ Alurnya:
 
 ### Status tiap batch
 
-| Batch                      | Isinya                                                                                                                                                                        | Status                                                                                                    |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Batch 0 — Fondasi**      | Halaman menu "Export & Import" + kerangka dasar (base class Excel, base class Import, layout PDF, service preview import) yang dipakai semua batch berikutnya                 | ✅ **Selesai & sudah dites** (login beneran lewat browser, bukan cuma baca kode — lihat catatan di bawah) |
-| **Batch 1 — Export Excel** | 11 modul: Rekap Absensi, KPI, Project Budgeting, Royalty, Employee Contracts, Legal Documents, Audit Log, Manajemen Karyawan, Rekrutmen–Pelamar, Work Tracker, Rekap Cuti Tim | ⏳ Belum dikerjakan                                                                                       |
-| **Batch 2 — Export PDF**   | Payroll (slip gaji), Rekap Absensi (per-karyawan), Meetings/MoM (notulen)                                                                                                     | ⏳ Belum dikerjakan                                                                                       |
-| **Batch 3 — Import**       | Work Tracker (prioritas — nutup gap prototype lama), menyusul Manajemen Karyawan/KPI/Project Budgeting                                                                        | ⏳ Belum dikerjakan                                                                                       |
+| Batch                      | Isinya                                                                                                                                                                        | Status                                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Batch 0 — Fondasi**      | Halaman menu "Export & Import" + kerangka dasar (base class Excel, base class Import, layout PDF, service preview import) yang dipakai semua batch berikutnya                 | ✅ **Selesai & sudah dites**                                                                            |
+| **Batch 1 — Export Excel** | 11 modul: Rekap Absensi, KPI, Project Budgeting, Royalty, Employee Contracts, Legal Documents, Audit Log, Manajemen Karyawan, Rekrutmen–Pelamar, Work Tracker, Rekap Cuti Tim | ✅ **Kode selesai** — lihat catatan pengujian di bawah, ada 1 bagian yang **belum bisa dites langsung** |
+| **Batch 2 — Export PDF**   | Payroll (slip gaji), Rekap Absensi (per-karyawan), Meetings/MoM (notulen)                                                                                                     | ⏳ Belum dikerjakan                                                                                     |
+| **Batch 3 — Import**       | Work Tracker (prioritas — nutup gap prototype lama), menyusul Manajemen Karyawan/KPI/Project Budgeting                                                                        | ⏳ Belum dikerjakan                                                                                     |
 
-Sampai Batch 1/2/3 selesai, semua kartu di halaman "Export & Import" akan menampilkan badge **"Segera Hadir"** dan tombolnya nonaktif — ini sengaja, biar orang tetap tahu fitur apa saja yang direncanakan.
+Sampai Batch 2/3 selesai, kartu-kartu terkait di halaman "Export & Import" masih menampilkan badge **"Segera Hadir"** untuk bagian yang belum jalan — ini sengaja, biar orang tetap tahu fitur apa saja yang direncanakan. Kartu **Rekap Absensi** contohnya: tombol **Export Excel** sudah aktif (Batch 1), tapi **Export PDF**-nya masih "Segera Hadir" (nyusul Batch 2) — 1 kartu bisa punya 2 status berbeda tergantung format.
 
-### Apa yang sudah dites untuk Batch 0
+### Apa yang sudah dites, dan apa yang belum bisa dites
 
-Bukan cuma ditulis lalu diasumsikan jalan — sudah benar-benar dijalankan: `migrate:fresh --seed` di database sungguhan, jalankan aplikasinya, login pakai akun `owner@wsm.local` dan `gepeng@wsm.local`, lalu buka halaman `/dashboard/export-import` beneran lewat HTTP:
+**Sudah dites langsung lewat browser (login beneran, bukan cuma baca kode):**
 
-- Sebagai **Owner**: 13 kartu muncul semua (Owner selalu full-access).
-- Sebagai **Gepeng** (karyawan, cuma punya akses modul `work`): **cuma 2 kartu** yang muncul (Work Tracker & Meetings/MoM) — membuktikan penyaringan akses per-kartu benar-benar jalan, bukan cuma nampilin semua.
+- Halaman menu "Export & Import" — login sebagai **Owner** (13 kartu muncul semua) dan sebagai **Gepeng**, karyawan yang cuma punya akses modul `work` (cuma **2 kartu** yang muncul: Work Tracker & Meetings/MoM) — membuktikan penyaringan akses per-kartu jalan.
+- Badge per-format (Excel aktif vs PDF "Segera Hadir" vs Import "Segera Hadir") dicek satu-satu, jumlahnya cocok persis dengan yang seharusnya untuk ke-13 kartu.
 
-### File yang ditambahkan (Batch 0)
+**BELUM bisa dites langsung** (halaman preview tabel & tombol Download Excel di 11 modul Batch 1): kode-nya butuh package `maatwebsite/excel` yang **belum ter-install** (lihat bagian selanjutnya) — instalasinya butuh akses ke `packagist.org`, yang tidak bisa diakses dari lingkungan kerja saya (sudah dicoba langsung `composer require`, hasilnya diblok/HTTP 403). Jadi bagian ini sudah saya periksa teliti secara manual (nama kolom & nama relasi tiap model dicocokkan satu-satu ke kode aslinya, bukan ditebak) dan lolos pengecekan sintaks PHP (`php -l`) di semua file — tapi **belum dites "beneran jalan end-to-end"** sampai package-nya di-install dan dicoba sendiri. Tolong dicoba manual sekali setelah `composer require` di bawah, kalau ada error tinggal kabari saya.
 
-| File                                                                     | Isinya                                                                                                  |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `app/Support/ExportImport/ExportCatalog.php`                             | Daftar tunggal semua modul yang punya export/import — label, format, modul akses yang jadi gerbangnya   |
-| `app/Support/ExportImport/ImportPreviewService.php`                      | Alur simpan-sementara hasil parsing file import sebelum benar-benar dikonfirmasi masuk database         |
-| `app/Exports/BaseExport.php`                                             | Kerangka dasar untuk semua export Excel (Batch 1)                                                       |
-| `app/Exports/TemplateExport.php`                                         | Generator file template Excel kosong untuk tombol "Download Template" (Batch 3)                         |
-| `app/Imports/BaseImport.php`                                             | Kerangka dasar untuk semua import — baca file, validasi per-baris, pisahkan baris valid/error (Batch 3) |
-| `app/Http/Controllers/Dashboard/ExportImport/ExportImportController.php` | Controller halaman menu                                                                                 |
-| `resources/views/dashboard/export-import/index.blade.php`                | Tampilan halaman menu (kartu per-modul)                                                                 |
-| `resources/views/pdf/layout.blade.php`                                   | Kop surat/letterhead dasar untuk semua export PDF (Batch 2)                                             |
+### File yang ditambahkan/diubah — Batch 0 + Batch 1
 
-### Yang perlu dijalankan manual sebelum Batch 1/2/3 bisa benar-benar dipakai
+**Fondasi (Batch 0):**
 
-`composer.json` sudah ditambahkan 2 package (`maatwebsite/excel` dan `barryvdh/laravel-dompdf`), **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting):
+| File                                                                     | Isinya                                                                                                                                    |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/Support/ExportImport/ExportCatalog.php`                             | Daftar tunggal semua modul yang punya export/import — label, format, modul akses yang jadi gerbangnya, dan status implementasi per-format |
+| `app/Support/ExportImport/ImportPreviewService.php`                      | Alur simpan-sementara hasil parsing file import sebelum benar-benar dikonfirmasi masuk database (dipakai Batch 3)                         |
+| `app/Exports/BaseExport.php`                                             | Kerangka dasar untuk semua export Excel                                                                                                   |
+| `app/Exports/TemplateExport.php`                                         | Generator file template Excel kosong untuk tombol "Download Template" (dipakai Batch 3)                                                   |
+| `app/Imports/BaseImport.php`                                             | Kerangka dasar untuk semua import — baca file, validasi per-baris, pisahkan baris valid/error (dipakai Batch 3)                           |
+| `app/Http/Controllers/Dashboard/ExportImport/ExportImportController.php` | Controller halaman menu (index)                                                                                                           |
+| `resources/views/dashboard/export-import/index.blade.php`                | Tampilan halaman menu (kartu per-modul)                                                                                                   |
+| `resources/views/pdf/layout.blade.php`                                   | Kop surat/letterhead dasar untuk semua export PDF (dipakai Batch 2)                                                                       |
+
+**Export Excel (Batch 1) — 11 class Export, 1 controller, 1 view preview, dipakai bareng:**
+
+| File                                                               | Isinya                                                                                         |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `app/Http/Controllers/Dashboard/ExportImport/ExportController.php` | Controller tunggal untuk SEMUA export (preview + download) — routing berdasar `{key}/{format}` |
+| `resources/views/dashboard/export-import/preview.blade.php`        | View tunggal untuk preview tabel SEMUA modul (dipakai bareng, bukan 1 file per modul)          |
+| `app/Exports/AttendanceRecapExport.php`                            | Rekap Absensi — filter: periode (bulan) + karyawan                                             |
+| `app/Exports/KpiExport.php`                                        | KPI & Performance — filter: periode                                                            |
+| `app/Exports/ProjectBudgetExport.php`                              | Project Budgeting — filter: project                                                            |
+| `app/Exports/RoyaltyEntryExport.php`                               | Royalty Dashboard — filter: periode                                                            |
+| `app/Exports/EmployeeContractExport.php`                           | Employee Contracts — tanpa filter                                                              |
+| `app/Exports/LegalDocumentExport.php`                              | Legal Documents — tanpa filter                                                                 |
+| `app/Exports/AuditLogExport.php`                                   | Audit Log — filter: rentang tanggal                                                            |
+| `app/Exports/EmployeeExport.php`                                   | Manajemen Karyawan — tanpa filter (owner-only)                                                 |
+| `app/Exports/JobApplicationExport.php`                             | Rekrutmen – Pelamar — filter: lowongan                                                         |
+| `app/Exports/WorkItemExport.php`                                   | Work Tracker — filter: project                                                                 |
+| `app/Exports/LeaveRequestExport.php`                               | Rekap Izin/Cuti Tim — filter: periode                                                          |
+
+**File yang DIUBAH (bukan file baru):**
+
+| File                                                      | Perubahan                                                                                                                                                 |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `routes/web.php`                                          | + route `dashboard.export-import.index` (Batch 0), + route `dashboard.export-import.preview` & `.download` (Batch 1)                                      |
+| `resources/views/layouts/app.blade.php`                   | + section sidebar ke-9 "EXPORT & IMPORT" (Batch 0)                                                                                                        |
+| `resources/views/dashboard/export-import/index.blade.php` | Badge & tombol disesuaikan supaya per-FORMAT (Excel/PDF/Import dicek independen, bukan 1 status untuk seluruh kartu) — lihat contoh Rekap Absensi di atas |
+| `composer.json`                                           | + `maatwebsite/excel`, + `barryvdh/laravel-dompdf` (Batch 0)                                                                                              |
+| `README.md`                                               | Bagian ini (bagian 7)                                                                                                                                     |
+
+### Yang perlu dijalankan manual sebelum Batch 1 bisa benar-benar dipakai
+
+`composer.json` sudah ditambahkan 2 package, **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting), **lalu coba buka salah satu halaman preview** (mis. Dashboard → Export & Import → KPI → Export Excel) buat mastiin semuanya jalan mulus:
 
 ```
 composer require maatwebsite/excel barryvdh/laravel-dompdf

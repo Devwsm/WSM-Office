@@ -33,6 +33,7 @@ use App\Http\Controllers\Dashboard\Budget\BudgetController;
 use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
+use App\Http\Controllers\Dashboard\ExportImport\ExportController;
 use App\Http\Controllers\Dashboard\ExportImport\ExportImportController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
@@ -464,6 +465,12 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // catatan di ExportImportController.
     Route::prefix('export-import')->name('export-import.')->group(function () {
         Route::get('/', [ExportImportController::class, 'index'])->name('index');
+
+        // --- Batch 1: export Excel. $key cocok ke ExportCatalog::CATALOG,
+        // $format saat ini cuma 'excel' yang beneran jalan (lihat
+        // ExportController::resolve() — 'pdf' abort 404 sampai Batch 2). ---
+        Route::get('/{key}/{format}/preview', [ExportController::class, 'preview'])->name('preview');
+        Route::get('/{key}/{format}/download', [ExportController::class, 'download'])->name('download');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
