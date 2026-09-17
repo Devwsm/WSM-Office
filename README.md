@@ -38,18 +38,22 @@ Saat menyiapkan data uji coba menyeluruh, ditemukan **satu bug yang cukup pentin
 
 - **Nama file model `ContactMessage` tidak sesuai (`Contactmessage.php`, huruf `m` kecil)** — di komputer Windows/Mac ini sering tidak masalah, tapi begitu di-upload ke hosting (yang sistemnya Linux, membedakan huruf besar/kecil pada nama file), fitur **Pesan Kontak akan langsung error** setiap kali ada pengunjung yang mengisi form Kontak di halaman publik. **Sudah diperbaiki** dengan mengganti nama file jadi `ContactMessage.php` supaya sesuai nama class-nya.
 
+### Sedang dikerjakan: Export & Import
+
+Fitur baru, dikerjakan bertahap (lihat bagian 7 untuk detail lengkap). **Fondasinya (Batch 0) sudah selesai** — halaman menu "Export & Import" sudah bisa dibuka & sudah nyaring kartu sesuai akses tiap orang (sudah dites langsung lewat browser, login beneran, bukan cuma dibaca kodenya) — tapi tombol export/import di tiap kartu **masih "Segera Hadir"**, belum ada yang benar-benar jalan. Menyusul satu-per-satu di batch berikutnya.
+
 ### Yang masih harus dibereskan sebelum benar-benar go-live
 
 Ini bukan kesalahan kode, tapi konfigurasi/kelengkapan yang memang belum disentuh:
 
-| #   | Isu                                                                                                                 | Kenapa penting                                                                                                                                                             |
-| --- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | File `.env` yang ada masih berisi setting pengembangan (password database polos, `APP_DEBUG=true`, `APP_ENV=local`) | Kalau diupload apa adanya, siapa pun bisa melihat detail error teknis (termasuk info sensitif) di halaman publik. **Wajib diganti** dengan `.env` produksi sebelum upload. |
-| 2   | Symlink `storage:link` belum pernah dijalankan di server                                                            | Upload file kontrak karyawan & dokumen legal (yang disimpan lewat `Storage::disk('public')`) tidak akan bisa diakses/ditampilkan tanpa ini.                                |
-| 3   | Belum ada file `.htaccess` di folder paling atas (root) project                                                     | Di hosting cPanel yang document root-nya bukan folder `public/`, tanpa file ini alamat website tidak akan mengarah ke aplikasi dengan benar.                               |
-| 4   | Import massal data (CSV/XLSX) untuk Work Tracker dari prototype lama belum ikut dipindahkan                         | Fitur ini ada di prototype lama, tapi di versi baru ini isi tugas masih harus satu-satu manual atau lewat MoM.                                                             |
-| 5   | Belum ada automated test sungguhan (baru file contoh bawaan Laravel)                                                | Tidak ada jaring pengaman otomatis kalau ada perubahan kode yang tidak sengaja merusak fitur lain.                                                                         |
-| 6   | Ada file `database/database.sqlite` yang tertinggal di folder project                                               | Tidak dipakai (database sungguhan pakai MySQL), aman dihapus, cuma bikin bingung kalau dikira itu database aktif.                                                          |
+| #   | Isu                                                                                                                                  | Kenapa penting                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | File `.env` yang ada masih berisi setting pengembangan (password database polos, `APP_DEBUG=true`, `APP_ENV=local`)                  | Kalau diupload apa adanya, siapa pun bisa melihat detail error teknis (termasuk info sensitif) di halaman publik. **Wajib diganti** dengan `.env` produksi sebelum upload. |
+| 2   | Symlink `storage:link` belum pernah dijalankan di server                                                                             | Upload file kontrak karyawan & dokumen legal (yang disimpan lewat `Storage::disk('public')`) tidak akan bisa diakses/ditampilkan tanpa ini.                                |
+| 3   | Belum ada file `.htaccess` di folder paling atas (root) project                                                                      | Di hosting cPanel yang document root-nya bukan folder `public/`, tanpa file ini alamat website tidak akan mengarah ke aplikasi dengan benar.                               |
+| 4   | Import massal data (CSV/XLSX) untuk Work Tracker dari prototype lama — **fondasinya sudah ada** (lihat bagian 7), tapi belum selesai | Sampai selesai, isi tugas masih harus satu-satu manual atau lewat MoM.                                                                                                     |
+| 5   | Belum ada automated test sungguhan (baru file contoh bawaan Laravel)                                                                 | Tidak ada jaring pengaman otomatis kalau ada perubahan kode yang tidak sengaja merusak fitur lain.                                                                         |
+| 6   | Ada file `database/database.sqlite` yang tertinggal di folder project                                                                | Tidak dipakai (database sungguhan pakai MySQL), aman dihapus, cuma bikin bingung kalau dikira itu database aktif.                                                          |
 
 **Kesimpulan:** dari sisi fitur, aplikasi ini sudah siap dites ujung-ke-ujung oleh tim WSM. Sebelum benar-benar diakses publik di internet, 3 poin pertama pada tabel di atas **wajib** dikerjakan dulu (ganti `.env`, jalankan `storage:link`, tambah `.htaccess`); 3 poin sisanya adalah penyempurnaan yang bisa menyusul.
 
@@ -257,17 +261,73 @@ Semua akun pakai password yang sama: **`password`** (wajib diganti sebelum dipak
 
 ## 6. Teknologi yang Digunakan
 
-| Teknologi                     | Kegunaan                                                                                        |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| **PHP 8.3+**                  | Bahasa pemrograman utama                                                                        |
-| **Laravel 13**                | Framework backend — routing, database, autentikasi, dll                                         |
-| **MySQL**                     | Database (dipakai di hosting produksi; bisa juga diuji pakai SQLite/MariaDB)                    |
-| **Tailwind CSS v4**           | Styling tampilan, di-build lewat Vite                                                           |
-| **Alpine.js**                 | Interaktivitas ringan di sisi browser (dropdown, modal, dll) tanpa perlu framework JS berat     |
-| **Vite**                      | Build tool untuk menggabungkan & mengoptimalkan CSS/JS                                          |
-| **Leaflet**                   | Peta interaktif untuk validasi lokasi absensi & pengaturan titik kantor                         |
-| **SweetAlert2**               | Notifikasi & dialog konfirmasi yang lebih rapi dari `alert()` bawaan browser                    |
-| **doctrine/dbal**             | Dibutuhkan Laravel untuk mengubah struktur kolom yang sudah ada (dipakai di beberapa migration) |
-| **cPanel Hosting (Rumahweb)** | Target hosting produksi — tanpa akses terminal/SSH, jadi deploy manual lewat upload file        |
+| Teknologi                     | Kegunaan                                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **PHP 8.3+**                  | Bahasa pemrograman utama                                                                                  |
+| **Laravel 13**                | Framework backend — routing, database, autentikasi, dll                                                   |
+| **MySQL**                     | Database (dipakai di hosting produksi; bisa juga diuji pakai SQLite/MariaDB)                              |
+| **Tailwind CSS v4**           | Styling tampilan, di-build lewat Vite                                                                     |
+| **Alpine.js**                 | Interaktivitas ringan di sisi browser (dropdown, modal, dll) tanpa perlu framework JS berat               |
+| **Vite**                      | Build tool untuk menggabungkan & mengoptimalkan CSS/JS                                                    |
+| **Leaflet**                   | Peta interaktif untuk validasi lokasi absensi & pengaturan titik kantor                                   |
+| **SweetAlert2**               | Notifikasi & dialog konfirmasi yang lebih rapi dari `alert()` bawaan browser                              |
+| **doctrine/dbal**             | Dibutuhkan Laravel untuk mengubah struktur kolom yang sudah ada (dipakai di beberapa migration)           |
+| **maatwebsite/excel**         | Export & import Excel (fitur baru, lihat bagian 7) — **wajib `composer require` manual**, belum terpasang |
+| **barryvdh/laravel-dompdf**   | Export PDF (fitur baru, lihat bagian 7) — **wajib `composer require` manual**, belum terpasang            |
+| **cPanel Hosting (Rumahweb)** | Target hosting produksi — tanpa akses terminal/SSH, jadi deploy manual lewat upload file                  |
 
 Ikon di seluruh aplikasi memakai simbol Unicode sederhana (bukan pustaka ikon seperti Bootstrap Icons), jadi tidak perlu memuat file ikon tambahan.
+
+---
+
+## 7. Export & Import (Fitur Baru — Fondasi Sudah Jalan)
+
+Fitur ini sedang dibangun **bertahap per-batch** biar bisa langsung dites tiap selesai satu bagian, bukan ditunggu sampai semuanya kelar sekaligus. Bagian ini isinya rencana lengkapnya + status tiap batch.
+
+### Apa yang mau dibangun
+
+Satu halaman pusat baru, **"Export & Import"** (muncul di sidebar, section paling bawah) — isinya kartu per-modul. Tiap kartu tunduk ke akses yang **sudah ada** (modul `dashboard_access` yang sama seperti dipakai halaman aslinya) — **tidak** bikin izin akses baru yang terpisah, biar Owner tidak perlu atur akses dua kali untuk hal yang sama.
+
+Alurnya:
+
+- **Export**: pilih filter (periode/karyawan/project) → lihat **preview** dulu di layar → baru tombol Download (Excel dan/atau PDF, tergantung kebutuhan modulnya — lihat tabel di bagian 3).
+- **Import**: download **template** Excel kosong → isi → upload → lihat **preview** hasil baca file (baris yang valid vs baris yang error ditandai jelas) → baru tombol Konfirmasi Import.
+
+### Status tiap batch
+
+| Batch                      | Isinya                                                                                                                                                                        | Status                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Batch 0 — Fondasi**      | Halaman menu "Export & Import" + kerangka dasar (base class Excel, base class Import, layout PDF, service preview import) yang dipakai semua batch berikutnya                 | ✅ **Selesai & sudah dites** (login beneran lewat browser, bukan cuma baca kode — lihat catatan di bawah) |
+| **Batch 1 — Export Excel** | 11 modul: Rekap Absensi, KPI, Project Budgeting, Royalty, Employee Contracts, Legal Documents, Audit Log, Manajemen Karyawan, Rekrutmen–Pelamar, Work Tracker, Rekap Cuti Tim | ⏳ Belum dikerjakan                                                                                       |
+| **Batch 2 — Export PDF**   | Payroll (slip gaji), Rekap Absensi (per-karyawan), Meetings/MoM (notulen)                                                                                                     | ⏳ Belum dikerjakan                                                                                       |
+| **Batch 3 — Import**       | Work Tracker (prioritas — nutup gap prototype lama), menyusul Manajemen Karyawan/KPI/Project Budgeting                                                                        | ⏳ Belum dikerjakan                                                                                       |
+
+Sampai Batch 1/2/3 selesai, semua kartu di halaman "Export & Import" akan menampilkan badge **"Segera Hadir"** dan tombolnya nonaktif — ini sengaja, biar orang tetap tahu fitur apa saja yang direncanakan.
+
+### Apa yang sudah dites untuk Batch 0
+
+Bukan cuma ditulis lalu diasumsikan jalan — sudah benar-benar dijalankan: `migrate:fresh --seed` di database sungguhan, jalankan aplikasinya, login pakai akun `owner@wsm.local` dan `gepeng@wsm.local`, lalu buka halaman `/dashboard/export-import` beneran lewat HTTP:
+
+- Sebagai **Owner**: 13 kartu muncul semua (Owner selalu full-access).
+- Sebagai **Gepeng** (karyawan, cuma punya akses modul `work`): **cuma 2 kartu** yang muncul (Work Tracker & Meetings/MoM) — membuktikan penyaringan akses per-kartu benar-benar jalan, bukan cuma nampilin semua.
+
+### File yang ditambahkan (Batch 0)
+
+| File                                                                     | Isinya                                                                                                  |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `app/Support/ExportImport/ExportCatalog.php`                             | Daftar tunggal semua modul yang punya export/import — label, format, modul akses yang jadi gerbangnya   |
+| `app/Support/ExportImport/ImportPreviewService.php`                      | Alur simpan-sementara hasil parsing file import sebelum benar-benar dikonfirmasi masuk database         |
+| `app/Exports/BaseExport.php`                                             | Kerangka dasar untuk semua export Excel (Batch 1)                                                       |
+| `app/Exports/TemplateExport.php`                                         | Generator file template Excel kosong untuk tombol "Download Template" (Batch 3)                         |
+| `app/Imports/BaseImport.php`                                             | Kerangka dasar untuk semua import — baca file, validasi per-baris, pisahkan baris valid/error (Batch 3) |
+| `app/Http/Controllers/Dashboard/ExportImport/ExportImportController.php` | Controller halaman menu                                                                                 |
+| `resources/views/dashboard/export-import/index.blade.php`                | Tampilan halaman menu (kartu per-modul)                                                                 |
+| `resources/views/pdf/layout.blade.php`                                   | Kop surat/letterhead dasar untuk semua export PDF (Batch 2)                                             |
+
+### Yang perlu dijalankan manual sebelum Batch 1/2/3 bisa benar-benar dipakai
+
+`composer.json` sudah ditambahkan 2 package (`maatwebsite/excel` dan `barryvdh/laravel-dompdf`), **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting):
+
+```
+composer require maatwebsite/excel barryvdh/laravel-dompdf
+```

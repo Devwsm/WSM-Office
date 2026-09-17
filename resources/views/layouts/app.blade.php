@@ -368,6 +368,25 @@
                         <span class="mr-1.5 inline-block w-4 text-center">✎</span>Lowongan
                     </a>
                 @endif
+
+                {{-- 9 · EXPORT & IMPORT — Batch 0 (fondasi), GAK ADA di
+                    prototype asli (fitur baru, sama seperti Recruitment).
+                    Beda dari section lain: gerbangnya BUKAN 1 modul
+                    tunggal, tapi "punya akses ke MINIMAL 1 modul apa
+                    pun" (hasAnyDashboardAccess()) — soalnya halaman ini
+                    cuma "menu" yang isinya disaring per-kartu sendiri
+                    (lihat ExportCatalog::visibleFor()), jadi tetap layak
+                    ditampilkan sekalipun user cuma punya akses ke 1
+                    modul kecil. --}}
+                @if ($u->hasAnyDashboardAccess())
+                    @php $sectionNo++; @endphp
+                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
+                        style="background-color:#f2f0eb">{{ $sectionNo }} · EXPORT & IMPORT</p>
+                    <a href="{{ route('dashboard.export-import.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.export-import.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">⇅</span>Export &amp; Import
+                    </a>
+                @endif
             </nav>
 
             <div class="mt-auto border-t border-line pt-3.5">

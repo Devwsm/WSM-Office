@@ -33,6 +33,7 @@ use App\Http\Controllers\Dashboard\Budget\BudgetController;
 use App\Http\Controllers\Dashboard\Contracts\ContractController;
 use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardController;
 use App\Http\Controllers\Dashboard\DashboardLockController;
+use App\Http\Controllers\Dashboard\ExportImport\ExportImportController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
 use App\Http\Controllers\Dashboard\It\AuditLogController;
@@ -452,6 +453,17 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
             Route::patch('/{changelog}', [SystemChangelogController::class, 'update'])->middleware('module:it,manage')->name('update');
             Route::delete('/{changelog}', [SystemChangelogController::class, 'destroy'])->middleware('module:it,manage')->name('destroy');
         });
+    });
+
+    // --- Batch 0: Export & Import Center (fondasi) ---
+    // Sama pola persis grup 'legal'/'it' di atas — harus terdaftar
+    // SEBELUM '/{module}' generik di bawah. Cuma route index buat
+    // sekarang (halaman "menu" kartu per modul) — route export/import
+    // beneran per-modul nyusul satu-satu di Batch 1/2/3, kemungkinan
+    // jadi controller sendiri per modul (bukan numpuk di sini), lihat
+    // catatan di ExportImportController.
+    Route::prefix('export-import')->name('export-import.')->group(function () {
+        Route::get('/', [ExportImportController::class, 'index'])->name('index');
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');

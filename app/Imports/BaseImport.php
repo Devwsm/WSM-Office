@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Imports;
+
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+
+/**
+ * BaseImport
+ * ---------------------------------------------------------------------
+ * Batch 0 (fondasi Export & Import) — kerangka dasar buat SEMUA import
+ * per-modul (Batch 3: Work Tracker duluan, nyusul Manajemen
+ * Karyawan/KPI/Budget). Butuh package `maatwebsite/excel` (belum
+ * terpasang — lihat README bagian Export & Import).
+ *
+ * `WithHeadingRow` artinya baris pertama file Excel dianggap nama
+ * kolom, dan tiap baris data masuk ke collection() sebagai array
+ * asosiatif key=nama-kolom (huruf kecil, spasi jadi underscore —
+ * bawaan package). Makanya kolom di TEMPLATE download (lihat
+ * templateHeadings() di turunannya) harus PERSIS sama urutan/ejaannya
+ * dengan yang dipakai di rules().
+ *
+ * Validasi jalan PER-BARIS (bukan seluruh file sekali gagal semua) —
+ * baris yang lolos rules() masuk ke validRows(), yang gagal masuk ke
+ * invalidRows() lengkap pesan errornya, biar user bisa lihat di
+ * halaman preview mana yang perlu diperbaiki tanpa harus ulang upload
+ * dari nol buat baris yang sudah benar.
+ * ---------------------------------------------------------------------
+ */
+abstract class BaseImport implements ToCollection, WithHeadingRow
+{
+    /** @var array<int, array{row: int, data: array}> */
+    protected array $validRows = [];
+
+    /** @var array<int, array{row: int, data: array, errors: array<int, string>}> */
+    protected array $invalidRows = [];
+
+    /**
+     * Nama kolom buat file TEMPLATE yang didownload user (urutan bebas,
+     * TAPI ejaannya harus nyambung ke key yang dipakai rules()/mapRow()
+     * — package ubah "Nama Karyawan" jadi key `nama_karyawan`).
+     *
+     * @return array<int, string>
+     */
+    abstract public function templateHeadings(): array;
+
+    /**
+     * Aturan validasi Laravel per-baris, key-nya = key hasil
+     * WithHeadingRow (huruf kecil + underscore).
+     *
+     * @return array<string, mixed>
+     */
+    abstract public function rules(): array;
+
+    /**
+     * Ubah 1 baris yang SUDAH LOLOS validasi jadi array field siap
+     * dipakai Model::create()/Model::updateOrCreate() — controller
+     * yang beneran nyimpannya (BaseImport ini cuma nyiapin datanya).
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    abstract public function mapRow(array $validated): array;
+
+    public function collection(Collection $rows): void
+    {
+        foreach ($rows as $index => $row) {
+            $data = $row->toArray();
+
+            // Baris kosong total (sering ada di ekor file Excel) dilewatin
+            // aja, jangan dianggap error.
+            if (collect($data)->filter(fn($v) => $v !== null && $v !== '')->isEmpty()) {
+                continue;
+            }
+
+            // Nomor baris buat ditampilkan ke user: +1 karena heading row
+            // sudah dipotong package, +1 lagi karena Excel mulai dari 1
+            // bukan 0.
+            $rowNumber = $index + 2;
+
+            $validator = Validator::make($data, $this->rules());
+
+            if ($validator->fails()) {
+                $this->invalidRows[] = [
+                    'row' => $rowNumber,
+                    'data' => $data,
+                    'errors' => $validator->errors()->all(),
+                ];
+
+                continue;
+            }
+
+            $this->validRows[] = [
+                'row' => $rowNumber,
+                'data' => $this->mapRow($validator->validated()),
+            ];
+        }
+    }
+
+    /** @return array<int, array{row: int, data: array}> */
+    public function validRows(): array
+    {
+        return $this->validRows;
+    }
+
+    /** @return array<int, array{row: int, data: array, errors: array<int, string>}> */
+    public function invalidRows(): array
+    {
+        return $this->invalidRows;
+    }
+}
