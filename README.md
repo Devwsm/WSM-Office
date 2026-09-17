@@ -32,11 +32,6 @@ Siapa boleh melihat/mengubah apa **diatur per-orang**, bukan cuma berdasarkan ja
 Semua modul di bawah ini sudah punya halaman, alur kerja, dan data contoh (lihat bagian 3 & 5):
 Halaman publik, Absensi (termasuk mode WFH/Lapangan/Gigs), Izin/Cuti, Lembur, Koreksi Presensi, Persetujuan atasan, Work Control (papan tugas + kalender + memo + rapat terstruktur), KPI, Kontrak Karyawan, Payroll, Project Budgeting, Royalty, Legal, Audit Log & Changelog sistem, Rekrutmen, Manajemen Karyawan & Struktur Organisasi, Pengaturan Kantor, dan Pesan Kontak.
 
-### Temuan & perbaikan yang dilakukan dalam pengecekan kali ini
-
-Saat menyiapkan data uji coba menyeluruh, ditemukan **satu bug yang cukup penting** dan langsung diperbaiki:
-
-- **Nama file model `ContactMessage` tidak sesuai (`Contactmessage.php`, huruf `m` kecil)** — di komputer Windows/Mac ini sering tidak masalah, tapi begitu di-upload ke hosting (yang sistemnya Linux, membedakan huruf besar/kecil pada nama file), fitur **Pesan Kontak akan langsung error** setiap kali ada pengunjung yang mengisi form Kontak di halaman publik. **Sudah diperbaiki** dengan mengganti nama file jadi `ContactMessage.php` supaya sesuai nama class-nya.
 
 ### Sedang dikerjakan: Export & Import
 
