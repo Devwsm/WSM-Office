@@ -124,7 +124,7 @@ class ExportCatalog
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
-            'import_implemented' => false, // Batch 3.
+            'import_implemented' => true, // Batch 4.
         ],
         'recruitment-applicants' => [
             'label' => 'Rekrutmen — Pelamar',

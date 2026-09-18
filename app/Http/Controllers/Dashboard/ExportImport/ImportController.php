@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Dashboard\ExportImport;
 use App\Exports\TemplateExport;
 use App\Http\Controllers\Controller;
 use App\Imports\BaseImport;
+use App\Imports\EmployeeImport;
 use App\Imports\WorkItemImport;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\WorkItem;
 use App\Support\ExportImport\ExportCatalog;
@@ -50,7 +52,7 @@ class ImportController extends Controller
      * 'employees' juga sudah ditandai butuh import di catalog, tapi
      * class Import/persist()-nya belum ditulis — nyusul, lihat README.
      */
-    private const IMPLEMENTED = ['work-tracker'];
+    private const IMPLEMENTED = ['work-tracker', 'employees'];
 
     public function __construct(private readonly ImportPreviewService $previewService) {}
 
@@ -107,6 +109,7 @@ class ImportController extends Controller
             'key' => $key,
             'token' => $token,
             'headings' => $importer->templateHeadings(),
+            'previewColumns' => $importer->previewColumns(),
             'valid' => $importer->validRows(),
             'invalid' => $importer->invalidRows(),
             'backUrl' => route('dashboard.export-import.import.show', ['key' => $key]),
@@ -164,6 +167,7 @@ class ImportController extends Controller
     {
         return match ($key) {
             'work-tracker' => new WorkItemImport,
+            'employees' => new EmployeeImport,
             default => abort(404),
         };
     }
@@ -175,6 +179,9 @@ class ImportController extends Controller
             'work-tracker' => [
                 ['Album Q3 Release', 'RELEASE PLAN', 'Contoh: Finalisasi artwork cover', '01/10/2026', 'Aldora', 'Pending', 'High', 'Contoh catatan — opsional, boleh dikosongkan'],
             ],
+            'employees' => [
+                ['Contoh Nama', 'contoh@wsm.test', '', 'karyawan', 'Marketing', 'Staff Marketing', '01/09/2026', '12', '', '', '', ''],
+            ],
             default => [],
         };
     }
@@ -184,6 +191,7 @@ class ImportController extends Controller
     {
         match ($key) {
             'work-tracker' => $this->persistWorkItem($data, $user),
+            'employees' => $this->persistEmployee($data, $user),
             default => throw new \RuntimeException("Belum ada cara nyimpan hasil import buat key '{$key}'."),
         };
     }
@@ -203,5 +211,22 @@ class ImportController extends Controller
             ->max('item_no') + 1;
 
         WorkItem::create($data);
+    }
+
+    /**
+     * Bikin akun login baru (bukan cuma insert data biasa) — sama alur
+     * `AuditLog::record()` seperti EmployeeController::store() (form
+     * manual), cuma detail-nya dikasih tanda "lewat import" biar beda
+     * kelihatan di log dari yang ditambah satu-satu manual.
+     */
+    private function persistEmployee(array $data, User $actor): void
+    {
+        $employee = User::create($data);
+
+        AuditLog::record(
+            'Karyawan ditambahkan',
+            "{$employee->name} ({$employee->role}) ditambahkan lewat import oleh {$actor->name}.",
+            $actor,
+        );
     }
 }

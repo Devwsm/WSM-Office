@@ -47,6 +47,19 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
     abstract public function templateHeadings(): array;
 
     /**
+     * Kolom yang ditampilkan di tabel "Baris Valid" halaman preview
+     * (ditambah pas Batch 4 — Work Tracker & Manajemen Karyawan beda-
+     * beda field hasil mapRow()-nya, jadi blade preview digeneralisir
+     * lewat sini biar gak nulis 1 file blade per modul). `key` = key
+     * di array hasil mapRow(), `label` = judul kolom tabelnya, `type`
+     * opsional ('date' -> diformat d/m/Y), `fallback` opsional = teks
+     * kalau valuenya kosong/null (default '-').
+     *
+     * @return array<int, array{label: string, key: string, type?: string, fallback?: string}>
+     */
+    abstract public function previewColumns(): array;
+
+    /**
      * Aturan validasi Laravel per-baris, key-nya = key hasil
      * WithHeadingRow (huruf kecil + underscore).
      *

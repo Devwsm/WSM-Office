@@ -35,6 +35,20 @@ class WorkItemImport extends BaseImport
         return ['project', 'section', 'judul', 'tenggat', 'pic', 'progress', 'prioritas', 'catatan'];
     }
 
+    public function previewColumns(): array
+    {
+        return [
+            ['label' => 'Judul', 'key' => 'title'],
+            ['label' => 'Project', 'key' => 'project_name', 'fallback' => 'Tanpa Project'],
+            ['label' => 'Section', 'key' => 'section'],
+            ['label' => 'Tenggat', 'key' => 'due_date', 'type' => 'date', 'fallback' => '-'],
+            ['label' => 'PIC', 'key' => 'pic_name', 'fallback' => '-'],
+            ['label' => 'Progress', 'key' => 'progress'],
+            ['label' => 'Prioritas', 'key' => 'priority', 'fallback' => '-'],
+            ['label' => 'Catatan', 'key' => 'notes', 'fallback' => '-'],
+        ];
+    }
+
     public function rules(): array
     {
         return [

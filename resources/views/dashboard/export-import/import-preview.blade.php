@@ -1,19 +1,28 @@
 {{--
     dashboard/export-import/import-preview.blade.php
     -----------------------------------------------------------------
-    Batch 3 — halaman preview hasil parsing file upload, SEBELUM data
-    beneran masuk database. Dua tabel terpisah: baris VALID (siap
-    diimport, klik tombol "Konfirmasi Import" di bawah) dan baris ERROR
-    (gak ikut masuk, pesan errornya ditampilkan per baris biar user
-    tau apa yang perlu diperbaiki tanpa harus nebak-nebak).
+    Batch 3 (Work Tracker) + Batch 4 (Manajemen Karyawan) — halaman
+    preview hasil parsing file upload, SEBELUM data beneran masuk
+    database. Dua tabel terpisah: baris VALID (siap diimport, klik
+    tombol "Konfirmasi Import" di bawah) dan baris ERROR (gak ikut
+    masuk, pesan errornya ditampilkan per baris biar user tau apa yang
+    perlu diperbaiki tanpa harus nebak-nebak).
+
+    Tabel "Baris Valid" digeneralisir lewat $previewColumns (dari
+    BaseImport::previewColumns() turunannya) — jadi 1 file blade ini
+    dipakai SEMUA modul import, gak perlu bikin blade baru tiap nambah
+    modul (Work Tracker & Manajemen Karyawan field-nya beda total,
+    lihat App\Imports\WorkItemImport / EmployeeImport).
 
     Data dari controller: $title, $key, $token (buat form Konfirmasi —
     commit() ambil lagi hasil staging pakai token yang SAMA, BUKAN baca
     ulang file), $headings (kolom template, dipakai buat tabel error —
     baris error nampilin data MENTAH hasil upload, belum dipetakan),
-    $valid (array{row,data} — data SUDAH dipetakan, siap create()),
-    $invalid (array{row,data,errors}), $backUrl (balik ke halaman
-    upload buat coba lagi), $commitUrl.
+    $previewColumns (array{label,key,type?,fallback?} — kolom tabel
+    "Baris Valid", key-nya ke $entry['data'] hasil mapRow(), BUKAN ke
+    $headings), $valid (array{row,data}), $invalid
+    (array{row,data,errors}), $backUrl (balik ke halaman upload buat
+    coba lagi), $commitUrl.
     -----------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Preview Import ' . $title, 'navActive' => 'export-import'])
@@ -43,35 +52,32 @@
             <thead>
                 <tr class="border-b border-line bg-[#f4f1ea]">
                     <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Baris</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Judul</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Project</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Section</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Tenggat</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">PIC</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Progress</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Prioritas</th>
-                    <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">Catatan</th>
+                    @foreach ($previewColumns as $col)
+                        <th class="whitespace-nowrap px-3.5 py-2.5 font-extrabold">{{ $col['label'] }}</th>
+                    @endforeach
                 </tr>
             </thead>
             <tbody>
                 @forelse ($valid as $entry)
                     <tr class="border-b border-line last:border-0">
                         <td class="whitespace-nowrap px-3.5 py-2.5 text-muted">{{ $entry['row'] }}</td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['title'] }}</td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['project_name'] ?? 'Tanpa Project' }}
-                        </td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['section'] }}</td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">
-                            {{ $entry['data']['due_date'] ? \Illuminate\Support\Carbon::parse($entry['data']['due_date'])->format('d/m/Y') : '-' }}
-                        </td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['pic_name'] ?? '-' }}</td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['progress'] }}</td>
-                        <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data']['priority'] ?? '-' }}</td>
-                        <td class="px-3.5 py-2.5">{{ $entry['data']['notes'] ?? '-' }}</td>
+                        @foreach ($previewColumns as $col)
+                            <td class="whitespace-nowrap px-3.5 py-2.5">
+                                @php $value = $entry['data'][$col['key']] ?? null; @endphp
+                                @if ($value === null || $value === '')
+                                    {{ $col['fallback'] ?? '-' }}
+                                @elseif (($col['type'] ?? null) === 'date')
+                                    {{ \Illuminate\Support\Carbon::parse($value)->format('d/m/Y') }}
+                                @else
+                                    {{ $value }}
+                                @endif
+                            </td>
+                        @endforeach
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-3.5 py-6 text-center text-muted">Tidak ada baris valid di file ini.
+                        <td colspan="{{ count($previewColumns) + 1 }}" class="px-3.5 py-6 text-center text-muted">
+                            Tidak ada baris valid di file ini.
                         </td>
                     </tr>
                 @endforelse
@@ -97,7 +103,14 @@
                         <tr class="border-b border-line last:border-0">
                             <td class="whitespace-nowrap px-3.5 py-2.5 text-muted">{{ $entry['row'] }}</td>
                             @foreach ($headings as $heading)
-                                <td class="whitespace-nowrap px-3.5 py-2.5">{{ $entry['data'][$heading] ?? '-' }}</td>
+                                <td class="whitespace-nowrap px-3.5 py-2.5">
+                                    @if ($heading === 'password')
+                                        {{-- Jangan tampilin password mentah di layar biarpun baris ini error karena alasan lain (mis. role salah ketik) — cukup kasih tau kekisi atau kosong. --}}
+                                        {{ ($entry['data']['password'] ?? '') !== '' ? '(diisi)' : '-' }}
+                                    @else
+                                        {{ $entry['data'][$heading] ?? '-' }}
+                                    @endif
+                                </td>
                             @endforeach
                             <td class="px-3.5 py-2.5 text-[#8a2f24]">
                                 @foreach ($entry['errors'] as $error)
