@@ -1,13 +1,23 @@
 {{--
     dashboard/export-import/preview.blade.php
     -----------------------------------------------------------------
-    Batch 1 — SATU view generik dipakai preview SEMUA modul export
-    Excel (dan nanti PDF di Batch 2), isinya cuma dari controller:
-    $title, $headings, $rows (array polos hasil map(), BUKAN
-    Eloquent Collection), $filters (form filter opsional per modul),
-    $downloadUrl, $backUrl. Jangan bikin file preview baru per modul
-    — kalau ada modul yang butuh tampilan preview beda banget,
-    tambahin kondisi di sini, bukan file baru.
+    Batch 1/2 — SATU view generik dipakai preview modul export yang
+    bentuknya TABEL (Excel semua modul Batch 1 + PDF Rekap Absensi
+    per-karyawan Batch 2), isinya cuma dari controller: $title,
+    $headings, $rows (array polos hasil map(), BUKAN Eloquent
+    Collection), $filters (form filter opsional per modul, lewat
+    partial _filters-form.blade.php), $downloadUrl, $downloadLabel
+    ("Download Excel"/"Download PDF"), $backUrl, $requiresSelection
+    (opsional, default false — Batch 2: Rekap Absensi PDF WAJIB pilih
+    1 karyawan dulu, beda dari versi Excel-nya yang boleh semua
+    karyawan sekaligus; selagi belum dipilih, tombol download
+    disembunyikan & $rows dikirim kosong dari controller).
+
+    Modul yang PDF-nya berupa 1 DOKUMEN PER RECORD (bukan tabel
+    banyak baris) — Payroll (slip gaji) & Meetings (notulen) — TIDAK
+    lewat view ini, tapi lewat dashboard/export-import/picker.blade.php
+    (pilih 1 record dulu, baru download PDF-nya). Lihat catatan di
+    App\Http\Controllers\Dashboard\ExportImport\ExportController.
     -----------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => $title, 'navActive' => 'export-import'])
@@ -20,39 +30,19 @@
             <h2 class="mt-1 text-[28px] font-black leading-[0.98] tracking-tight">{{ $title }}</h2>
             <p class="mt-1 text-[13px] text-muted">Preview di bawah — cek dulu datanya sebelum download.</p>
         </div>
-        <a href="{{ $downloadUrl }}" class="flex-none rounded-2xl bg-ink px-4 py-2.5 text-xs font-extrabold text-white">
-            Download Excel
-        </a>
+        @unless ($requiresSelection ?? false)
+            <a href="{{ $downloadUrl }}" class="flex-none rounded-2xl bg-ink px-4 py-2.5 text-xs font-extrabold text-white">
+                {{ $downloadLabel ?? 'Download Excel' }}
+            </a>
+        @endunless
     </div>
 
-    @if (!empty($filters))
-        <form method="GET" class="mb-4 flex flex-wrap items-end gap-2 rounded-wsm border border-line bg-white p-3.5">
-            @foreach ($filters as $filter)
-                <div>
-                    <label class="mb-1 block text-[11px] font-extrabold text-muted">{{ $filter['label'] }}</label>
-                    @if ($filter['type'] === 'month')
-                        <input type="month" name="{{ $filter['name'] }}" value="{{ $filter['value'] }}"
-                            class="rounded-xl border border-line px-3 py-2 text-sm">
-                    @elseif ($filter['type'] === 'date')
-                        <input type="date" name="{{ $filter['name'] }}" value="{{ $filter['value'] }}"
-                            class="rounded-xl border border-line px-3 py-2 text-sm">
-                    @elseif ($filter['type'] === 'select')
-                        <select name="{{ $filter['name'] }}" class="rounded-xl border border-line px-3 py-2 text-sm">
-                            <option value="">Semua</option>
-                            @foreach ($filter['options'] as $optValue => $optLabel)
-                                <option value="{{ $optValue }}" @selected((string) $filter['value'] === (string) $optValue)>
-                                    {{ $optLabel }}
-                                </option>
-                            @endforeach
-                        </select>
-                    @endif
-                </div>
-            @endforeach
-            <button type="submit"
-                class="rounded-2xl bg-[#f2f0eb] px-4 py-2 text-xs font-extrabold text-ink hover:bg-[#e8e5dc]">
-                Terapkan Filter
-            </button>
-        </form>
+    @include('dashboard.export-import._filters-form', ['filters' => $filters])
+
+    @if ($requiresSelection ?? false)
+        <div class="mb-4 rounded-wsm border border-line bg-[#faf8f3] p-3.5 text-xs text-muted">
+            Pilih karyawan dulu di filter di atas buat lihat &amp; download PDF rekap absensinya.
+        </div>
     @endif
 
     <div class="overflow-x-auto rounded-wsm border border-line bg-white">

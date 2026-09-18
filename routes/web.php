@@ -466,9 +466,12 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     Route::prefix('export-import')->name('export-import.')->group(function () {
         Route::get('/', [ExportImportController::class, 'index'])->name('index');
 
-        // --- Batch 1: export Excel. $key cocok ke ExportCatalog::CATALOG,
-        // $format saat ini cuma 'excel' yang beneran jalan (lihat
-        // ExportController::resolve() — 'pdf' abort 404 sampai Batch 2). ---
+        // --- Batch 1 (Excel) + Batch 2 (PDF), $key cocok ke
+        // ExportCatalog::CATALOG. Route-nya generik & TETAP SAMA buat
+        // kedua batch — 'payroll' & 'meetings' (PDF 1 dokumen per
+        // record) numpang query string (?payroll_id=.../?meeting_id=...)
+        // ke download, bukan route baru. Lihat docblock
+        // ExportController buat pembagian 2 bentuk PDF. ---
         Route::get('/{key}/{format}/preview', [ExportController::class, 'preview'])->name('preview');
         Route::get('/{key}/{format}/download', [ExportController::class, 'download'])->name('download');
     });

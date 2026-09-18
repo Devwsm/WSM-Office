@@ -32,10 +32,9 @@ Siapa boleh melihat/mengubah apa **diatur per-orang**, bukan cuma berdasarkan ja
 Semua modul di bawah ini sudah punya halaman, alur kerja, dan data contoh (lihat bagian 3 & 5):
 Halaman publik, Absensi (termasuk mode WFH/Lapangan/Gigs), Izin/Cuti, Lembur, Koreksi Presensi, Persetujuan atasan, Work Control (papan tugas + kalender + memo + rapat terstruktur), KPI, Kontrak Karyawan, Payroll, Project Budgeting, Royalty, Legal, Audit Log & Changelog sistem, Rekrutmen, Manajemen Karyawan & Struktur Organisasi, Pengaturan Kantor, dan Pesan Kontak.
 
-
 ### Sedang dikerjakan: Export & Import
 
-Fitur baru, dikerjakan bertahap (lihat bagian 7 untuk detail lengkap). **Fondasinya (Batch 0) sudah selesai** — halaman menu "Export & Import" sudah bisa dibuka & sudah nyaring kartu sesuai akses tiap orang (sudah dites langsung lewat browser, login beneran, bukan cuma dibaca kodenya) — tapi tombol export/import di tiap kartu **masih "Segera Hadir"**, belum ada yang benar-benar jalan. Menyusul satu-per-satu di batch berikutnya.
+Fitur baru, dikerjakan bertahap (lihat bagian 7 untuk detail lengkap). **Export Excel (Batch 1) & Export PDF (Batch 2) kode-nya sudah selesai** — halaman menu "Export & Import" sudah bisa dibuka, kartu sudah nyaring sesuai akses tiap orang, dan hampir semua tombol Export (Excel maupun PDF) sudah aktif. Yang **masih "Segera Hadir"**: semua tombol **Import** (Batch 3, belum dikerjakan). Package `maatwebsite/excel` & `barryvdh/laravel-dompdf` masih perlu di-`composer require` manual sebelum semuanya bisa dites end-to-end — lihat catatan pengujian di bagian 7.
 
 ### Yang masih harus dibereskan sebelum benar-benar go-live
 
@@ -294,10 +293,12 @@ Alurnya:
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | **Batch 0 — Fondasi**      | Halaman menu "Export & Import" + kerangka dasar (base class Excel, base class Import, layout PDF, service preview import) yang dipakai semua batch berikutnya                 | ✅ **Selesai & sudah dites**                                                                            |
 | **Batch 1 — Export Excel** | 11 modul: Rekap Absensi, KPI, Project Budgeting, Royalty, Employee Contracts, Legal Documents, Audit Log, Manajemen Karyawan, Rekrutmen–Pelamar, Work Tracker, Rekap Cuti Tim | ✅ **Kode selesai** — lihat catatan pengujian di bawah, ada 1 bagian yang **belum bisa dites langsung** |
-| **Batch 2 — Export PDF**   | Payroll (slip gaji), Rekap Absensi (per-karyawan), Meetings/MoM (notulen)                                                                                                     | ⏳ Belum dikerjakan                                                                                     |
+| **Batch 2 — Export PDF**   | Payroll (slip gaji + rekap Excel-nya), Rekap Absensi (per-karyawan), Meetings/MoM (notulen)                                                                                   | ✅ **Kode selesai** — sama catatan pengujian seperti Batch 1, **belum bisa dites langsung**             |
 | **Batch 3 — Import**       | Work Tracker (prioritas — nutup gap prototype lama), menyusul Manajemen Karyawan/KPI/Project Budgeting                                                                        | ⏳ Belum dikerjakan                                                                                     |
 
-Sampai Batch 2/3 selesai, kartu-kartu terkait di halaman "Export & Import" masih menampilkan badge **"Segera Hadir"** untuk bagian yang belum jalan — ini sengaja, biar orang tetap tahu fitur apa saja yang direncanakan. Kartu **Rekap Absensi** contohnya: tombol **Export Excel** sudah aktif (Batch 1), tapi **Export PDF**-nya masih "Segera Hadir" (nyusul Batch 2) — 1 kartu bisa punya 2 status berbeda tergantung format.
+Sampai Batch 3 selesai, kartu **Import** di halaman "Export & Import" masih menampilkan badge **"Segera Hadir"** — ini sengaja, biar orang tetap tahu fitur apa saja yang direncanakan. Semua tombol **Export** (Excel & PDF) yang ada di catalog sekarang sudah aktif, kecuali kartu yang memang cuma punya 1 format dari awal (lihat bagian 3).
+
+Payroll & Meetings punya alur beda dari 9 modul lain: PDF-nya **1 dokumen per record** (slip gaji 1 karyawan, notulen 1 rapat), bukan tabel banyak baris — jadi tombol "Export PDF" di kartunya membuka halaman **"pilih dulu"** (daftar record dengan tombol download per-baris), bukan langsung ke preview tabel seperti modul lain. Lihat detail di tabel file Batch 2 di bawah.
 
 ### Apa yang sudah dites, dan apa yang belum bisa dites
 
@@ -306,7 +307,12 @@ Sampai Batch 2/3 selesai, kartu-kartu terkait di halaman "Export & Import" masih
 - Halaman menu "Export & Import" — login sebagai **Owner** (13 kartu muncul semua) dan sebagai **Gepeng**, karyawan yang cuma punya akses modul `work` (cuma **2 kartu** yang muncul: Work Tracker & Meetings/MoM) — membuktikan penyaringan akses per-kartu jalan.
 - Badge per-format (Excel aktif vs PDF "Segera Hadir" vs Import "Segera Hadir") dicek satu-satu, jumlahnya cocok persis dengan yang seharusnya untuk ke-13 kartu.
 
-**BELUM bisa dites langsung** (halaman preview tabel & tombol Download Excel di 11 modul Batch 1): kode-nya butuh package `maatwebsite/excel` yang **belum ter-install** (lihat bagian selanjutnya) — instalasinya butuh akses ke `packagist.org`, yang tidak bisa diakses dari lingkungan kerja saya (sudah dicoba langsung `composer require`, hasilnya diblok/HTTP 403). Jadi bagian ini sudah saya periksa teliti secara manual (nama kolom & nama relasi tiap model dicocokkan satu-satu ke kode aslinya, bukan ditebak) dan lolos pengecekan sintaks PHP (`php -l`) di semua file — tapi **belum dites "beneran jalan end-to-end"** sampai package-nya di-install dan dicoba sendiri. Tolong dicoba manual sekali setelah `composer require` di bawah, kalau ada error tinggal kabari saya.
+**BELUM bisa dites langsung** (halaman preview tabel & tombol Download di semua modul Batch 1 + Batch 2, Excel maupun PDF): kode-nya butuh package `maatwebsite/excel` **dan** `barryvdh/laravel-dompdf` yang **belum ter-install** (lihat bagian selanjutnya) — instalasinya butuh akses ke `packagist.org`, yang tidak bisa diakses dari lingkungan kerja saya (sudah dicoba langsung `composer require`, hasilnya diblok/HTTP 403). Jadi bagian ini sudah saya periksa teliti secara manual (nama kolom & nama relasi tiap model dicocokkan satu-satu ke kode aslinya, bukan ditebak, termasuk breakdown slip gaji yang saya cocokkan ke `dashboard/payroll/show.blade.php` & notulen yang saya cocokkan ke `dashboard/work/meetings/show.blade.php`) — tapi **belum dites "beneran jalan end-to-end"** sampai kedua package-nya di-install dan dicoba sendiri. Tolong dicoba manual sekali setelah `composer require` di bawah, kalau ada error tinggal kabari saya. Yang paling penting buat dicoba (urutan prioritas):
+
+1. **Rekap Absensi → Export PDF**, pilih 1 karyawan → pastikan PDF-nya kebuka & datanya cocok sama Excel-nya.
+2. **Payroll → Export PDF**, pilih periode yang sudah ada payroll-nya (generate dulu kalau belum ada) → klik salah satu baris "Unduh Slip PDF" → cek angka breakdown-nya cocok sama halaman Detail Payroll yang sudah ada.
+3. **Meetings/MoM → Export PDF** (kartu ini muncul di sidebar Work Control), pilih 1 rapat → cek notulen PDF-nya lengkap (peserta, catatan, keputusan, action items).
+4. **Payroll → Export Excel** — rekap 1 baris per karyawan untuk 1 periode.
 
 ### File yang ditambahkan/diubah — Batch 0 + Batch 1
 
@@ -351,9 +357,32 @@ Sampai Batch 2/3 selesai, kartu-kartu terkait di halaman "Export & Import" masih
 | `composer.json`                                           | + `maatwebsite/excel`, + `barryvdh/laravel-dompdf` (Batch 0)                                                                                              |
 | `README.md`                                               | Bagian ini (bagian 7)                                                                                                                                     |
 
-### Yang perlu dijalankan manual sebelum Batch 1 bisa benar-benar dipakai
+### File yang ditambahkan/diubah — Batch 2 (Export PDF)
 
-`composer.json` sudah ditambahkan 2 package, **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting), **lalu coba buka salah satu halaman preview** (mis. Dashboard → Export & Import → KPI → Export Excel) buat mastiin semuanya jalan mulus:
+**File baru:**
+
+| File                                                              | Isinya                                                                                                                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/Exports/PayrollExport.php`                                   | Payroll — Excel rekap sebulan semua karyawan (pola sama seperti 11 export Batch 1)                                                                      |
+| `resources/views/pdf/attendance-recap.blade.php`                  | Isi dokumen PDF Rekap Absensi 1 karyawan (headings/rows dipakai bareng dari `AttendanceRecapExport` yang sama dengan versi Excel-nya)                   |
+| `resources/views/pdf/payroll-slip.blade.php`                      | Isi dokumen PDF slip gaji 1 karyawan 1 periode — breakdown sama persis dengan `dashboard/payroll/show.blade.php`, + watermark "DRAFT" kalau belum final |
+| `resources/views/pdf/meeting-minutes.blade.php`                   | Isi dokumen PDF notulen 1 rapat — peserta, catatan, keputusan, action items, sama data dengan `dashboard/work/meetings/show.blade.php`                  |
+| `resources/views/dashboard/export-import/picker.blade.php`        | View "pilih record" untuk Payroll & Meetings PDF (1 dokumen per record, bukan tabel) — tiap baris punya tombol download sendiri                         |
+| `resources/views/dashboard/export-import/_filters-form.blade.php` | Partial form filter, diekstrak dari `preview.blade.php` biar bisa dipakai bareng `picker.blade.php` tanpa duplikat markup                               |
+
+**File yang DIUBAH:**
+
+| File                                                               | Perubahan                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/Http/Controllers/Dashboard/ExportImport/ExportController.php` | + cabang `format === 'pdf'` (sesuai rencana lama) — Rekap Absensi PDF numpang `resolve()`+`preview.blade.php` yang sudah ada (wajib pilih karyawan); Payroll & Meetings PDF lewat jalur "picker" baru (`pickerPreview()`, `payrollPicker()`, `downloadPayrollSlip()`, `meetingsPicker()`, `downloadMeetingMinutes()`) |
+| `app/Support/ExportImport/ExportCatalog.php`                       | `implemented_exports` untuk `attendance-recap` (+`pdf`), `payroll` (+`pdf`,`excel`), `meetings` (+`pdf`) di-update dari kosong/parsial ke lengkap                                                                                                                                                                     |
+| `resources/views/dashboard/export-import/preview.blade.php`        | Dukung `$requiresSelection` (Rekap Absensi PDF: sembunyikan tombol download & kasih pesan kalau karyawan belum dipilih) & `$downloadLabel` ("Download Excel"/"Download PDF"); form filter dipindah ke partial                                                                                                         |
+| `routes/web.php`                                                   | Komentar di grup `export-import` diperbarui (route-nya sendiri **tidak berubah** — tetap generik `{key}/{format}`, Payroll/Meetings numpang query string `?payroll_id=`/`?meeting_id=`)                                                                                                                               |
+| `README.md`                                                        | Bagian ini (bagian 7) — status Batch 2, tabel file, catatan pengujian                                                                                                                                                                                                                                                 |
+
+### Yang perlu dijalankan manual sebelum Batch 1 & 2 bisa benar-benar dipakai
+
+`composer.json` sudah ditambahkan 2 package (dipakai bareng Batch 1 & 2, gak ada package baru lagi buat Batch 2), **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting), **lalu coba buka salah satu halaman preview** (mis. Dashboard → Export & Import → KPI → Export Excel, dan Rekap Absensi → Export PDF) buat mastiin semuanya jalan mulus — urutan prioritas tes ada di bagian atas:
 
 ```
 composer require maatwebsite/excel barryvdh/laravel-dompdf

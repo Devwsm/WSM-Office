@@ -34,7 +34,7 @@ class ExportCatalog
             'module' => 'people',
             'owner_only' => false,
             'exports' => ['excel', 'pdf'],
-            'implemented_exports' => ['excel'], // Batch 1. PDF -> Batch 2.
+            'implemented_exports' => ['excel', 'pdf'], // Batch 1 (excel) + Batch 2 (pdf, per-karyawan).
             'import' => false,
             'import_implemented' => false,
         ],
@@ -45,7 +45,7 @@ class ExportCatalog
             'module' => 'payroll',
             'owner_only' => false,
             'exports' => ['pdf', 'excel'],
-            'implemented_exports' => [], // Batch 2.
+            'implemented_exports' => ['pdf', 'excel'], // Batch 2.
             'import' => false,
             'import_implemented' => false,
         ],
@@ -155,7 +155,7 @@ class ExportCatalog
             'module' => 'work',
             'owner_only' => false,
             'exports' => ['pdf'],
-            'implemented_exports' => [], // Batch 2.
+            'implemented_exports' => ['pdf'], // Batch 2.
             'import' => false,
             'import_implemented' => false,
         ],
