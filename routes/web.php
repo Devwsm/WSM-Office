@@ -35,6 +35,7 @@ use App\Http\Controllers\Dashboard\DashboardController as ModuleDashboardControl
 use App\Http\Controllers\Dashboard\DashboardLockController;
 use App\Http\Controllers\Dashboard\ExportImport\ExportController;
 use App\Http\Controllers\Dashboard\ExportImport\ExportImportController;
+use App\Http\Controllers\Dashboard\ExportImport\ImportController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
 use App\Http\Controllers\Dashboard\It\AuditLogController;
@@ -474,6 +475,18 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
         // ExportController buat pembagian 2 bentuk PDF. ---
         Route::get('/{key}/{format}/preview', [ExportController::class, 'preview'])->name('preview');
         Route::get('/{key}/{format}/download', [ExportController::class, 'download'])->name('download');
+
+        // --- Batch 3 (Import), $key cocok ke ExportCatalog::CATALOG —
+        // Work Tracker duluan (lihat ImportController::IMPLEMENTED),
+        // route generik ini sudah siap dipakai modul lain yang nyusul
+        // tanpa perlu route baru lagi. 'import.' name-nya sesuai yang
+        // sudah dipakai index.blade.php dari Batch 0/1. ---
+        Route::prefix('{key}/import')->name('import.')->group(function () {
+            Route::get('/', [ImportController::class, 'show'])->name('show');
+            Route::get('/template', [ImportController::class, 'template'])->name('template');
+            Route::post('/preview', [ImportController::class, 'preview'])->middleware('throttle:10,1')->name('preview');
+            Route::post('/commit', [ImportController::class, 'commit'])->middleware('throttle:10,1')->name('commit');
+        });
     });
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
