@@ -60,6 +60,20 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
     abstract public function previewColumns(): array;
 
     /**
+     * Catatan per kolom template, ditampilin di halaman UPLOAD (bukan
+     * preview) — biar user tau sebelum ngisi Excel-nya, mana kolom
+     * yang WAJIB, mana yang BOLEH kosong, dan APA yang kejadian kalau
+     * dikosongin (khususnya kolom yang ada fallback otomatis, mis.
+     * `password` -> "password" kalau kosong). Key di array HARUS sama
+     * persis kayak yang ada di templateHeadings() (urutan bebas, boleh
+     * gak lengkap — kolom yang gak disebut dianggap opsional tanpa
+     * catatan tambahan).
+     *
+     * @return array<string, array{required: bool, note?: string}>
+     */
+    abstract public function fieldNotes(): array;
+
+    /**
      * Aturan validasi Laravel per-baris, key-nya = key hasil
      * WithHeadingRow (huruf kecil + underscore).
      *

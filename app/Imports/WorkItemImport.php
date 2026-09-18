@@ -49,6 +49,20 @@ class WorkItemImport extends BaseImport
         ];
     }
 
+    public function fieldNotes(): array
+    {
+        return [
+            'project' => ['required' => false, 'note' => 'Boleh kosong — task jadi tanpa project.'],
+            'section' => ['required' => false, 'note' => 'Kalau kosong, otomatis "OTHER".'],
+            'judul' => ['required' => true],
+            'tenggat' => ['required' => false, 'note' => 'Boleh kosong — task jadi tanpa tenggat. Format DD/MM/YYYY.'],
+            'pic' => ['required' => false, 'note' => 'Boleh kosong — task jadi tanpa PIC.'],
+            'progress' => ['required' => false, 'note' => 'Kalau kosong, otomatis "Pending".'],
+            'prioritas' => ['required' => false, 'note' => 'Boleh kosong — task jadi tanpa prioritas.'],
+            'catatan' => ['required' => false],
+        ];
+    }
+
     public function rules(): array
     {
         return [

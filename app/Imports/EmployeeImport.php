@@ -74,6 +74,24 @@ class EmployeeImport extends BaseImport
         ];
     }
 
+    public function fieldNotes(): array
+    {
+        return [
+            'nama' => ['required' => true],
+            'email' => ['required' => true, 'note' => 'Harus unik. Kalau sudah kepake (atau dobel di file ini), baris ditolak.'],
+            'password' => ['required' => false, 'note' => 'Boleh kosong — kalau kosong, otomatis diisi "password". Kalau diisi manual, dipakai apa adanya (minimal 8 karakter).'],
+            'role' => ['required' => true, 'note' => 'Isi salah satu: owner, manajer, karyawan, hrd (boleh huruf besar/kecil).'],
+            'divisi' => ['required' => false],
+            'jabatan' => ['required' => false],
+            'tanggal_masuk' => ['required' => false, 'note' => 'Boleh kosong. Format DD/MM/YYYY.'],
+            'jatah_cuti' => ['required' => false, 'note' => 'Kalau kosong, otomatis 12 hari.'],
+            'tanggal_lahir' => ['required' => false, 'note' => 'Boleh kosong. Format DD/MM/YYYY.'],
+            'gaji_pokok' => ['required' => false],
+            'target_jam_per_hari' => ['required' => false],
+            'tarif_lembur_flat' => ['required' => false],
+        ];
+    }
+
     public function rules(): array
     {
         return [

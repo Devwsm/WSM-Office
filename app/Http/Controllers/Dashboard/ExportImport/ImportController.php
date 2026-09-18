@@ -65,6 +65,7 @@ class ImportController extends Controller
             'title' => $entry['label'],
             'key' => $key,
             'headings' => $importer->templateHeadings(),
+            'fieldNotes' => $importer->fieldNotes(),
             'backUrl' => route('dashboard.export-import.index'),
             'templateUrl' => route('dashboard.export-import.import.template', ['key' => $key]),
             'previewUrl' => route('dashboard.export-import.import.preview', ['key' => $key]),
