@@ -13,8 +13,8 @@
     karyawan sekaligus; selagi belum dipilih, tombol download
     disembunyikan & $rows dikirim kosong dari controller).
 
-    Warna tombol Download ikut format ($downloadLabel) — biru buat
-    Excel, kuning/emas buat PDF — sama 2 warna yang dipakai buat badge
+    Warna tombol Download ikut format ($downloadLabel) — hijau buat
+    Excel, merah buat PDF — sama 2 warna yang dipakai buat badge
     "Export EXCEL"/"Export PDF" di index.blade.php, biar konsisten.
 
     Modul yang PDF-nya berupa 1 DOKUMEN PER RECORD (bukan tabel
@@ -40,7 +40,7 @@
         </div>
         @unless ($requiresSelection ?? false)
             <a href="{{ $downloadUrl }}"
-                class="flex-none rounded-2xl px-4 py-2.5 text-xs font-extrabold transition hover:brightness-110 {{ $isPdfDownload ? 'bg-brand-yellow text-[#3a2e00]' : 'bg-brand-blue text-white' }}">
+                class="flex-none rounded-2xl px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110 {{ $isPdfDownload ? 'bg-brand-red' : 'bg-brand-green' }}">
                 {{ $downloadLabel ?? 'Download Excel' }}
             </a>
         @endunless

@@ -16,9 +16,8 @@
     of ['cells' => [...], 'downloadUrl' => '...', 'downloadLabel' =>
     '...'], $emptyMessage.
 
-    Tombol download per-baris selalu kuning/emas (warna PDF) — halaman
-    ini KHUSUS PDF (lihat catatan di atas), gak pernah dipakai buat
-    Excel.
+    Tombol download per-baris selalu merah (warna PDF) — halaman ini
+    KHUSUS PDF (lihat catatan di atas), gak pernah dipakai buat Excel.
     -----------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => $title, 'navActive' => 'export-import'])
@@ -50,7 +49,7 @@
                         @endforeach
                         <td class="whitespace-nowrap px-3.5 py-2.5 text-right">
                             <a href="{{ $row['downloadUrl'] }}"
-                                class="rounded-2xl bg-brand-yellow px-3 py-1.5 text-[11px] font-extrabold text-[#3a2e00] transition hover:brightness-110">
+                                class="rounded-2xl bg-brand-red px-3 py-1.5 text-[11px] font-extrabold text-white transition hover:brightness-110">
                                 {{ $row['downloadLabel'] }}
                             </a>
                         </td>

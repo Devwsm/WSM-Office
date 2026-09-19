@@ -66,7 +66,7 @@
             <input type="file" name="file" accept=".xlsx,.xls,.csv" required
                 class="rounded-xl border border-line px-3 py-2 text-sm">
             <button type="submit"
-                class="rounded-2xl bg-brand-green px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110">
+                class="rounded-2xl border border-line bg-white px-4 py-2.5 text-xs font-extrabold text-ink transition hover:bg-cream">
                 Lihat Preview
             </button>
         </form>

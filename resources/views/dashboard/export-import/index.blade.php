@@ -9,13 +9,15 @@
     lewat 'import_implemented'.
 
     Warna badge & tombol dibedakan per TIPE aksi (bukan cuma
-    aktif/nonaktif) — Excel biru, PDF kuning/emas, Import hijau —
-    pakai 3 warna aksen yang sudah ada di app.css (--color-brand-blue/
-    yellow/green, sama yang dipakai stat-wsm-blue/yellow/green di
-    dashboard Owner), biar konsisten sama sistem warna yang sudah ada,
-    bukan bikin warna baru. Badge nonaktif & "Segera Hadir" tetap abu-
-    abu (`badge-wsm-gray`) di semua kondisi — abu-abu artinya "belum
-    bisa dipakai", bukan salah satu dari 3 tipe aksi di atas.
+    aktif/nonaktif) — Excel hijau, PDF merah, Import putih (border) —
+    Excel/PDF pakai warna aksen brand-green/brand-red yang sudah ada di
+    app.css (sama yang dipakai badge-wsm-green/red di modul lain), dan
+    Import sengaja putih+border (bukan warna solid) biar gak nyaingin
+    intensitas Excel/PDF — sama pola .btn-wsm-white yang sudah ada,
+    cuma diresize ke ukuran pill kecil di halaman ini. Badge nonaktif &
+    "Segera Hadir" tetap abu-abu (`badge-wsm-gray`) di semua kondisi —
+    abu-abu artinya "belum bisa dipakai", bukan salah satu dari 3 tipe
+    aksi di atas.
     -----------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Export & Import', 'navActive' => 'export-import'])
@@ -25,17 +27,22 @@
     // export — dipakai bareng di 2 tempat di bawah (badge ringkasan +
     // tombol aksi), biar warnanya konsisten dalam 1 kartu.
     $exportBadgeClass = fn(string $format) => match ($format) {
-        'excel' => 'badge-wsm-blue',
-        'pdf' => 'badge-wsm-yellow',
+        'excel' => 'badge-wsm-green',
+        'pdf' => 'badge-wsm-red',
         default => 'badge-wsm-gray',
     };
     $exportButtonClass = fn(string $format) => match ($format) {
         'excel'
-            => 'rounded-2xl bg-brand-blue px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110',
+            => 'rounded-2xl bg-brand-green px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110',
         'pdf'
-            => 'rounded-2xl bg-brand-yellow px-3.5 py-2 text-xs font-extrabold text-[#3a2e00] transition hover:brightness-110',
+            => 'rounded-2xl bg-brand-red px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110',
         default => 'rounded-2xl bg-ink px-3.5 py-2 text-xs font-extrabold text-white',
     };
+    // Badge putih gak ada di app.css (badge-wsm-* lain semua warna
+    // solid) — ditulis inline di sini, border biar kelihatan di atas
+    // kartu bg-white, bukan nyatu jadi invisible.
+    $importBadgeClass =
+        'inline-flex items-center rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-black text-ink';
 @endphp
 
 @section('content')
@@ -65,7 +72,7 @@
                         </span>
                     @endforeach
                     @if ($entry['import'])
-                        <span class="{{ $entry['import_implemented'] ? 'badge-wsm-green' : 'badge-wsm-gray' }}">
+                        <span class="{{ $entry['import_implemented'] ? $importBadgeClass : 'badge-wsm-gray' }}">
                             Import
                         </span>
                     @endif
@@ -88,7 +95,7 @@
                     @if ($entry['import'])
                         @if ($entry['import_implemented'])
                             <a href="{{ route('dashboard.export-import.import.show', ['key' => $key]) }}"
-                                class="rounded-2xl bg-brand-green px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110">
+                                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-xs font-extrabold text-ink transition hover:bg-cream">
                                 Import
                             </a>
                         @else
