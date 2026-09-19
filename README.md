@@ -36,20 +36,9 @@ Halaman publik, Absensi (termasuk mode WFH/Lapangan/Gigs), Izin/Cuti, Lembur, Ko
 
 Fitur baru, dikerjakan bertahap (lihat bagian 7 untuk detail lengkap). **Semua kode sudah selesai**: Export Excel (Batch 1), Export PDF (Batch 2), Import Work Tracker (Batch 3), dan Import Manajemen Karyawan/KPI/Project Budgeting (Batch 4) — halaman menu "Export & Import" sudah bisa dibuka, kartu sudah nyaring sesuai akses tiap orang, dan **semua tombol Export & Import sekarang aktif**, gak ada lagi yang "Segera Hadir". Import Work Tracker sudah dites manual sama Owner dan aman; sisanya (Export Excel/PDF semua modul, Import Manajemen Karyawan/KPI/Project Budgeting) **belum ada satu pun yang dites langsung lewat browser (login beneran)** — sejauh ini semua lewat audit kode manual, cocokin ke rules/model satu-satu — lihat catatan pengujian di bagian 7.
 
-### Yang masih harus dibereskan sebelum benar-benar go-live
+### Sebelum go-live
 
-Ini bukan kesalahan kode, tapi konfigurasi/kelengkapan yang memang belum disentuh:
-
-| #   | Isu                                                                                                                                                                                                                               | Kenapa penting                                                                                                                                                             |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | File `.env` yang ada masih berisi setting pengembangan (password database polos, `APP_DEBUG=true`, `APP_ENV=local`)                                                                                                               | Kalau diupload apa adanya, siapa pun bisa melihat detail error teknis (termasuk info sensitif) di halaman publik. **Wajib diganti** dengan `.env` produksi sebelum upload. |
-| 2   | Symlink `storage:link` belum pernah dijalankan di server                                                                                                                                                                          | Upload file kontrak karyawan & dokumen legal (yang disimpan lewat `Storage::disk('public')`) tidak akan bisa diakses/ditampilkan tanpa ini.                                |
-| 3   | Belum ada file `.htaccess` di folder paling atas (root) project                                                                                                                                                                   | Di hosting cPanel yang document root-nya bukan folder `public/`, tanpa file ini alamat website tidak akan mengarah ke aplikasi dengan benar.                               |
-| 4   | Fitur Export & Import (bagian 7) — **kodenya sudah lengkap** (Export Excel/PDF semua modul + Import Work Tracker/Manajemen Karyawan/KPI/Project Budgeting), tapi belum dites langsung lewat browser (kecuali Import Work Tracker) | Sebelum go-live, coba manual dulu satu-satu (urutan prioritas ada di bagian 7) buat mastiin gak ada gap yang cuma kelihatan pas benar-benar diklik.                        |
-| 5   | Belum ada automated test sungguhan (baru file contoh bawaan Laravel)                                                                                                                                                              | Tidak ada jaring pengaman otomatis kalau ada perubahan kode yang tidak sengaja merusak fitur lain.                                                                         |
-| 6   | Ada file `database/database.sqlite` yang tertinggal di folder project                                                                                                                                                             | Tidak dipakai (database sungguhan pakai MySQL), aman dihapus, cuma bikin bingung kalau dikira itu database aktif.                                                          |
-
-**Kesimpulan:** dari sisi fitur, aplikasi ini sudah siap dites ujung-ke-ujung oleh tim WSM. Sebelum benar-benar diakses publik di internet, 3 poin pertama pada tabel di atas **wajib** dikerjakan dulu (ganti `.env`, jalankan `storage:link`, tambah `.htaccess`); 3 poin sisanya adalah penyempurnaan yang bisa menyusul.
+Daftar tes manual lengkap ada di **bagian 8**, temuan kekurangan di **bagian 9**, dan reminder persiapan production (`.env`, HTTPS, `storage:link`, `.htaccess`, dll) sengaja ditaruh di **bagian 10 (paling akhir)**.
 
 ---
 
@@ -145,7 +134,7 @@ WSM-Office/
 └── public/                     # Folder yang "dihadapkan" ke internet (titik masuk aplikasi)
 ```
 
-### `app/Models/` — 23 file, satu per jenis data utama
+### `app/Models/` — 25 file, satu per jenis data utama
 
 | File                                                  | Isinya                                                                                   |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -195,7 +184,7 @@ Tiap file mencatat **satu perubahan** ke struktur tabel database, urut sesuai ta
 | `OfficeSettingSeeder.php` | Mengisi 1 baris pengaturan kantor (lokasi, radius, jam kerja)  |
 | `DemoSeeder.php`          | Mengisi **seluruh** data contoh untuk testing — lihat bagian 5 |
 
-### `resources/views/` — 94 file Blade, dikelompokkan sama seperti Controllers
+### `resources/views/` — 104 file Blade, dikelompokkan sama seperti Controllers
 
 Folder `layouts/` menyimpan kerangka halaman yang dipakai berulang (mis. `app.blade.php` untuk tampilan dashboard dengan sidebar, `employee.blade.php` untuk tampilan mobile-friendly staf, `public.blade.php` untuk halaman depan).
 
@@ -255,20 +244,20 @@ Semua akun pakai password yang sama: **`password`** (wajib diganti sebelum dipak
 
 ## 6. Teknologi yang Digunakan
 
-| Teknologi                     | Kegunaan                                                                                                  |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **PHP 8.3+**                  | Bahasa pemrograman utama                                                                                  |
-| **Laravel 13**                | Framework backend — routing, database, autentikasi, dll                                                   |
-| **MySQL**                     | Database (dipakai di hosting produksi; bisa juga diuji pakai SQLite/MariaDB)                              |
-| **Tailwind CSS v4**           | Styling tampilan, di-build lewat Vite                                                                     |
-| **Alpine.js**                 | Interaktivitas ringan di sisi browser (dropdown, modal, dll) tanpa perlu framework JS berat               |
-| **Vite**                      | Build tool untuk menggabungkan & mengoptimalkan CSS/JS                                                    |
-| **Leaflet**                   | Peta interaktif untuk validasi lokasi absensi & pengaturan titik kantor                                   |
-| **SweetAlert2**               | Notifikasi & dialog konfirmasi yang lebih rapi dari `alert()` bawaan browser                              |
-| **doctrine/dbal**             | Dibutuhkan Laravel untuk mengubah struktur kolom yang sudah ada (dipakai di beberapa migration)           |
-| **maatwebsite/excel**         | Export & import Excel (fitur baru, lihat bagian 7) — **wajib `composer require` manual**, belum terpasang |
-| **barryvdh/laravel-dompdf**   | Export PDF (fitur baru, lihat bagian 7) — **wajib `composer require` manual**, belum terpasang            |
-| **cPanel Hosting (Rumahweb)** | Target hosting produksi — tanpa akses terminal/SSH, jadi deploy manual lewat upload file                  |
+| Teknologi                     | Kegunaan                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| **PHP 8.3+**                  | Bahasa pemrograman utama                                                                        |
+| **Laravel 13**                | Framework backend — routing, database, autentikasi, dll                                         |
+| **MySQL**                     | Database (dipakai di hosting produksi; bisa juga diuji pakai SQLite/MariaDB)                    |
+| **Tailwind CSS v4**           | Styling tampilan, di-build lewat Vite                                                           |
+| **Alpine.js**                 | Interaktivitas ringan di sisi browser (dropdown, modal, dll) tanpa perlu framework JS berat     |
+| **Vite**                      | Build tool untuk menggabungkan & mengoptimalkan CSS/JS                                          |
+| **Leaflet**                   | Peta interaktif untuk validasi lokasi absensi & pengaturan titik kantor                         |
+| **SweetAlert2**               | Notifikasi & dialog konfirmasi yang lebih rapi dari `alert()` bawaan browser                    |
+| **doctrine/dbal**             | Dibutuhkan Laravel untuk mengubah struktur kolom yang sudah ada (dipakai di beberapa migration) |
+| **maatwebsite/excel**         | Export & import Excel (bagian 7) — sudah terpasang di `vendor/`                                 |
+| **barryvdh/laravel-dompdf**   | Export PDF (bagian 7) — sudah terpasang di `vendor/`                                            |
+| **cPanel Hosting (Rumahweb)** | Target hosting produksi — tanpa akses terminal/SSH, jadi deploy manual lewat upload file        |
 
 Ikon di seluruh aplikasi memakai simbol Unicode sederhana (bukan pustaka ikon seperti Bootstrap Icons), jadi tidak perlu memuat file ikon tambahan.
 
@@ -423,10 +412,250 @@ Ketiga importer ini **belum** kena `AuditLog::record()` — sama seperti CRUD ma
 | `app/Support/ExportImport/ExportCatalog.php`                       | `import_implemented` untuk `kpi` & `budget` di-update dari `false` (Batch 3) jadi `true` (Batch 4) — kartu Import KPI & Project Budgeting di halaman menu sekarang aktif, gak lagi "Segera Hadir"                                                                                                                                                                                              |
 | `README.md`                                                        | Bagian ini (bagian 7) — status Batch 3 & 4 lengkap, tabel file, catatan pengujian                                                                                                                                                                                                                                                                                                              |
 
-### Yang perlu dijalankan manual sebelum Batch 1 & 2 bisa benar-benar dipakai
+### Catatan instalasi package
 
-`composer.json` sudah ditambahkan 2 package (dipakai bareng Batch 1 & 2, gak ada package baru lagi buat Batch 2), **tapi package-nya sendiri belum ter-install** — jalankan ini dulu di komputer lokal (sesuai kebiasaan deploy project ini: composer di lokal, lalu folder `vendor/` yang diupload ke hosting), **lalu coba buka salah satu halaman preview** (mis. Dashboard → Export & Import → KPI → Export Excel, dan Rekap Absensi → Export PDF) buat mastiin semuanya jalan mulus — urutan prioritas tes ada di bagian atas:
+`maatwebsite/excel` dan `barryvdh/laravel-dompdf` **sudah terpasang** di `vendor/` (tercatat di `composer.json` & `composer.lock`), jadi tidak perlu `composer require` lagi. Yang tersisa hanya menjalankan tes manual — lihat bagian 8 (kelompok J).
 
-```
-composer require maatwebsite/excel barryvdh/laravel-dompdf
-```
+---
+
+## 8. Checklist Tes Manual di Browser (dari awal sampai akhir)
+
+Disusun dari membaca kode, route, dan seeder (aplikasinya **belum dijalankan** saat checklist ini dibuat), jadi urutannya mengikuti alur pemakaian nyata: publik → login → karyawan → atasan → Owner → modul manajerial → rekrutmen → export/import → lintas role. Centang setelah dicoba sendiri.
+
+Legenda: ☐ belum dites · ✅ sudah dites & aman · ❌ ada masalah (catat di kolom Catatan / issue).
+
+### Persiapan Tes
+
+Lakukan sekali sebelum mulai.
+
+| Status | ID  | Halaman / Fitur                  | Yang dites → hasil yang benar                                                                                                                                                                                                             |
+| ------ | --- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ☐      | P1  | Terminal lokal                   | `php artisan migrate:fresh --seed`, `php artisan storage:link`, `npm run build` (atau `npm run dev`) → data demo terisi, tidak ada error.                                                                                                 |
+| ☐      | P2  | Browser                          | Siapkan Chrome desktop, Chrome Android, dan Safari iOS; izinkan **Lokasi** dan **Kamera** untuk situs.                                                                                                                                    |
+| ☐      | P3  | Akun (password semua `password`) | OWN `owner@wsm.local` · KAN Kanaya (manajer) `kanaya@wsm.local` · RAN Rania (HRD) `rania@wsm.local` · ALD Aldora `aldora@wsm.local` · GEP Gepeng `gepeng@wsm.local`. Pakai jendela Incognito berbeda per akun supaya sesi tidak tertukar. |
+
+### A. Halaman Publik (tanpa login)
+
+| Status | ID  | Halaman / Fitur                                                | Yang dites → hasil yang benar                                                                                     |
+| ------ | --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| ☐      | A1  | `/`, `/tentang-kami`, `/layanan`                               | Ketiganya terbuka tanpa error, menu navigasi jalan, tampil rapi di HP.                                            |
+| ☐      | A2  | `/karir`                                                       | Hanya lowongan berstatus tayang yang muncul (seed: 1 tayang, 1 draft tidak muncul).                               |
+| ☐      | A3  | `/karir/{slug}`                                                | Detail lowongan tampil; slug lowongan draft/ditutup → 404.                                                        |
+| ☐      | A4  | Form Lamar                                                     | Kosong → pesan validasi (nama & email wajib); isi valid → pesan sukses; kirim >5x dalam semenit → 429 (throttle). |
+| ☐      | A5  | `/kontak`                                                      | Kosong → validasi; valid → pesan sukses; >5x/menit → 429.                                                         |
+| ☐      | A6  | URL ngawur (`/abc`)                                            | Halaman 404 custom tampil.                                                                                        |
+| ☐      | A7  | Buka `/dashboard`, `/app/home`, `/owner/dashboard` tanpa login | Semuanya redirect ke `/login`.                                                                                    |
+
+### B. Login, Logout, Sesi
+
+| Status | ID  | Halaman / Fitur                                   | Yang dites → hasil yang benar                                           |
+| ------ | --- | ------------------------------------------------- | ----------------------------------------------------------------------- |
+| ☐      | B1  | `/login` password salah                           | Muncul "Email atau password salah."                                     |
+| ☐      | B2  | Salah password 6x berturut-turut                  | Diblokir throttle (429), tidak bisa coba terus.                         |
+| ☐      | B3  | Login OWN                                         | Masuk ke `/owner/dashboard`.                                            |
+| ☐      | B4  | Login KAN / RAN / ALD / GEP                       | Masuk ke `/app/home` (App Mode versi HP).                               |
+| ☐      | B5  | Buka URL terproteksi saat belum login, lalu login | Setelah login kembali ke URL tujuan awal.                               |
+| ☐      | B6  | Sudah login lalu buka `/login`                    | Form login tidak tampil lagi.                                           |
+| ☐      | B7  | Centang "ingat saya"                              | Tutup & buka browser tetap login.                                       |
+| ☐      | B8  | Logout                                            | Kembali ke `/login`; tombol Back tidak menampilkan halaman terproteksi. |
+| ☐      | B9  | Login dengan akun yang sudah dinonaktifkan Owner  | Gagal login.                                                            |
+
+### C. App Mode Karyawan (login ALD, kecuali disebut lain)
+
+| Status | ID  | Halaman / Fitur                                       | Yang dites → hasil yang benar                                                                                                                            |
+| ------ | --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ☐      | C1  | Home `/app/home`                                      | Kartu sisa cuti, KPI Saya, Work Tracker Saya, milestone, ulang tahun/anniversary tim, banner cuti berbayar tampil tanpa error.                           |
+| ☐      | C2  | Home → Info dari Owner (memo)                         | Memo tampil, yang di-pin di atas, yang nonaktif tidak tampil; memo untuk penerima tertentu hanya muncul di akun penerima; tandai baca/sembunyikan jalan. |
+| ☐      | C3  | Inbox (modal)                                         | Dibuka → badge belum-dibaca hilang otomatis.                                                                                                             |
+| ☐      | C4  | Balas thread memo                                     | Balasan terkirim & terbaca di sisi Owner (Work Control → Memo); >15x/menit diblokir.                                                                     |
+| ☐      | C5  | Absen Masuk mode **Kantor**, di dalam radius          | Tercatat, jarak tampil, peta Leaflet muncul, pesan sukses.                                                                                               |
+| ☐      | C6  | Absen Kantor di luar radius                           | Radius ketat aktif → tercatat + catatan "X m dari kantor, di luar radius"; radius ketat mati → tanpa catatan (sesuaikan dengan Pengaturan Kantor).       |
+| ☐      | C7  | Tolak izin lokasi browser                             | Muncul "Lokasi belum kebaca…"; tombol Test Lokasi berfungsi.                                                                                             |
+| ☐      | C8  | Absen mode **WFH**                                    | Tercatat tanpa hitung jarak.                                                                                                                             |
+| ☐      | C9  | Absen masuk 2x di hari yang sama (Kantor/WFH)         | Ditolak: "cuma 1 sesi per hari".                                                                                                                         |
+| ☐      | C10 | Mode **Lapangan / Gigs**                              | Masuk → pulang → masuk lagi dibolehkan (sesi ke-2); masuk lagi sebelum pulang ditolak.                                                                   |
+| ☐      | C11 | Absen pulang tanpa absen masuk                        | Error "Kamu belum absen masuk hari ini."                                                                                                                 |
+| ☐      | C12 | Foto absen                                            | Selfie tersimpan & tampil di Rekap (butuh `storage:link`); tanpa foto / kamera ditolak tetap bisa absen.                                                 |
+| ☐      | C13 | Absen saat cuti disetujui hari ini                    | Ditolak: "sedang izin/cuti hari ini".                                                                                                                    |
+| ☐      | C14 | Lupa absen pulang                                     | Hari berikutnya sesi tertutup otomatis & berlabel "lupa absen pulang".                                                                                   |
+| ☐      | C15 | Riwayat Absensi `/app/riwayat`                        | Data per bulan, tombol bulan sebelum/sesudah, badge terlambat/kurang jam, blok kekurangan jam.                                                           |
+| ☐      | C16 | Pengajuan Izin/Cuti                                   | Tanggal lampau ditolak; selesai < mulai ditolak; cuti tahunan melebihi sisa ditolak (pesan menyebut sisa hari); valid → "tunggu persetujuan".            |
+| ☐      | C17 | Cuti jenis sakit/pribadi/lainnya                      | Tidak mengurangi jatah cuti tahunan.                                                                                                                     |
+| ☐      | C18 | Batalkan pengajuan pending                            | Alasan wajib; status jadi dibatalkan; sisa cuti kembali.                                                                                                 |
+| ☐      | C19 | Ajukan cuti tanggal yang sama/tumpang tindih dua kali | **Cek & catat hasilnya** — dari pembacaan kode belum ada validasi tumpang tindih (lihat bagian 9).                                                       |
+| ☐      | C20 | Pengajuan Lembur                                      | Tanggal lampau ditolak; tanggal sama 2x ditolak; batalkan berjalan.                                                                                      |
+| ☐      | C21 | Koreksi Presensi                                      | Tanggal masa depan ditolak; jam masuk & pulang sama-sama kosong ditolak; valid → pending; batalkan berjalan.                                             |
+| ☐      | C22 | Kalender Tim                                          | Grid bulan tampil, navigasi bulan & filter jalan, klik tugas membuka detail.                                                                             |
+| ☐      | C23 | Profil → ganti password                               | Password lama salah ditolak; <8 karakter / konfirmasi beda ditolak; sukses → logout & login ulang dengan password baru.                                  |
+| ☐      | C24 | Batas akses ALD                                       | Buka `/owner/dashboard`, `/dashboard/payroll`, `/persetujuan` → halaman 403.                                                                             |
+
+### D. Persetujuan Atasan (KAN, RAN, OWN)
+
+Aturan: yang berhak memutuskan = atasan langsung (`manager_id`) atau Owner. Atasan ALD & GEP = KAN; atasan KAN & RAN = OWN.
+
+| Status | ID  | Halaman / Fitur                                  | Yang dites → hasil yang benar                                                                                  |
+| ------ | --- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| ☐      | D1  | Persetujuan Izin/Cuti (KAN)                      | Daftar berisi pengajuan ALD & GEP; setujui → status disetujui, tercatat di Audit Log, sisa cuti ALD berkurang. |
+| ☐      | D2  | Tolak (KAN)                                      | Alasan wajib; ALD melihat alasan di halaman Pengajuan.                                                         |
+| ☐      | D3  | Putuskan dua kali (dua tab)                      | Tab kedua: "Pengajuan ini sudah diputuskan sebelumnya."                                                        |
+| ☐      | D4  | RAN (HRD) buka Persetujuan                       | Halaman terbuka tapi daftar kosong (RAN bukan atasan siapa pun); memutuskan pengajuan ALD via URL/POST → 403.  |
+| ☐      | D5  | OWN                                              | Bisa melihat & memutuskan pengajuan semua orang.                                                               |
+| ☐      | D6  | Batalkan pengajuan yang sudah disetujui (atasan) | Alasan wajib; cuti kembali; ALD bisa absen lagi di hari itu.                                                   |
+| ☐      | D7  | Persetujuan Lembur                               | Setujui/tolak/batalkan berjalan; lembur disetujui ikut terhitung di Payroll (H3).                              |
+| ☐      | D8  | Persetujuan Koreksi Presensi                     | Setujui → jam di Riwayat & Rekap ALD berubah sesuai koreksi; tolak/batalkan berjalan.                          |
+| ☐      | D9  | ALD / GEP buka `/persetujuan`                    | 403.                                                                                                           |
+
+### E. Rekap Absensi (modul `people`)
+
+| Status | ID  | Halaman / Fitur                                     | Yang dites → hasil yang benar                                                                           |
+| ------ | --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| ☐      | E1  | `/absensi` per akun                                 | OWN & RAN melihat semua karyawan; KAN hanya dirinya + bawahan; ALD → 403 dan menu tidak ada di sidebar. |
+| ☐      | E2  | Detail `/absensi/{id}`                              | Tabel harian, jam, jarak, foto masuk/pulang tampil.                                                     |
+| ☐      | E3  | Koreksi manual (RAN / OWN = manage)                 | Jam berubah & tersimpan; validasi jalan.                                                                |
+| ☐      | E4  | KAN (people = view) coba koreksi                    | Tombol tidak tampil; POST langsung → 403.                                                               |
+| ☐      | E5  | KAN buka detail karyawan di luar cakupan (mis. RAN) | 403.                                                                                                    |
+
+### F. Owner
+
+| Status | ID  | Halaman / Fitur                              | Yang dites → hasil yang benar                                                                                                                             |
+| ------ | --- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ☐      | F1  | Dashboard Owner `/owner/dashboard`           | Ringkasan tampil tanpa error.                                                                                                                             |
+| ☐      | F2  | Manajemen Karyawan — daftar                  | Aktif & nonaktif tampil, pencarian/filter jalan.                                                                                                          |
+| ☐      | F3  | Tambah karyawan                              | Email harus unik, password ≥8, atasan langsung & role tersimpan, akun baru bisa login.                                                                    |
+| ☐      | F4  | Edit karyawan                                | Password dikosongkan = tidak berubah; ubah role/atasan tersimpan.                                                                                         |
+| ☐      | F5  | Nonaktifkan                                  | Akun sendiri tidak bisa dinonaktifkan; akun lain berhasil, tidak bisa login, tercatat Audit Log.                                                          |
+| ☐      | F6  | Aktifkan kembali                             | Bisa login lagi.                                                                                                                                          |
+| ☐      | F7  | Struktur Organisasi                          | Bagan atasan-bawahan sesuai `manager_id`.                                                                                                                 |
+| ☐      | F8  | Atur Akses Dashboard — untuk Owner           | Muncul "Owner otomatis punya akses penuh…".                                                                                                               |
+| ☐      | F9  | Atur Akses — beri GEP `kpi` view, lalu cabut | Login GEP: menu KPI muncul tanpa tombol kelola; setelah dicabut → 403.                                                                                    |
+| ☐      | F10 | Pengaturan Kantor                            | Ubah koordinat, radius (10–5000), jam kerja, toleransi, tarif potongan, warna → tersimpan & langsung dipakai absen berikutnya; input tidak valid ditolak. |
+| ☐      | F11 | Toggle geo off / radius ketat                | Perilaku absen mode Kantor berubah sesuai.                                                                                                                |
+| ☐      | F12 | Pesan Kontak                                 | Pesan dari form publik (A5) muncul; tandai sudah dibaca.                                                                                                  |
+| ☐      | F13 | Kunci Dashboard (OWN & ALD)                  | Kunci → buka `/dashboard` → layar kunci; password salah ditolak; benar → kembali ke URL semula.                                                           |
+
+### G. Work Control (ALD = manage, GEP = view)
+
+| Status | ID  | Halaman / Fitur                 | Yang dites → hasil yang benar                                                                                |
+| ------ | --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| ☐      | G1  | Memo Forum `/dashboard/work`    | Daftar tampil; GEP tidak melihat tombol tambah/edit.                                                         |
+| ☐      | G2  | Buat Memo / MoM cepat           | Tipe, judul, isi wajib; pin; audiens semua/tertentu (penerima wajib bila tertentu); tampil di Home karyawan. |
+| ☐      | G3  | Edit / nonaktifkan / hapus memo | Sesuai; memo nonaktif hilang dari Home.                                                                      |
+| ☐      | G4  | Balas thread (manage)           | Terkirim & tampil di Home penerima.                                                                          |
+| ☐      | G5  | Timeline Calendar               | Tampil, navigasi bulan jalan.                                                                                |
+| ☐      | G6  | Work Tracker — Project          | Tambah (warna hex valid, tanggal akhir ≥ mulai), edit, hapus → task pindah ke "Tanpa Project".               |
+| ☐      | G7  | Work Tracker — Task             | Tambah (section, PIC, due, progress, prioritas, link valid), edit, hapus.                                    |
+| ☐      | G8  | Ubah progress cepat             | 6 status (Pending…Postpone) tersimpan; task muncul di "Work Tracker Saya" karyawan PIC.                      |
+| ☐      | G9  | Filter / drag-drop board        | Filter jalan; hasil drag-drop bertahan setelah refresh.                                                      |
+| ☐      | G10 | GEP coba tambah task (URL/POST) | 403.                                                                                                         |
+| ☐      | G11 | Meetings — buat                 | Agenda wajib; peserta; action item (PIC / semua, due) + "sync ke tracker" → task muncul di Work Tracker.     |
+| ☐      | G12 | Meetings — edit, lihat, hapus   | Menghapus action item saat edit bekerja; hapus rapat bekerja.                                                |
+| ☐      | G13 | Meetings — Blast                | Menjadi Memo ke semua karyawan & muncul di Home mereka; >10x/menit diblokir.                                 |
+
+### H. Modul Manajerial (KAN = manage, RAN = KPI view)
+
+| Status | ID  | Halaman / Fitur                | Yang dites → hasil yang benar                                                                                                                               |
+| ------ | --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ☐      | H1  | KPI                            | Tambah/edit/hapus; badge hijau/kuning/merah sesuai persen; RAN tidak melihat tombol kelola; KPI muncul di kartu "KPI Saya" karyawan.                        |
+| ☐      | H2  | Kontrak Karyawan               | Upload PDF/DOC/JPG ≤10MB; >10MB atau .exe ditolak; badge "segera berakhir"; file terbuka; edit ganti file (file lama terhapus); hapus (file ikut terhapus). |
+| ☐      | H3  | Payroll — generate             | Pilih periode → draft untuk semua karyawan bergaji; total = gaji pokok + (hari lembur disetujui × tarif) − (blok kekurangan jam × tarif potongan).          |
+| ☐      | H4  | Payroll — generate ulang       | Draft ditimpa; yang sudah final dilewati (ada pesan "dilewati").                                                                                            |
+| ☐      | H5  | Payroll — detail & penyesuaian | Isi penyesuaian & catatan → total ikut berubah.                                                                                                             |
+| ☐      | H6  | Payroll — finalisasi           | Status Final; tidak bisa diedit/dihapus/digenerate ulang.                                                                                                   |
+| ☐      | H7  | Payroll — tandai dibayar       | Hanya dari status Final.                                                                                                                                    |
+| ☐      | H8  | Payroll — hapus                | Hanya draft.                                                                                                                                                |
+| ☐      | H9  | Project Budgeting              | CRUD; dikelompokkan per project; realisasi > budget → selisih minus.                                                                                        |
+| ☐      | H10 | Royalty                        | CRUD; filter status (Estimated / Reported / Ready to Pay / Paid).                                                                                           |
+| ☐      | H11 | Legal                          | Tab Album Contracts & Royalty Agreements; upload; badge jatuh tempo; edit; hapus.                                                                           |
+| ☐      | H12 | IT — Audit Log                 | Daftar aktivitas; hanya lihat, tanpa tombol tambah/hapus.                                                                                                   |
+| ☐      | H13 | IT — System Changelog          | CRUD entri versi.                                                                                                                                           |
+| ☐      | H14 | Akses view vs manage           | KAN (legal/it = view) tidak melihat tombol kelola; RAN buka `/dashboard/payroll` → 403.                                                                     |
+
+### I. Rekrutmen (RAN)
+
+| Status | ID  | Halaman / Fitur                | Yang dites → hasil yang benar                                                                |
+| ------ | --- | ------------------------------ | -------------------------------------------------------------------------------------------- |
+| ☐      | I1  | Lowongan — buat                | Judul, status draft/tayang; judul kembar tetap menghasilkan slug unik.                       |
+| ☐      | I2  | Tayangkan / tutup              | Tayang → muncul di `/karir`; ditutup → hilang.                                               |
+| ☐      | I3  | Edit lowongan                  | Perubahan tersimpan & tampil di halaman publik.                                              |
+| ☐      | I4  | Pelamar — daftar & detail      | Lamaran dari form publik (A4) masuk berstatus baru.                                          |
+| ☐      | I5  | Ubah status pipeline           | baru → ditinjau → interview → ditawari → diterima/ditolak tersimpan.                         |
+| ☐      | I6  | Convert jadi karyawan          | Form akun (email unik, password ≥8) → akun terbuat & bisa login; convert kedua kali ditolak. |
+| ☐      | I7  | KAN buka `/rekrutmen/lowongan` | 403.                                                                                         |
+
+### J. Export & Import (OWN; GEP untuk uji akses)
+
+Detail langkah tiap tes ada di bagian 7 ("Apa yang sudah dites…").
+
+| Status | ID  | Halaman / Fitur                                | Yang dites → hasil yang benar                                                                                                                |
+| ------ | --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| ✅     | J1  | Halaman menu `/dashboard/export-import`        | OWN 13 kartu, GEP 2 kartu (Work Tracker, Meetings). ✅ sudah dites.                                                                          |
+| ☐      | J2  | Export Excel semua modul (preview → download)  | File terbuka di Excel; kolom & angka cocok dengan layar.                                                                                     |
+| ☐      | J3  | Export PDF Rekap Absensi                       | Pilih 1 karyawan; PDF terbuka & cocok dengan Excel-nya.                                                                                      |
+| ☐      | J4  | Export PDF Payroll                             | Pilih periode → unduh slip; angka cocok dengan Detail Payroll.                                                                               |
+| ☐      | J5  | Export PDF Meetings                            | Notulen lengkap (peserta, catatan, keputusan, action item).                                                                                  |
+| ✅     | J6  | Import Work Tracker                            | ✅ sudah dites Owner.                                                                                                                        |
+| ☐      | J7  | Import Manajemen Karyawan                      | Password kosong → `password`; email dobel (di DB / dalam file) ditolak; role tidak case-sensitive; akun baru bisa login; tercatat Audit Log. |
+| ☐      | J8  | Import KPI                                     | Karyawan tidak ditemukan → baris error; capaian/status kosong → 0 / Active; hasil muncul di halaman KPI.                                     |
+| ☐      | J9  | Import Project Budgeting                       | Project tidak ditemukan → baris error; realisasi kosong → 0; hasil muncul di halaman Budgeting.                                              |
+| ☐      | J10 | GEP buka `/dashboard/export-import/kpi/import` | 403.                                                                                                                                         |
+
+### K. Lintas Role, Responsif, Browser
+
+| Status | ID  | Halaman / Fitur     | Yang dites → hasil yang benar                                                                                         |
+| ------ | --- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| ☐      | K1  | Sidebar per akun    | OWN semua section; KAN & RAN sesuai akses; ALD/GEP hanya Work Control; nomor section berurutan; tidak ada menu ganda. |
+| ☐      | K2  | Halaman placeholder | `/dashboard/people` atau `/manajer/*` dibuka langsung tidak membingungkan pengguna (lihat bagian 9 #12).              |
+| ☐      | K3  | Responsif           | HP 375px, tablet, desktop: sidebar bisa di-scroll, tabel tidak melebar keluar layar.                                  |
+| ☐      | K4  | Halaman error       | 403 & 404 custom tampil; 500 hanya tampil pesan umum (bukan detail teknis).                                           |
+| ☐      | K5  | Browser lain        | Safari iOS (lokasi & kamera), Firefox: absen dan form utama berjalan.                                                 |
+
+### Kesimpulan tes manual
+
+- Total **116** item tes (di luar persiapan). Sudah ✅: **2** (menu Export & Import, Import Work Tracker). Sisanya ☐ menunggu dijalankan.
+- Item yang paling perlu perhatian karena hasilnya belum pasti dari kode saja: **C19** (tumpang tindih cuti), **C12 / E2** (foto absen butuh `storage:link`), **H2 / H11** (upload & buka file), **J2–J5, J7–J9** (Export/Import yang belum pernah diklik lewat browser).
+- Hasil akhir (jumlah ✅ / ❌ dan daftar masalah) diisi setelah putaran tes selesai.
+
+---
+
+## 9. Kekurangan yang Ditemukan (Prototype vs Implementasi & Kesiapan Publik)
+
+Ditandai ⚠ = sebaiknya diputuskan/dikerjakan **sebelum** dibuka ke publik. Sisanya bisa menyusul.
+
+| #   | Temuan                                                                                     | Kenapa penting / detail                                                                                                                                                                                                  | Saran                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ⚠ File kontrak karyawan, dokumen legal, dan foto absen dibuka lewat `asset('storage/...')` | Siapa pun yang tahu URL-nya bisa membuka file **tanpa login**. Nama file acak, tapi itu bukan kontrol akses.                                                                                                             | Layani lewat route ber-`auth` + cek modul (`contracts`/`legal`/`people`), simpan di disk `local` bukan `public`. Sekaligus menghilangkan ketergantungan `storage:link`.                                 |
+| 2   | ⚠ Password default `password`                                                              | Dipakai semua akun demo dan Import Karyawan saat kolom password dikosongkan. Di internet publik, email + `password` mudah ditebak.                                                                                       | Ganti semua akun demo sebelum go-live; untuk import, pertimbangkan password acak yang ditampilkan sekali atau wajib ganti saat login pertama. Keputusan lama ("pakai `password`") perlu ditinjau ulang. |
+| 3   | ⚠ Audit Log belum lengkap                                                                  | Baru dipakai di sebagian modul. Belum tercatat: KPI, Budget, Royalty, Kontrak, Legal, Work Tracker, Memo, Meeting, Rekrutmen (termasuk convert pelamar jadi akun), Changelog, dan **semua Export** (termasuk data gaji). | Tambahkan `AuditLog::record()` minimal untuk Export, Convert pelamar, dan modul sensitif (Kontrak, Legal, Royalty, Budget).                                                                             |
+| 4   | Cuti tidak mengecek tumpang tindih tanggal                                                 | `StoreLeaveRequestRequest` hanya mengecek sisa kuota; Lembur sudah punya cek duplikat.                                                                                                                                   | Uji lewat C19; kalau terbukti, tambah validasi overlap dengan pengajuan pending/disetujui.                                                                                                              |
+| 5   | Payroll hanya menghitung lembur & kekurangan jam                                           | Hari tanpa absen sama sekali tidak dipotong dan tidak tercatat sebagai "Absen (A)". Prototype punya potongan per hari absen, per menit terlambat, dan pengali lembur per jam.                                            | Konfirmasi ke Owner apakah aturan sekarang memang disengaja.                                                                                                                                            |
+| 6   | Budget & Royalty berbentuk CRUD datar                                                      | Prototype punya recoupment per lagu, ledger pendapatan per kuartal, grafik, cetak, dan sinkron Google Sheet.                                                                                                             | Sudah tercatat sebagai keputusan scope; masukkan ke roadmap kalau dibutuhkan.                                                                                                                           |
+| 7   | Belum dipindah dari prototype                                                              | Tema/warna per pengguna (baru ada 2 warna aksen global), editor konten landing page, Team Groups, upload foto profil karyawan.                                                                                           | Roadmap; tidak menghalangi go-live.                                                                                                                                                                     |
+| 8   | Tidak ada notifikasi email                                                                 | Pesan kontak, lamaran, dan pengajuan baru hanya terlihat kalau Owner/atasan membuka dashboard. `MAIL_MAILER=log`.                                                                                                        | Isi `MAIL_*` produksi jika notifikasi dibutuhkan; kalau tidak, catat di SOP bahwa dashboard harus dicek rutin.                                                                                          |
+| 9   | Form Lamar & Kontak hanya diamankan throttle                                               | Tidak ada upload CV, cek pelamar dobel, atau captcha/honeypot; risiko spam di halaman publik.                                                                                                                            | Tambah honeypot sederhana; pertimbangkan captcha bila spam masuk.                                                                                                                                       |
+| 10  | Tidak ada "Lupa Password" mandiri                                                          | Reset hanya lewat Owner (Edit Karyawan → isi password baru).                                                                                                                                                             | Cukup untuk tim kecil; tuliskan di SOP.                                                                                                                                                                 |
+| 11  | Nama bulan/hari tampil bahasa Inggris                                                      | `APP_LOCALE=en` sementara 42 file memakai `translatedFormat()`; teks UI lain bahasa Indonesia. Nama aplikasi juga masih `APP_NAME=Laravel`.                                                                              | `APP_LOCALE=id` (atau `Carbon::setLocale('id')`) dan `APP_NAME="WSM Office"`.                                                                                                                           |
+| 12  | Halaman placeholder                                                                        | Grup `/manajer/*` (Team Overview) kosong; `/dashboard/{module}` generik menampilkan halaman "belum ada isi" bila dibuka lewat URL langsung.                                                                              | Hapus route kosong atau arahkan ke halaman yang sudah ada.                                                                                                                                              |
+| 13  | Konten halaman publik hardcode di Blade                                                    | Ubah teks = ubah file & upload ulang.                                                                                                                                                                                    | Roadmap (CMS ringan).                                                                                                                                                                                   |
+| 14  | Belum ada automated test                                                                   | Hanya stub bawaan Laravel.                                                                                                                                                                                               | Mulai dari alur paling kritis: login, absen, approval, payroll.                                                                                                                                         |
+| 15  | Nama file model di Git tidak cocok                                                         | Git melacak `app/Models/Contactmessage.php`, sedangkan folder kerja berisi `ContactMessage.php`. Di Linux (hosting, `git clone`) class `ContactMessage` tidak akan ditemukan → form Kontak & Pesan Kontak error.         | `git mv -f app/Models/Contactmessage.php app/Models/ContactMessage.php`, lalu commit. Kalau deploy lewat upload manual dari Windows, pastikan nama di server persis `ContactMessage.php`.               |
+
+---
+
+## 10. Reminder Sebelum Production
+
+Urutan kerja disarankan dari atas ke bawah. Poin 1–7 **wajib**; sisanya penyempurnaan.
+
+| #   | Yang harus dikerjakan                                                                                                                                                                                                                                                          | Alasan                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Buat `.env` produksi: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://…`, `APP_NAME="WSM Office"`, `APP_LOCALE=id`, `LOG_LEVEL=error`, `SESSION_SECURE_COOKIE=true`, kredensial DB hosting, `MAIL_*` bila perlu, dan `APP_KEY` baru. **Jangan upload `.env` lokal.** | `.env` yang ada berisi password DB polos, `APP_DEBUG=true`, `APP_ENV=local`; siapa pun bisa melihat detail error teknis.           |
+| 2   | Aktifkan **HTTPS** di cPanel dan paksa redirect ke HTTPS.                                                                                                                                                                                                                      | Geolokasi dan kamera browser (absen) hanya berjalan di HTTPS; cookie sesi juga perlu aman.                                         |
+| 3   | Build aset: `npm run build`, upload `public/build/`, dan **hapus `public/hot`** serta `public/fonts-manifest.dev.json`.                                                                                                                                                        | `public/hot` (berisi alamat dev server Vite) membuat halaman mencari CSS/JS ke `localhost:5173` sehingga tampilan rusak di server. |
+| 4   | Selesaikan akses file (temuan #1): idealnya layani lewat controller; kalau tetap pakai `storage:link`, buat symlink lewat route sekali-pakai yang langsung dihapus (hosting tanpa terminal).                                                                                   | Tanpa ini upload kontrak/legal/foto tidak bisa dibuka — atau terbuka untuk publik.                                                 |
+| 5   | Routing hosting: tambahkan `.htaccess` di root, atau arahkan document root ke folder `public/`.                                                                                                                                                                                | Tanpa ini domain tidak mengarah ke aplikasi dengan benar.                                                                          |
+| 6   | Database: import struktur dari lokal (atau jalankan migrasi lewat route sekali-pakai), **jangan jalankan `DemoSeeder`**; buat akun Owner asli dan isi Pengaturan Kantor dengan koordinat kantor sebenarnya. Hapus semua akun `*@wsm.local`.                                    | Akun demo berpassword `password` = pintu terbuka.                                                                                  |
+| 7   | Upload `vendor/` hasil `composer install --no-dev`; hapus cache lokal di `bootstrap/cache/`; pastikan `storage/` dan `bootstrap/cache/` writable (775).                                                                                                                        | Cache lokal berisi path komputer sendiri; folder tak bisa ditulis = error 500.                                                     |
+| 8   | Cek PHP di hosting: versi ≥ 8.3; ekstensi `gd`, `mbstring`, `zip`, `xml`, `fileinfo`; `upload_max_filesize` & `post_max_size` ≥ 10MB.                                                                                                                                          | Laravel 13, Excel/PDF, dan upload kontrak 10MB membutuhkannya.                                                                     |
+| 9   | Bersihkan paket: jangan upload `node_modules/`, `.git/`, `database/database.sqlite`, file `.env.*`.                                                                                                                                                                            | Ukuran & kebocoran riwayat kode.                                                                                                   |
+| 10  | Ganti `public/robots.txt` agar `/app`, `/dashboard`, `/owner`, `/login` tidak diindeks mesin pencari.                                                                                                                                                                          | Saat ini semua boleh diindeks.                                                                                                     |
+| 11  | Jadwalkan backup database manual (tidak ada cron di hosting) dan uji restore satu kali.                                                                                                                                                                                        | Data gaji, kontrak, dan absensi tidak boleh hilang.                                                                                |
+| 12  | Setelah upload, lakukan smoke test singkat: login Owner → absen dari HP di kantor → upload & buka kontrak → export satu PDF → logout.                                                                                                                                          | Memastikan konfigurasi server (bukan kode) sudah benar.                                                                            |
