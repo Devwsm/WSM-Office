@@ -6,8 +6,12 @@ use App\Exports\TemplateExport;
 use App\Http\Controllers\Controller;
 use App\Imports\BaseImport;
 use App\Imports\EmployeeImport;
+use App\Imports\KpiImport;
+use App\Imports\ProjectBudgetImport;
 use App\Imports\WorkItemImport;
 use App\Models\AuditLog;
+use App\Models\Kpi;
+use App\Models\ProjectBudget;
 use App\Models\User;
 use App\Models\WorkItem;
 use App\Support\ExportImport\ExportCatalog;
@@ -22,11 +26,11 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * ImportController (Dashboard > Export & Import)
  * ---------------------------------------------------------------------
- * Batch 3 — jalur import (Work Tracker duluan, lihat IMPLEMENTED di
- * bawah — menyusul Manajemen Karyawan/KPI/Project Budgeting). SATU
- * controller buat semua import (pola sama seperti ExportController buat
- * export), route generik `/{key}/import/...`, `$key` cocok ke
- * `ExportCatalog::CATALOG`.
+ * Batch 3 & 4 — jalur import (lihat IMPLEMENTED di bawah untuk daftar
+ * lengkap: Work Tracker, Manajemen Karyawan, KPI, Project Budgeting —
+ * semua 4 modul rencana README sudah kelar). SATU controller buat
+ * semua import (pola sama seperti ExportController buat export), route
+ * generik `/{key}/import/...`, `$key` cocok ke `ExportCatalog::CATALOG`.
  *
  * Alur 2 tahap (lihat docblock ImportPreviewService buat alasannya):
  *   1. show()    -> form upload + link download template.
@@ -48,11 +52,11 @@ class ImportController extends Controller
 {
     /**
      * Subset key dari ExportCatalog::CATALOG yang import-nya BENERAN
-     * jalan (bukan cuma 'import' => true di catalog). 'kpi', 'budget',
-     * 'employees' juga sudah ditandai butuh import di catalog, tapi
-     * class Import/persist()-nya belum ditulis — nyusul, lihat README.
+     * jalan (bukan cuma 'import' => true di catalog). Batch 4 kelar
+     * penuh sekarang — 'kpi' & 'budget' nyusul 'employees' (urutan
+     * README: Karyawan -> KPI -> Project Budgeting).
      */
-    private const IMPLEMENTED = ['work-tracker', 'employees'];
+    private const IMPLEMENTED = ['work-tracker', 'employees', 'kpi', 'budget'];
 
     public function __construct(private readonly ImportPreviewService $previewService) {}
 
@@ -169,6 +173,8 @@ class ImportController extends Controller
         return match ($key) {
             'work-tracker' => new WorkItemImport,
             'employees' => new EmployeeImport,
+            'kpi' => new KpiImport,
+            'budget' => new ProjectBudgetImport,
             default => abort(404),
         };
     }
@@ -183,6 +189,12 @@ class ImportController extends Controller
             'employees' => [
                 ['Contoh Nama', 'contoh@wsm.test', '', 'karyawan', 'Marketing', 'Staff Marketing', '01/09/2026', '12', '', '', '', ''],
             ],
+            'kpi' => [
+                ['Aldora', 'Contoh: Jumlah Konten Dipublikasi', 'Q3 2026', '20', '14', 'konten', '30', '30/09/2026', 'Active', 'Contoh catatan owner — opsional, boleh dikosongkan'],
+            ],
+            'budget' => [
+                ['Album Q3 Release', 'Contoh: Marketing', 'Contoh: Iklan Sosial Media', '15000000', '9500000', 'Contoh catatan — opsional, boleh dikosongkan'],
+            ],
             default => [],
         };
     }
@@ -193,6 +205,8 @@ class ImportController extends Controller
         match ($key) {
             'work-tracker' => $this->persistWorkItem($data, $user),
             'employees' => $this->persistEmployee($data, $user),
+            'kpi' => $this->persistKpi($data, $user),
+            'budget' => $this->persistBudget($data, $user),
             default => throw new \RuntimeException("Belum ada cara nyimpan hasil import buat key '{$key}'."),
         };
     }
@@ -229,5 +243,27 @@ class ImportController extends Controller
             "{$employee->name} ({$employee->role}) ditambahkan lewat import oleh {$actor->name}.",
             $actor,
         );
+    }
+
+    /**
+     * Sama persis KpiController::store() (form manual) — 'created_by'
+     * gak lewat rules()/mapRow() (bukan input user), disisipkan di sini
+     * baru pas mau disimpan, sama pola persistWorkItem() buat
+     * 'created_by'. Belum kena AuditLog::record() — KPI/Budget CRUD
+     * manual juga belum diinstrumentasi (lihat README bagian 7).
+     */
+    private function persistKpi(array $data, User $actor): void
+    {
+        $data['created_by'] = $actor->id;
+
+        Kpi::create($data);
+    }
+
+    /** Sama persis BudgetController::store() (form manual) — 'updated_by' disisipkan di sini, sama pola persistKpi() di atas. */
+    private function persistBudget(array $data, User $actor): void
+    {
+        $data['updated_by'] = $actor->id;
+
+        ProjectBudget::create($data);
     }
 }

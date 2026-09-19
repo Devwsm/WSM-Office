@@ -128,7 +128,8 @@
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
         @if (count($valid) > 0)
-            <button type="submit" class="rounded-2xl bg-ink px-4 py-2.5 text-xs font-extrabold text-white">
+            <button type="submit"
+                class="rounded-2xl bg-brand-green px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110">
                 Konfirmasi Import {{ count($valid) }} Baris
             </button>
             <p class="mt-2 text-[11px] text-muted">Baris error di atas dilewati — perbaiki filenya lalu upload ulang kalau

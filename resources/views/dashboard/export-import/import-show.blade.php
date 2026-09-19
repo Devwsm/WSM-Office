@@ -65,7 +65,8 @@
             @csrf
             <input type="file" name="file" accept=".xlsx,.xls,.csv" required
                 class="rounded-xl border border-line px-3 py-2 text-sm">
-            <button type="submit" class="rounded-2xl bg-ink px-4 py-2.5 text-xs font-extrabold text-white">
+            <button type="submit"
+                class="rounded-2xl bg-brand-green px-4 py-2.5 text-xs font-extrabold text-white transition hover:brightness-110">
                 Lihat Preview
             </button>
         </form>

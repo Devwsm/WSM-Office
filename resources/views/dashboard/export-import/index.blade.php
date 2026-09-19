@@ -7,9 +7,36 @@
     BARENGAN "Export PDF" yang masih "Segera Hadir" (mis. Rekap
     Absensi: Excel Batch 1, PDF Batch 2). Import juga dicek terpisah
     lewat 'import_implemented'.
+
+    Warna badge & tombol dibedakan per TIPE aksi (bukan cuma
+    aktif/nonaktif) — Excel biru, PDF kuning/emas, Import hijau —
+    pakai 3 warna aksen yang sudah ada di app.css (--color-brand-blue/
+    yellow/green, sama yang dipakai stat-wsm-blue/yellow/green di
+    dashboard Owner), biar konsisten sama sistem warna yang sudah ada,
+    bukan bikin warna baru. Badge nonaktif & "Segera Hadir" tetap abu-
+    abu (`badge-wsm-gray`) di semua kondisi — abu-abu artinya "belum
+    bisa dipakai", bukan salah satu dari 3 tipe aksi di atas.
     -----------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Export & Import', 'navActive' => 'export-import'])
+
+@php
+    // Kelas badge (pill kecil) & tombol (aksi beneran) per format
+    // export — dipakai bareng di 2 tempat di bawah (badge ringkasan +
+    // tombol aksi), biar warnanya konsisten dalam 1 kartu.
+    $exportBadgeClass = fn(string $format) => match ($format) {
+        'excel' => 'badge-wsm-blue',
+        'pdf' => 'badge-wsm-yellow',
+        default => 'badge-wsm-gray',
+    };
+    $exportButtonClass = fn(string $format) => match ($format) {
+        'excel'
+            => 'rounded-2xl bg-brand-blue px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110',
+        'pdf'
+            => 'rounded-2xl bg-brand-yellow px-3.5 py-2 text-xs font-extrabold text-[#3a2e00] transition hover:brightness-110',
+        default => 'rounded-2xl bg-ink px-3.5 py-2 text-xs font-extrabold text-white',
+    };
+@endphp
 
 @section('content')
     <div class="mb-6">
@@ -25,9 +52,7 @@
                     <strong class="text-sm"><span
                             class="mr-1.5 inline-block w-4 text-center">{{ $entry['icon'] }}</span>{{ $entry['label'] }}</strong>
                     @if (empty($entry['implemented_exports']) && !$entry['import_implemented'])
-                        <span
-                            class="flex-none rounded-full bg-[#f2f0eb] px-2.5 py-1 text-[10px] font-extrabold text-[#5e5951]">Segera
-                            Hadir</span>
+                        <span class="badge-wsm-gray flex-none">Segera Hadir</span>
                     @endif
                 </div>
                 <p class="mt-1 text-xs text-muted">{{ $entry['desc'] }}</p>
@@ -35,13 +60,12 @@
                 <div class="mt-3 flex flex-wrap items-center gap-1.5">
                     @foreach ($entry['exports'] as $format)
                         <span
-                            class="rounded-full px-2.5 py-1 text-[10px] font-extrabold {{ in_array($format, $entry['implemented_exports'], true) ? 'bg-[#e2e9ff] text-[#2a3a7a]' : 'bg-[#f2f0eb] text-[#a8a296]' }}">
+                            class="{{ in_array($format, $entry['implemented_exports'], true) ? $exportBadgeClass($format) : 'badge-wsm-gray' }}">
                             Export {{ strtoupper($format) }}
                         </span>
                     @endforeach
                     @if ($entry['import'])
-                        <span
-                            class="rounded-full px-2.5 py-1 text-[10px] font-extrabold {{ $entry['import_implemented'] ? 'bg-[#dff3ee] text-[#1f6b57]' : 'bg-[#f2f0eb] text-[#a8a296]' }}">
+                        <span class="{{ $entry['import_implemented'] ? 'badge-wsm-green' : 'badge-wsm-gray' }}">
                             Import
                         </span>
                     @endif
@@ -51,7 +75,7 @@
                     @foreach ($entry['exports'] as $format)
                         @if (in_array($format, $entry['implemented_exports'], true))
                             <a href="{{ route('dashboard.export-import.preview', ['key' => $key, 'format' => $format]) }}"
-                                class="rounded-2xl bg-ink px-3.5 py-2 text-xs font-extrabold text-white">
+                                class="{{ $exportButtonClass($format) }}">
                                 Export {{ strtoupper($format) }}
                             </a>
                         @else
@@ -64,7 +88,7 @@
                     @if ($entry['import'])
                         @if ($entry['import_implemented'])
                             <a href="{{ route('dashboard.export-import.import.show', ['key' => $key]) }}"
-                                class="rounded-2xl border border-line px-3.5 py-2 text-xs font-extrabold text-[#5e5951] hover:bg-[#f2f0eb]">
+                                class="rounded-2xl bg-brand-green px-3.5 py-2 text-xs font-extrabold text-white transition hover:brightness-110">
                                 Import
                             </a>
                         @else
