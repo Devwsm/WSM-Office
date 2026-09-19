@@ -639,6 +639,28 @@ Ditandai ⚠ = sebaiknya diputuskan/dikerjakan **sebelum** dibuka ke publik. Sis
 | 14  | Belum ada automated test                                                                   | Hanya stub bawaan Laravel.                                                                                                                                                                                               | Mulai dari alur paling kritis: login, absen, approval, payroll.                                                                                                                                         |
 | 15  | Nama file model di Git tidak cocok                                                         | Git melacak `app/Models/Contactmessage.php`, sedangkan folder kerja berisi `ContactMessage.php`. Di Linux (hosting, `git clone`) class `ContactMessage` tidak akan ditemukan → form Kontak & Pesan Kontak error.         | `git mv -f app/Models/Contactmessage.php app/Models/ContactMessage.php`, lalu commit. Kalau deploy lewat upload manual dari Windows, pastikan nama di server persis `ContactMessage.php`.               |
 
+### Keputusan tim atas temuan di atas (2026-09-19)
+
+Prioritas saat ini: **fitur absensi dan semua pekerjaan sehari-hari** (Work Tracker, Memo, Meetings, Kalender, cuti/lembur/koreksi + persetujuan). Modul lain menyusul.
+
+| #   | Keputusan                                                                                                                       | Catatan                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | Setuju: file kontrak/legal/foto absen dilayani lewat route ber-login                                                            | Dikerjakan sebelum go-live                                                                      |
+| 2   | Seeder demo hanya untuk lokal (data asli dibuat berbeda saat deploy); karyawan hasil import langsung diminta mengganti password | Sisa risiko: sebelum diganti, akun import masih memakai `password`                              |
+| 3   | Setuju: Audit Log dilengkapi                                                                                                    | Tidak otomatis; tiap aksi harus dipasangi pencatatan satu per satu                              |
+| 4   | Setuju: cek tumpang tindih tanggal cuti                                                                                         |                                                                                                 |
+| 5   | Hari tanpa absen **dipotong**; payroll masih bisa dikoreksi selama belum jatuh tempo gajian                                     | Perlu: daftar hari libur, dan tombol "buka kembali" untuk payroll Final sampai ditandai Dibayar |
+| 6   | Budget & Royalty ditunda; utamakan absensi dan pekerjaan harian                                                                 |                                                                                                 |
+| 7   | Tema per pengguna, editor landing page, Team Groups, foto profil: **dicatat saja dulu**                                         | Roadmap                                                                                         |
+| 8   | Setuju: notifikasi email menyusul                                                                                               |                                                                                                 |
+| 9   | Form Lamar: bisa **upload CV** dan bisa **kirim link portofolio**                                                               | File CV harus privat (ikut temuan #1)                                                           |
+| 10  | Lupa Password mandiri: dibahas lagi setelah email asli terpasang                                                                |                                                                                                 |
+| 11  | Teks tampilan berbahasa Inggris; teks krusial / rawan salah paham tetap Indonesia                                               | Cakupan terjemahan masih perlu dipastikan                                                       |
+| 12  | Kartu "People & Leave" dan "Recruitment" di halaman `/dashboard` mengarah ke halaman "belum dibangun"                           | Perbaikan kecil: arahkan ke `/absensi` dan `/rekrutmen/lowongan`                                |
+| 13  | Teks halaman publik tetap tertulis di file (tidak diubah lewat dashboard)                                                       |                                                                                                 |
+| 14  | Tes otomatis: mulai dari absensi dan pekerjaan harian                                                                           | Perlu database MySQL khusus tes (migrasi memakai perintah khusus MySQL)                         |
+| 15  | Folder `.git` dihapus saat deploy                                                                                               | Cukup pastikan file di server bernama persis `ContactMessage.php`                               |
+
 ---
 
 ## 10. Reminder Sebelum Production
