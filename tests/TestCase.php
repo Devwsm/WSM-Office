@@ -33,7 +33,11 @@ abstract class TestCase extends BaseTestCase
      */
     private function emulateMysqlDateColumns(): void
     {
-        $this->app['events']->listen('eloquent.saving: *', function (string $event, array $payload): void {
+        $this->app['events']->listen('eloquent.saving: *', function (string $eventName, array $payload): void {
+            if (! str_starts_with($eventName, 'eloquent.saving: ')) {
+                return;
+            }
+
             $model = $payload[0] ?? null;
 
             if (! $model instanceof Model) {

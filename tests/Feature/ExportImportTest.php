@@ -18,6 +18,7 @@ use App\Support\ExportImport\ExportCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\Concerns\CreatesWsmFixtures;
@@ -83,10 +84,15 @@ class ExportImportTest extends TestCase
     }
 
     /** Baca isi seluruh sel dari file .xlsx yang di-download sebagai array string. */
-    private function cellsOf($response): array
+    private function cellsOf(TestResponse $response): array
     {
-        $this->assertInstanceOf(BinaryFileResponse::class, $response->baseResponse);
-        $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+        $download = $response->baseResponse;
+
+        if (! $download instanceof BinaryFileResponse) {
+            throw new \UnexpectedValueException('Respons ini bukan file download.');
+        }
+
+        $sheet = IOFactory::load($download->getFile()->getPathname())->getActiveSheet();
 
         return collect($sheet->toArray(null, true, false, false))->flatten()->filter(fn($v) => $v !== null && $v !== '')->map(fn($v) => (string) $v)->values()->all();
     }

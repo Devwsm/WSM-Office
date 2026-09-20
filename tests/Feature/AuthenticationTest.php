@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +17,12 @@ class AuthenticationTest extends TestCase
 {
     use CreatesWsmFixtures;
     use RefreshDatabase;
+
+    /** Nama cookie "remember me" milik guard `web` (remember_web_<sha1 kelas SessionGuard>). */
+    private function rememberCookieName(): string
+    {
+        return 'remember_web_' . sha1(SessionGuard::class);
+    }
 
     // ---- B1 / B2 --------------------------------------------------------
 
@@ -121,14 +127,14 @@ class AuthenticationTest extends TestCase
         $user = $this->makeUser('karyawan');
 
         $with = $this->post('/login', ['email' => $user->email, 'password' => 'password', 'remember' => '1']);
-        $with->assertCookie(Auth::guard('web')->getRecallerName());
+        $with->assertCookie($this->rememberCookieName());
         $this->assertNotEmpty($user->fresh()->remember_token);
 
         $this->post('/logout');
 
         $other = $this->makeUser('karyawan');
         $without = $this->post('/login', ['email' => $other->email, 'password' => 'password']);
-        $without->assertCookieMissing(Auth::guard('web')->getRecallerName());
+        $without->assertCookieMissing($this->rememberCookieName());
     }
 
     // ---- B8 -------------------------------------------------------------

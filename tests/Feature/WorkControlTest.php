@@ -441,7 +441,7 @@ class WorkControlTest extends TestCase
     {
         $this->item(['title' => 'Posting teaser', 'due_date' => '2026-09-24']);
 
-        foreach ($this->p as $who => $user) {
+        foreach ($this->p as $user) {
             $this->actingAs($user)->get(route('employee.workTracker.calendar'))->assertOk();
         }
 

@@ -52,7 +52,7 @@ class EmployeeAppTest extends TestCase
 
     public function test_home_renders_for_every_internal_role(): void
     {
-        foreach ($this->p as $who => $user) {
+        foreach ($this->p as $user) {
             $this->actingAs($user)->get(route('employee.home'))->assertOk();
         }
     }

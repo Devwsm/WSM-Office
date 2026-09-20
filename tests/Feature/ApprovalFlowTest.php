@@ -9,6 +9,7 @@ use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesWsmFixtures;
 use Tests\TestCase;
@@ -219,7 +220,7 @@ class ApprovalFlowTest extends TestCase
             }
         }
 
-        auth()->logout();
+        Auth::logout();
         $this->get(route('approval.leave.index'))->assertRedirect('/login');
     }
 

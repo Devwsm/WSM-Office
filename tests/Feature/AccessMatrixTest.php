@@ -7,6 +7,7 @@ use App\Models\User;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\OfficeSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesWsmFixtures;
@@ -117,10 +118,10 @@ class AccessMatrixTest extends TestCase
     public function test_access_matrix(string $url, array $expected): void
     {
         foreach (array_keys($this->u) as $i => $name) {
-            $this->actingAs($this->u[$name])->get($url)->assertStatus($expected[$i], "{$name} → {$url}");
+            $this->assertSame($expected[$i], $this->actingAs($this->u[$name])->get($url)->getStatusCode(), "{$name} → {$url}");
         }
 
-        auth()->logout();
+        Auth::logout();
         $this->get($url)->assertRedirect('/login');
     }
 
@@ -164,7 +165,7 @@ class AccessMatrixTest extends TestCase
 
     public function test_public_pages_render_with_seeded_data(): void
     {
-        auth()->logout();
+        Auth::logout();
 
         foreach (['/', '/tentang-kami', '/layanan', '/karir', '/kontak', '/login'] as $url) {
             $this->get($url)->assertOk();

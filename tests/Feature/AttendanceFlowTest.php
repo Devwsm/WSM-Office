@@ -8,6 +8,7 @@ use App\Models\OvertimeRequest;
 use App\Models\User;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesWsmFixtures;
 use Tests\TestCase;
@@ -456,7 +457,7 @@ class AttendanceFlowTest extends TestCase
 
     public function test_attendance_endpoints_require_login(): void
     {
-        auth()->logout();
+        Auth::logout();
 
         $this->post('/app/absensi/masuk', ['mode' => 'kantor'])->assertRedirect('/login');
         $this->post('/app/absensi/pulang', [])->assertRedirect('/login');

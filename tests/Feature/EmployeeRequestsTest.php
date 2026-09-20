@@ -7,6 +7,7 @@ use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\Concerns\CreatesWsmFixtures;
 use Tests\TestCase;
 
@@ -382,7 +383,7 @@ class EmployeeRequestsTest extends TestCase
 
     public function test_request_pages_and_endpoints_require_login(): void
     {
-        auth()->logout();
+        Auth::logout();
 
         foreach ([route('employee.leave.index'), route('employee.overtime.index'), route('employee.attendanceCorrection.index')] as $url) {
             $this->get($url)->assertRedirect('/login');

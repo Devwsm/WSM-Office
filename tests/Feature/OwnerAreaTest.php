@@ -7,6 +7,7 @@ use App\Models\DashboardAccess;
 use App\Models\OfficeSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesWsmFixtures;
@@ -481,7 +482,7 @@ class OwnerAreaTest extends TestCase
 
     public function test_public_contact_form_message_reaches_the_owner_inbox(): void
     {
-        auth()->logout();
+        Auth::logout();
         $this->post('/kontak', ['name' => 'Rina', 'email' => 'rina@example.com', 'message' => 'Tanya kerja sama'])->assertRedirect();
 
         $this->actingAs($this->p['owner'])->get(route('owner.contact-messages.index'))

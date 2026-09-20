@@ -145,6 +145,8 @@ Menggantikan checklist tes manual di browser (bagian A–K pada README versi com
 
 Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL dan fungsi `FIELD()`/`DATE_FORMAT()` di SQLite — hanya di tes, kode aplikasi tidak disentuh untuk ini) dan `tests/Concerns/CreatesWsmFixtures.php` (5 akun standar + pengaturan kantor + waktu dibekukan ke Senin 2026-09-21).
 
+**Kualitas kode tes:** Intelephense (semua tingkat: error, warning, hint) melaporkan **0 diagnostik** di seluruh 17 file tes dan di 15 file `app/` yang diubah.
+
 **Bug aplikasi yang ditemukan tes dan sudah diperbaiki** (perubahan kecil, tinggal di-review; 15 file `app/`):
 
 1. **Data keputusan tidak tersimpan** — `LeaveRequest`, `OvertimeRequest`, `AttendanceCorrectionRequest` tidak mendaftarkan `approver_id`, `decided_at`, `decision_note`, `cancelled_by/at`, `cancellation_reason` (dan `applied_attendance_id`) di `#[Fillable]`, sehingga `update()` membuangnya diam-diam: alasan penolakan/pembatalan tidak pernah sampai ke karyawan, dan siapa yang memutuskan tidak tercatat.
@@ -164,6 +166,120 @@ Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL dan f
 | `ExportImportTest::test_impossible_dates_are_rejected_instead_of_silently_rolled_over`        | `31/02/2026` diterima dan digulung jadi 03/03/2026                                                                            |
 
 Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tumpang tindih **tidak** diblokir (C19), dan ganti password **tidak** me-logout pengguna (checklist lama menulis sebaliknya).
+
+### 2.4 Panduan tes untuk non-teknis: tiap tes ngapain dan apa yang dicek
+
+**Apa itu "tes otomatis"?** Robot yang berperan jadi pengguna. Ia membuka halaman, mengisi form, menekan tombol, lalu memeriksa apakah hasilnya benar, persis yang dulu kamu lakukan manual di browser, tapi 301 skenario (5 di antaranya sengaja dilewati) selesai dalam sekitar 16 detik dan tidak pernah lupa langkah. Semua dilakukan di **database sementara yang kosong** dan hilang begitu tes selesai, jadi data aplikasimu yang asli tidak tersentuh.
+
+**Cara membaca hasil** setelah menjalankan `php artisan test`:
+
+- **Hijau / PASS**: skenario berjalan sesuai harapan.
+- **Merah / FAIL**: ada yang berubah dan tidak lagi sesuai. Artinya baru saja ada perubahan kode yang merusak sesuatu. Kalau perubahannya disengaja, tes-nya yang perlu disesuaikan; kalau tidak, ada bug yang baru muncul.
+- **Kuning / SKIPPED**: masalah yang sudah diketahui tetapi belum diperbaiki (5 buah, lihat tabel di Bab 2.3). Robot sengaja tidak menjalankannya supaya hasil tetap bersih, tetapi pengingatnya tetap tampil.
+
+**Kapan dijalankan?** Setiap selesai mengubah kode dan **wajib sebelum deploy**. Ini pengganti membuka semua halaman satu per satu.
+
+#### Yang dicek tiap file
+
+**Halaman publik (`PublicPagesTest`)**: robot berperan sebagai pengunjung yang belum login.
+
+- Membuka beranda, tentang kami, layanan, karir, dan kontak: semua harus terbuka.
+- Lowongan berstatus draft atau sudah ditutup tidak boleh terlihat pengunjung.
+- Form lamaran dan form kontak menolak isian kosong atau email ngawur, dan menyimpan isian yang benar.
+- Kalau ada yang menekan kirim berkali-kali dalam semenit (spam), sistem menolak.
+- Alamat yang tidak ada menampilkan halaman "tidak ditemukan", dan halaman internal mengarahkan tamu ke login.
+
+**Login dan keamanan akun (`AuthenticationTest`)**
+
+- Password salah ditolak dengan pesan jelas; percobaan berulang diblokir sementara.
+- Setiap peran mendarat di halaman yang benar setelah login: Owner ke dasbor Owner, yang lain ke Home.
+- Setelah login, pengguna dikembalikan ke halaman yang tadi ia tuju.
+- "Ingat saya", logout, dan akun nonaktif (tidak bisa login sampai diaktifkan kembali).
+- Ganti password: password lama harus benar, password baru minimal 8 karakter dan harus diketik dua kali sama.
+- Kunci dasbor: dasbor bisa dikunci dan hanya terbuka lagi dengan password.
+
+**Absen harian (`AttendanceFlowTest`)**: robot menekan tombol absen masuk dan pulang.
+
+- Absen dari kantor di dalam jarak yang ditentukan dianggap sah; di luar jarak tetap tercatat tetapi diberi tanda.
+- WFH tidak dihitung jaraknya. Kantor dan WFH hanya boleh satu sesi sehari; Lapangan/Gigs boleh beberapa sesi, asal yang sebelumnya sudah ditutup.
+- Absen pulang tanpa absen masuk ditolak. Selfie tersimpan tertutup (tidak bisa dibuka lewat alamat web), dan absen tetap jalan tanpa selfie.
+- Tidak bisa absen saat sedang izin/cuti yang sudah disetujui.
+- Lupa absen pulang: sistem menutup otomatis di jam selesai kerja (atau tengah malam untuk lembur/lapangan).
+- Riwayat hanya menampilkan data milik sendiri, per bulan.
+
+**Pengajuan karyawan (`EmployeeRequestsTest`)**: cuti, lembur, dan koreksi absen.
+
+- Tanggal yang sudah lewat ditolak; akhir pekan tidak dihitung sebagai hari cuti.
+- Cuti tahunan tidak boleh melebihi sisa jatah, sedangkan sakit/izin pribadi tidak memotong jatah.
+- Pengajuan bisa dibatalkan (harus ada alasan) dan jatah cuti kembali.
+- Tidak bisa membatalkan pengajuan orang lain.
+
+**Persetujuan atasan (`ApprovalFlowTest`)**
+
+- Atasan hanya melihat pengajuan bawahan langsungnya; Owner melihat semua; HRD tidak berwenang memutuskan.
+- Menolak wajib disertai alasan, dan karyawan bisa membaca alasan itu.
+- Pengajuan yang sudah diputuskan tidak bisa diputuskan dua kali.
+- Setelah disetujui: jatah cuti berkurang, lembur menghapus kekurangan jam, koreksi absen langsung mengubah jam di data absen (jam aslinya disimpan).
+- Setiap keputusan tercatat di audit log lengkap dengan siapa pelakunya.
+
+**Rekap absensi (`AttendanceRecapTest`)**
+
+- Owner dan HRD melihat semua karyawan, manajer hanya timnya sendiri, karyawan biasa tidak punya akses.
+- Ringkasan harian (hadir, terlambat, WFH, izin, belum absen) dihitung benar.
+- Koreksi jam manual wajib disertai catatan, jam asli tetap tersimpan, dan hanya yang berhak "kelola" yang boleh mengoreksi.
+
+**Area Owner (`OwnerAreaTest`)**
+
+- Semua halaman Owner tertutup untuk orang lain.
+- Menambah, mengubah, menonaktifkan, dan mengaktifkan kembali karyawan (email tidak boleh kembar, password tersimpan terenkripsi, bawahan yang atasannya dinonaktifkan dipindah ke atasan di atasnya).
+- Mengatur akses tiap modul dan memastikan efeknya langsung terasa: dicabut, langsung ditolak.
+- Pengaturan kantor (lokasi, radius, jam kerja, warna) menolak nilai yang tidak masuk akal, dan perubahannya langsung dipakai absen berikutnya.
+- Pesan dari form kontak publik muncul di kotak masuk Owner dan bisa ditandai sudah dibaca.
+
+**Tampilan karyawan (`EmployeeAppTest`)**
+
+- Home terbuka untuk semua peran; KPI yang tampil hanya milik sendiri.
+- Memo: hanya memo aktif dan yang memang ditujukan kepadanya yang muncul, baik di Home maupun di Inbox. Memo bisa disembunyikan, ditandai baca, dan dibalas.
+- Karyawan yang tidak punya modul tertentu tidak melihat menunya dan mendapat halaman "tidak punya akses" kalau nekat membuka alamatnya.
+
+**Work Control (`WorkControlTest`)**: memo, tracker, kalender, dan rapat.
+
+- Membuat, mengubah, menonaktifkan, dan menghapus memo, untuk semua atau orang tertentu.
+- Project dan task: dibuat, diedit, dihapus (menghapus project tidak menghapus task-nya), progress diubah lewat 6 status, dan tampil di daftar tugas si penanggung jawab.
+- Rapat (MoM): peserta dan daftar tindak lanjut tersimpan; bisa dikirim otomatis jadi task; "Blast" mengubah notulen jadi memo untuk semua karyawan.
+- Yang hanya punya akses lihat tidak bisa mengubah apa pun.
+
+**Modul manajemen (`ManagementModulesTest`)**: KPI, kontrak, payroll, budget, royalty, legal, IT.
+
+- Tiap modul: tambah, ubah, hapus, dan ditolaknya isian yang tidak wajar (angka minus, persentase lebih dari 100, tanggal selesai sebelum tanggal mulai).
+- Unggah kontrak/dokumen: hanya PDF, Word, dan gambar sampai 10 MB; file lama dihapus saat diganti.
+- Payroll: gaji dihitung dari gaji pokok + lembur disetujui − potongan kekurangan jam; alurnya satu arah (draft → final → dibayar) dan yang sudah final tidak bisa diubah atau dihapus.
+- Budget yang melebihi anggaran tampil sebagai selisih minus.
+- Modul yang hanya boleh dilihat tidak bisa diubah.
+
+**Rekrutmen (`RecruitmentTest`)**
+
+- Lowongan: draft tidak tampil publik, terbit tampil, ditutup hilang lagi.
+- Pelamar: bisa dicari dan difilter, statusnya bisa dimajukan.
+- Pelamar yang diterima diubah jadi akun karyawan (hanya sekali) dan langsung bisa login.
+- Satu skenario penuh dari awal: pelamar mengisi form → HR memproses → akun jadi → login berhasil.
+
+**Export dan Import (`ExportImportTest`)**
+
+- Setiap jenis laporan Excel/PDF benar-benar dibuat, lalu dibuka lagi untuk memastikan isinya benar.
+- Export karyawan tidak pernah memuat password.
+- Menu hanya menampilkan laporan yang boleh dilihat pengguna itu.
+- Import: file dibaca dulu (pratinjau), baris yang salah ditandai dan **tidak** ikut tersimpan, baris yang benar baru masuk setelah dikonfirmasi. Konfirmasi hanya berlaku sekali dan hanya untuk orang yang mengunggah.
+
+**Matriks hak akses (`AccessMatrixTest`)**: paling mirip "cek semua pintu".
+
+- Memakai data demo lengkap. Untuk 21 alamat penting, dicek apa yang terjadi bila dibuka oleh 5 akun berbeda (Owner, Manajer, HRD, dua karyawan) dan oleh tamu.
+- Semua halaman yang bisa dibuka tanpa parameter dicoba oleh kelima akun (lebih dari 200 percobaan) untuk memastikan tidak ada yang menampilkan halaman error.
+- Memastikan data uji yang dipakai tes lain tetap sama dengan data demo asli.
+
+**Akses file privat (`PrivateFileAccessTest`)**: selfie, kontrak, dan dokumen legal hanya bisa dibuka oleh yang berhak, dan tidak bisa ditebak lewat alamat web.
+
+**Yang tidak bisa dicek robot** dan tetap perlu mata manusia sebelum go-live: tampilan di layar HP dan berbagai ukuran layar, izin lokasi dan kamera di HP sungguhan, tampilan visual file Excel/PDF (isi datanya sudah dicek, tampilannya belum), tombol dan animasi yang bergantung pada JavaScript, serta pengiriman email.
 
 ---
 

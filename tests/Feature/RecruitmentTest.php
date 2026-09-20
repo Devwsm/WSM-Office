@@ -6,6 +6,7 @@ use App\Models\JobApplication;
 use App\Models\JobOpening;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\CreatesWsmFixtures;
 use Tests\TestCase;
@@ -88,7 +89,7 @@ class RecruitmentTest extends TestCase
         $this->assertNull($opening->published_at);
         $this->assertSame($this->p['hrd']->id, $opening->created_by);
 
-        auth()->logout();
+        Auth::logout();
         $this->get('/karir')->assertDontSee('Video Editor');
         $this->get('/karir/video-editor')->assertNotFound();
     }
@@ -100,7 +101,7 @@ class RecruitmentTest extends TestCase
         $opening = JobOpening::sole();
         $this->assertNotNull($opening->published_at);
 
-        auth()->logout();
+        Auth::logout();
         $this->get('/karir')->assertSee('Video Editor');
         $this->get('/karir/video-editor')->assertOk();
 
@@ -111,7 +112,7 @@ class RecruitmentTest extends TestCase
 
         $this->assertNotNull($opening->fresh()->closed_at);
 
-        auth()->logout();
+        Auth::logout();
         $this->get('/karir')->assertDontSee('Video Editor');
         $this->get('/karir/video-editor')->assertNotFound();
     }
@@ -324,7 +325,7 @@ class RecruitmentTest extends TestCase
             $u->get(route('recruitment.applications.show', $application))->assertForbidden();
         }
 
-        auth()->logout();
+        Auth::logout();
         $this->get(route('recruitment.applications.index'))->assertRedirect('/login');
     }
 
@@ -332,7 +333,7 @@ class RecruitmentTest extends TestCase
 
     public function test_full_flow_from_public_application_to_a_working_employee_account(): void
     {
-        $opening = $this->opening(['title' => 'Social Media Specialist', 'slug' => 'social-media-specialist']);
+        $this->opening(['title' => 'Social Media Specialist', 'slug' => 'social-media-specialist']);
 
         // 1. Pelamar mengisi form publik.
         $this->post('/karir/social-media-specialist/lamar', [
