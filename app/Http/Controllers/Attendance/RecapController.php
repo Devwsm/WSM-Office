@@ -8,6 +8,7 @@ use App\Models\Attendance;
 use App\Models\LeaveRequest;
 use App\Models\OfficeSetting;
 use App\Models\User;
+use App\Support\PrivateFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -154,6 +155,25 @@ class RecapController extends Controller
      * cuma kesisi sekali di koreksi pertama biar karyawan tetap bisa
      * lihat jam aslinya walau dikoreksi berkali-kali.
      */
+    /**
+     * Selfie absensi (masuk/pulang). Disimpan di disk private; hanya bisa
+     * dibuka user yang lolos gate `module:people,view` DAN scope yang sama
+     * dengan halaman rekap (`scopedUsers()`): Owner/HRD semua orang, selain
+     * itu diri sendiri + bawahan.
+     */
+    public function photo(Attendance $attendance, string $type)
+    {
+        abort_unless(in_array($type, ['masuk', 'pulang'], true), 404);
+
+        $scopedIds = $this->scopedUsers()->pluck('id');
+        abort_unless($scopedIds->contains($attendance->user_id), 403, 'Kamu tidak punya akses ke foto absensi karyawan ini.');
+
+        $path = $type === 'masuk' ? $attendance->clock_in_photo : $attendance->clock_out_photo;
+        abort_unless($path, 404, 'Foto tidak ada.');
+
+        return PrivateFile::response($path);
+    }
+
     public function correct(CorrectAttendanceRequest $request, Attendance $attendance)
     {
         $scopedIds = $this->scopedUsers()->pluck('id');

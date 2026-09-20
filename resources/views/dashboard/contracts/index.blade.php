@@ -49,7 +49,7 @@
                                     <span class="badge-wsm-yellow">Segera Berakhir</span>
                                 @endif
                             </div>
-                            <a href="{{ asset('storage/' . $contract->file_path) }}" target="_blank"
+                            <a href="{{ route('dashboard.contracts.file', $contract) }}" target="_blank" rel="noopener"
                                 class="mt-1 block text-xs font-bold text-ink underline">
                                 {{ $contract->original_filename }}
                             </a>

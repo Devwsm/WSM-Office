@@ -84,7 +84,7 @@
                                 </a>
                             @endif
                             @if ($row->clock_in_photo)
-                                <img src="{{ asset('storage/' . $row->clock_in_photo) }}"
+                                <img src="{{ route('attendance.recap.photo', [$row, 'masuk']) }}"
                                     class="mt-2 h-16 w-16 rounded-xl object-cover" alt="Selfie masuk">
                             @endif
                         </div>
@@ -102,7 +102,7 @@
                                 </a>
                             @endif
                             @if ($row->clock_out_photo)
-                                <img src="{{ asset('storage/' . $row->clock_out_photo) }}"
+                                <img src="{{ route('attendance.recap.photo', [$row, 'pulang']) }}"
                                     class="mt-2 h-16 w-16 rounded-xl object-cover" alt="Selfie pulang">
                             @endif
                         </div>

@@ -56,7 +56,7 @@
                                 <span class="text-xs text-ink">{{ $document->party }}</span>
                             @endif
                             <br>
-                            <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank"
+                            <a href="{{ route('dashboard.legal.file', $document) }}" target="_blank" rel="noopener"
                                 class="mt-1 inline-block text-xs font-bold text-ink underline">
                                 {{ $document->original_filename }}
                             </a>

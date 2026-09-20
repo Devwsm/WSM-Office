@@ -240,6 +240,8 @@ Route::middleware(['auth', 'module:recruitment,manage', 'dashboard.unlocked'])->
 // lihat data dirinya sendiri, aman, gak perlu diubah.
 Route::middleware(['auth', 'module:people,view', 'dashboard.unlocked'])->prefix('absensi')->name('attendance.recap.')->group(function () {
     Route::get('/', [RecapController::class, 'index'])->name('index');
+    // Selfie absensi (private) — scope per-orang dicek di RecapController::photo().
+    Route::get('/foto/{attendance}/{type}', [RecapController::class, 'photo'])->whereIn('type', ['masuk', 'pulang'])->name('photo');
     Route::get('/{user}', [RecapController::class, 'show'])->name('show');
 });
 Route::middleware(['auth', 'module:people,manage', 'dashboard.unlocked'])->prefix('absensi')->name('attendance.recap.')->group(function () {
@@ -379,6 +381,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // '/{module}' generik di bawah.
     Route::prefix('contracts')->name('contracts.')->group(function () {
         Route::get('/', [ContractController::class, 'index'])->middleware('module:contracts,view')->name('index');
+        Route::get('/{contract}/file', [ContractController::class, 'file'])->middleware('module:contracts,view')->name('file');
         Route::get('/create', [ContractController::class, 'create'])->middleware('module:contracts,manage')->name('create');
         Route::post('/', [ContractController::class, 'store'])->middleware('module:contracts,manage')->name('store');
         Route::get('/{contract}/edit', [ContractController::class, 'edit'])->middleware('module:contracts,manage')->name('edit');
@@ -431,6 +434,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
     // yang filter per `status`.
     Route::prefix('legal')->name('legal.')->group(function () {
         Route::get('/', [LegalController::class, 'index'])->middleware('module:legal,view')->name('index');
+        Route::get('/{legal}/file', [LegalController::class, 'file'])->middleware('module:legal,view')->name('file');
         Route::get('/create', [LegalController::class, 'create'])->middleware('module:legal,manage')->name('create');
         Route::post('/', [LegalController::class, 'store'])->middleware('module:legal,manage')->name('store');
         Route::get('/{legal}/edit', [LegalController::class, 'edit'])->middleware('module:legal,manage')->name('edit');

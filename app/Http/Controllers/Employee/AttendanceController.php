@@ -10,9 +10,9 @@ use App\Models\LeaveRequest;
 use App\Models\OfficeSetting;
 use App\Support\AttendanceReconciler;
 use App\Support\Geo;
+use App\Support\PrivateFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 
@@ -200,7 +200,12 @@ class AttendanceController extends Controller
         return [$distance, $withinRadius];
     }
 
-    /** Decode foto base64 dari browser lalu simpan ke storage publik. Return path relatif atau null. */
+    /**
+     * Decode foto base64 dari browser lalu simpan ke disk PRIVATE (bukan
+     * publik: selfie karyawan hanya boleh dibuka lewat route rekap yang
+     * dijaga akses). Batas 4 MB dan harus benar-benar gambar. Return path
+     * relatif atau null.
+     */
     private function storePhoto(?string $base64, int $userId, string $date, string $type): ?string
     {
         if (! $base64) {
@@ -214,12 +219,12 @@ class AttendanceController extends Controller
         $extension = $matches[1] === 'jpg' ? 'jpeg' : $matches[1];
         $binary = base64_decode($matches[2]);
 
-        if ($binary === false) {
+        if ($binary === false || strlen($binary) > 4 * 1024 * 1024 || @getimagesizefromstring($binary) === false) {
             return null;
         }
 
         $path = "attendance/{$userId}/{$date}-{$type}-" . Str::random(8) . ".{$extension}";
-        Storage::disk('public')->put($path, $binary);
+        PrivateFile::put($path, $binary);
 
         return $path;
     }

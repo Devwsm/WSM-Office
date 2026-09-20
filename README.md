@@ -3,6 +3,8 @@
 Sistem manajemen kantor internal Whisnu Santika Music (WSM), hasil implementasi dari prototype `WOS_2_0_App_v32` (HTML/JS satu file) ke aplikasi Laravel multi-halaman yang akan di-deploy dan diakses publik.
 
 > **Audit dilakukan 2026-09-19** terhadap `WSM-Office.zip` (snapshot 2026-09-19) dan `WOS_2_0_App_v32.zip`. Metode: baca kode + tes langsung (lihat bagian _Yang diuji_ di Bab 2). Semua klaim di dokumen ini berasal dari kode atau hasil tes, bukan asumsi.
+>
+> **Pembaruan 2026-09-19 (batch 1):** blocker deploy #5 _File sensitif terbuka tanpa login_ sudah **selesai dan teruji** — lihat Bab 4.0.
 
 **Legenda status:** ✅ ada & sesuai · ⚠️ ada tapi tidak sesuai / lebih sederhana · ❌ belum ada · ➕ tambahan (tidak ada di prototype)
 
@@ -48,7 +50,7 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 | 4                                                                 | Lupa/reset password                                                                                 | —                                                                            | Belum ada                                                                                                                                             | ❌ (ditunda)              | —                                    |
 | **Aplikasi karyawan (`/app`)**                                    |                                                                                                     |                                                                              |                                                                                                                                                       |                           |                                      |
 | 5                                                                 | Home (kartu absensi, KPI, milestone, sisa cuti, Team Moments, My Work Tracker, Info dari Owner)     | Ada                                                                          | Ada semua                                                                                                                                             | ✅                        | Semua akun                           |
-| 6                                                                 | Absen masuk/pulang: kantor, WFH, lapangan, gigs (multi-sesi)                                        | Ada                                                                          | Ada; geofence dihitung ulang di server (Haversine), selfie, auto-close sesi lupa pulang                                                               | ✅                        | Semua akun                           |
+| 6                                                                 | Absen masuk/pulang: kantor, WFH, lapangan, gigs (multi-sesi)                                        | Ada                                                                          | Ada; geofence dihitung ulang di server (Haversine), selfie (disimpan private), auto-close sesi lupa pulang                                            | ✅                        | Semua akun                           |
 | 7                                                                 | Riwayat absensi                                                                                     | Ada                                                                          | Ada                                                                                                                                                   | ✅                        | Semua akun                           |
 | 8                                                                 | Pengajuan izin/cuti + batal                                                                         | Ada                                                                          | Ada; persetujuan atasan langsung                                                                                                                      | ✅                        | Semua akun                           |
 | 9                                                                 | Lembur                                                                                              | Ada                                                                          | Ada; tarif flat per pengajuan disetujui                                                                                                               | ✅                        | Semua akun                           |
@@ -76,7 +78,7 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 | 29                                                                | Rekap absensi (+ detail per orang, koreksi manual)                                                  | Ada                                                                          | Ada + export Excel/PDF                                                                                                                                | ✅                        | Modul `people`                       |
 | 30                                                                | Approval izin/cuti, lembur, koreksi presensi                                                        | Ada + Management Override                                                    | Ada; Owner boleh memutus siapa saja (= override); HRD tidak ikut                                                                                      | ✅                        | Manajer (bawahan), Owner             |
 | 31                                                                | KPI & Performance                                                                                   | Ada                                                                          | Ada                                                                                                                                                   | ✅                        | Modul `kpi`                          |
-| 32                                                                | Employee Contracts                                                                                  | Ada (file, tanggal, catatan)                                                 | Ada; **file di disk publik** (lihat Bab 4)                                                                                                            | ✅ (⚠️ keamanan)          | Modul `contracts`                    |
+| 32                                                                | Employee Contracts                                                                                  | Ada (file, tanggal, catatan)                                                 | Ada; file di disk private, dibuka lewat route berotorisasi                                                                                            | ✅                        | Modul `contracts`                    |
 | 33                                                                | Payroll                                                                                             | Estimasi on-the-fly: hari absen × gaji÷22, kurang jam × tarif/jam, THP min 0 | Disimpan per bulan (draft → final → paid). **Tidak memotong hari tanpa absensi**, potongan = blok 60 mnt × tarif flat, total tidak dibatasi minimal 0 | ⚠️                        | Modul `payroll`                      |
 | 34                                                                | Slip payroll PDF                                                                                    | Ada                                                                          | Ada                                                                                                                                                   | ✅                        | Modul `payroll`                      |
 | 35                                                                | Project Budgeting                                                                                   | Budget vs actual per project                                                 | CRUD flat per baris                                                                                                                                   | ⚠️ (lebih sederhana)      | Modul `budget`                       |
@@ -99,17 +101,20 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 
 ### 2.2 Yang diuji (tes langsung pada 2026-09-19)
 
-| Tes                                                                                                                         | Hasil                                                                                                    |
-| --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `php -l` seluruh 180 file PHP                                                                                               | ✅ 0 error sintaks                                                                                       |
-| `migrate:fresh --seed` di MariaDB 10.11 (40 migrasi + 3 seeder)                                                             | ✅ sukses                                                                                                |
-| Smoke test 60 URL GET × 6 sudut pandang (tamu, Owner, Manajer, Karyawan work-manage, Karyawan work-view, HRD) = 360 request | ✅ 0 error 500; tamu diarahkan ke `/login` di semua halaman terproteksi; 403/200 mengikuti matriks akses |
-| Login benar / salah / brute-force                                                                                           | ✅ redirect sesuai role; 429 setelah beberapa percobaan                                                  |
-| Form kontak publik                                                                                                          | ✅ tersimpan ke `contact_messages`                                                                       |
-| Form lamaran kerja dengan `cv` + `portfolio_url`                                                                            | ⚠️ lamaran tersimpan, **CV dan link portofolio diabaikan** (kolom tidak ada di tabel)                    |
-| Generate payroll untuk karyawan tanpa satu pun absensi di bulan itu                                                         | ⚠️ potongan = 0, gaji penuh Rp 6.500.000 dibayar                                                         |
+| Tes                                                                                                                         | Hasil                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `php -l` seluruh 180 file PHP                                                                                               | ✅ 0 error sintaks                                                                                                                                                                                                    |
+| `migrate:fresh --seed` di MariaDB 10.11 (40 migrasi + 3 seeder)                                                             | ✅ sukses                                                                                                                                                                                                             |
+| Smoke test 60 URL GET × 6 sudut pandang (tamu, Owner, Manajer, Karyawan work-manage, Karyawan work-view, HRD) = 360 request | ✅ 0 error 500; tamu diarahkan ke `/login` di semua halaman terproteksi; 403/200 mengikuti matriks akses                                                                                                              |
+| Login benar / salah / brute-force                                                                                           | ✅ redirect sesuai role; 429 setelah beberapa percobaan                                                                                                                                                               |
+| Form kontak publik                                                                                                          | ✅ tersimpan ke `contact_messages`                                                                                                                                                                                    |
+| Form lamaran kerja dengan `cv` + `portfolio_url`                                                                            | ⚠️ lamaran tersimpan, **CV dan link portofolio diabaikan** (kolom tidak ada di tabel)                                                                                                                                 |
+| Generate payroll untuk karyawan tanpa satu pun absensi di bulan itu                                                         | ⚠️ potongan = 0, gaji penuh Rp 6.500.000 dibayar                                                                                                                                                                      |
+| **Batch 1** — `PrivateFileAccessTest` (18 tes, 75 assertion) di MariaDB                                                     | ✅ lulus: tamu → `/login`; tanpa modul → 403; scope selfie mengikuti rekap; file tersimpan hanya di disk private; hapus membersihkan salinan lama; path traversal ditolak; halaman tidak lagi memuat link `/storage/` |
+| **Batch 1** — uji mutasi (sengaja merusak: gerbang modul dicabut, scope selfie dicabut, view kembali ke `/storage/`)        | ✅ tiap kerusakan ditangkap tepat 1 tes; kode dipulihkan, 18/18 lulus lagi                                                                                                                                            |
+| **Batch 1** — smoke test ulang 60 URL × 6 peran setelah perubahan                                                           | ✅ 0 error 500, hasil identik dengan sebelum perubahan                                                                                                                                                                |
 
-**Belum diuji:** tampilan/UI di browser, geolocation & kamera di HP, upload file nyata, isi file hasil export Excel/PDF, alur import dengan file nyata, email, dan PHP 8.4 (aplikasi diuji di PHP 8.3 dengan `platform_check` dimatikan; MySQL asli diganti MariaDB). Tes browser manual per halaman tetap diperlukan sebelum go-live.
+**Belum diuji:** tampilan/UI di browser, geolocation & kamera di HP, upload file lewat browser sungguhan (yang diuji: upload tiruan di feature test), isi file hasil export Excel/PDF, alur import dengan file nyata, email, dan PHP 8.4 (aplikasi diuji di PHP 8.3 dengan `platform_check` dimatikan; MySQL asli diganti MariaDB). Tes browser manual per halaman tetap diperlukan sebelum go-live.
 
 ---
 
@@ -146,14 +151,14 @@ app/
 │   │   │   ├── OvertimeRequestController.php            # Approval lembur
 │   │   │   └── AttendanceCorrectionRequestController.php # Approval koreksi presensi
 │   │   ├── Attendance/
-│   │   │   └── RecapController.php         # Rekap absensi + detail per orang (modul people)
+│   │   │   └── RecapController.php         # Rekap absensi + detail per orang + selfie private (modul people)
 │   │   ├── Auth/
 │   │   │   └── LoginController.php         # Login/logout 1 form semua role, redirect per role
 │   │   ├── Dashboard/
 │   │   │   ├── DashboardController.php     # Landing dashboard per modul + halaman modul placeholder
 │   │   │   ├── DashboardLockController.php # Lock/unlock dashboard (server-side)
 │   │   │   ├── Budget/BudgetController.php       # CRUD project budgeting
-│   │   │   ├── Contracts/ContractController.php  # CRUD kontrak karyawan + upload file
+│   │   │   ├── Contracts/ContractController.php  # CRUD kontrak karyawan + upload private + route file()
 │   │   │   ├── ExportImport/
 │   │   │   │   ├── ExportImportController.php    # Halaman pusat Export & Import
 │   │   │   │   ├── ExportController.php          # Semua export (route generik per key/format)
@@ -162,7 +167,7 @@ app/
 │   │   │   │   ├── AuditLogController.php        # Daftar audit log (read-only)
 │   │   │   │   └── SystemChangelogController.php # CRUD changelog sistem
 │   │   │   ├── Kpi/KpiController.php             # CRUD KPI seluruh tim
-│   │   │   ├── Legal/LegalController.php         # CRUD Album Contracts & Royalty Agreements
+│   │   │   ├── Legal/LegalController.php         # CRUD Album Contracts & Royalty Agreements + route file()
 │   │   │   ├── Payroll/PayrollController.php     # Generate/final/bayar payroll bulanan
 │   │   │   ├── Royalty/RoyaltyController.php     # CRUD royalty entry
 │   │   │   └── Work/
@@ -229,6 +234,7 @@ app/
 └── Support/
     ├── AttendanceReconciler.php            # Tutup paksa sesi lupa pulang (tanpa cron, ikut trafik web)
     ├── Geo.php                             # Jarak Haversine untuk geofence server-side
+    ├── PrivateFile.php                     # Simpan/hapus/alirkan file sensitif di disk private (kontrak, legal, selfie)
     └── ExportImport/
         ├── ExportCatalog.php               # Sumber tunggal: modul mana punya export/import + gerbang aksesnya
         └── ImportPreviewService.php        # Simpan upload sementara & pratinjau sebelum konfirmasi
@@ -240,7 +246,7 @@ bootstrap/
 config/
 ├── app.php                                 # Timezone Asia/Jakarta, locale
 ├── auth.php · cache.php · database.php     # Konfigurasi bawaan Laravel
-├── filesystems.php                         # Disk `public` dipakai upload kontrak/legal/selfie
+├── filesystems.php                         # Disk `local` (private) untuk file sensitif; `serve` dimatikan
 ├── logging.php · mail.php · queue.php
 ├── services.php
 └── session.php                             # Session 120 menit, driver database
@@ -295,7 +301,7 @@ resources/
 routes/
 ├── web.php                                 # 153 route: publik, /app, /owner, /dashboard, rekrutmen, approval
 ├── auth.php                                # Login/logout
-└── console.php                             # Definisi command console
+└── console.php                             # Command `files:privatize` (pindah file lama ke disk private)
 
 public/
 ├── index.php                               # Front controller
@@ -306,12 +312,14 @@ public/
 └── build/                                  # ⚠ BELUM ADA: hasil `npm run build`, wajib di-upload
 
 storage/
-├── app/public/                             # Upload: selfie absensi, kontrak, dokumen legal (perlu dipindah ke private)
+├── app/private/                            # Selfie absensi, kontrak, dokumen legal (tidak punya URL publik)
+├── app/public/                             # Kosong; tidak dipakai file sensitif lagi (tidak perlu `storage:link`)
 ├── framework/views/                        # Cache Blade (108 file sisa dev, kosongkan)
 └── logs/laravel.log                        # ⚠ ±2 MB berisi path lokal `C:/Users/...`, jangan di-upload
 
 tests/
 ├── Feature/ExampleTest.php                 # Stub bawaan (menguji GET / = 200)
+├── Feature/PrivateFileAccessTest.php       # 18 tes akses file private (butuh MySQL/MariaDB)
 └── Unit/ExampleTest.php                    # Stub bawaan — belum ada tes nyata
 
 (root) .env · .env.example · .gitignore · composer.json/lock · package.json · phpunit.xml · vite.config.js
@@ -322,6 +330,24 @@ tests/
 ---
 
 ## 4. Langkah Selanjutnya
+
+### 4.0 Status pengerjaan blocker
+
+| #    | Blocker                                                      | Status                                                                                     |
+| ---- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| 1    | Versi PHP                                                    | ⬜ menunggu keputusan versi PHP Rumahweb                                                   |
+| 2    | `.env` produksi                                              | ⬜                                                                                         |
+| 3    | Struktur folder cPanel                                       | ⬜ (file private hanya aman jika ini benar: folder `storage/` harus di luar `public_html`) |
+| 4    | Aset Vite                                                    | ⬜                                                                                         |
+| 5 ✅ | **File sensitif terbuka tanpa login** — _SELESAI, lihat 4.0_ | ✅ **Selesai (batch 1)**                                                                   |
+| 6    | Password default "password"                                  | ⬜                                                                                         |
+| 7    | Database tanpa terminal                                      | ⬜                                                                                         |
+| 8    | Bersihkan paket upload                                       | ⬜                                                                                         |
+| 9    | Konten publik placeholder                                    | ⬜                                                                                         |
+
+**Hasil batch 1 (blocker #5):** kontrak karyawan, dokumen legal, dan selfie absensi kini tersimpan di `storage/app/private` dan tidak punya URL publik. Semuanya hanya bisa dibuka lewat route yang mewajibkan login + akses modul yang sama dengan halaman pemiliknya (`contracts`/`legal` level view; selfie: modul `people` dengan scope rekap, yaitu Owner/HRD semua orang, selain itu diri sendiri + bawahan). File yang sudah pernah diupload ke disk publik dipindah sekali dengan `php artisan files:privatize` (path di database tidak berubah). Selfie baru juga divalidasi: harus gambar sungguhan dan maksimal 4 MB. Kebutuhan `storage:link` hilang, jadi tidak perlu terminal di server. Bukti: 18 tes otomatis + uji mutasi + smoke test ulang (Bab 2.2).
+
+**Yang perlu kamu lakukan di lokal sebelum deploy:** jalankan `php artisan files:privatize --dry-run` untuk melihat rencana, lalu `php artisan files:privatize`. Jika belum ada file lama, hasilnya 0 file dan tidak ada yang perlu dilakukan.
 
 ### 4.1 Blocker deploy (wajib beres sebelum publik)
 
@@ -346,7 +372,7 @@ tests/
 
 ### 4.3 Kualitas & keamanan (sebaiknya sebelum/segera setelah go-live)
 
-- **Tes otomatis:** baru 2 stub bawaan. Minimal tulis Feature test untuk: matriks akses per role, alur absen, approval, generate payroll, import karyawan. Smoke test yang dipakai saat audit ini bisa dijadikan dasarnya.
+- **Tes otomatis:** kini ada 1 file tes nyata (`PrivateFileAccessTest`, 18 tes) di samping 2 stub bawaan. Tes ini butuh MySQL/MariaDB karena `phpunit.xml` memakai SQLite `:memory:` sedangkan satu migrasi memakai `MODIFY ENUM`; jalankan dengan `DB_CONNECTION=mysql DB_DATABASE=<db_tes> php artisan test`, atau buat migrasi itu sadar-driver agar tes bisa jalan di SQLite. Tambahkan tes untuk: matriks akses per role, alur absen, approval, generate payroll, import karyawan. Smoke test yang dipakai saat audit ini bisa dijadikan dasarnya.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
 - **Tarif potongan kekurangan jam** default 0: jika Owner belum mengisinya di Pengaturan Kantor, potongan diam-diam nol (form generate payroll sudah menampilkan peringatan).
@@ -360,7 +386,7 @@ tests/
 ### 4.4 Urutan kerja yang disarankan
 
 1. Putuskan versi PHP hosting (blocker 1) — ini menentukan sisa langkah.
-2. Blocker 5 (file private) dan 6 (ganti password paksa) — perubahan kode terkecil dengan risiko terbesar.
+2. ~~Blocker 5 (file private)~~ ✅ selesai. Berikutnya blocker 6 (ganti password paksa) — perubahan kode kecil dengan risiko besar.
 3. Payroll (4.2 no. 1) dan CV upload (4.2 no. 2).
 4. Isi konten publik, siapkan `.env` produksi, `npm run build`, impor SQL.
 5. Uji manual di browser per halaman per role (termasuk HP untuk absensi) di staging/subdomain, baru buka ke publik.
@@ -373,6 +399,6 @@ WSM-Office **sudah menjadi aplikasi yang utuh dan stabil secara teknis**: seluru
 
 Kesenjangan terbesar ada di **modul finansial**: Payroll ada tetapi memakai aturan potongan yang berbeda dan belum memotong hari tanpa absensi, sementara Budget dan Royalty baru berupa CRUD sederhana dibanding mesin recoupment di prototype. Halaman publik dan form lamaran juga belum siap tayang (konten placeholder, belum ada upload CV/portofolio).
 
-Yang membuat aplikasi **belum layak dibuka ke publik saat ini** bukan kekurangan fitur, tetapi kesiapan deploy: kebutuhan PHP 8.4.1, `.env` mode lokal/debug, struktur folder cPanel, aset Vite yang belum dibangun, file kontrak dan selfie yang bisa diakses tanpa login, serta password default "password" untuk karyawan hasil import. Semuanya bisa diselesaikan dalam skala hari, bukan minggu.
+Yang membuat aplikasi **belum layak dibuka ke publik saat ini** bukan kekurangan fitur, tetapi kesiapan deploy: kebutuhan PHP 8.4.1, `.env` mode lokal/debug, struktur folder cPanel, aset Vite yang belum dibangun, serta password default "password" untuk karyawan hasil import. Semuanya bisa diselesaikan dalam skala hari, bukan minggu.
 
-**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 9 blocker pada Bab 4.1 sebelum go-live.
+**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live; blocker #5 sudah selesai dan teruji.

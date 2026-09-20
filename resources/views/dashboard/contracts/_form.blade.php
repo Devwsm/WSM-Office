@@ -32,8 +32,8 @@
         </label>
         @if ($contract)
             <p class="mb-1.5 text-[11px] text-muted">
-                File saat ini: <a href="{{ asset('storage/' . $contract->file_path) }}" target="_blank"
-                    class="font-bold text-ink underline">{{ $contract->original_filename }}</a>
+                File saat ini: <a href="{{ route('dashboard.contracts.file', $contract) }}" target="_blank"
+                    rel="noopener" class="font-bold text-ink underline">{{ $contract->original_filename }}</a>
             </p>
         @endif
         <input type="file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="input-wsm"

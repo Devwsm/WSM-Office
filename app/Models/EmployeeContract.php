@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  * Fase 11 — padanan `state.contracts` (`saveContract`) di prototype
  * v18. Nempel modul `contracts` ("Contract Monitoring") yang slotnya
  * udah ada dari Fase 6a. File di storage, path disimpan di `file_path`
- * (dipakai lewat `asset('storage/...')`).
+ * (disk private; dibuka lewat route `dashboard.contracts.file`, bukan URL publik).
  * ---------------------------------------------------------------------
  */
 #[Fillable([

@@ -50,7 +50,7 @@
         </label>
         @if ($document)
             <p class="mb-1.5 text-[11px] text-muted">
-                File saat ini: <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank"
+                File saat ini: <a href="{{ route('dashboard.legal.file', $document) }}" target="_blank" rel="noopener"
                     class="font-bold text-ink underline">{{ $document->original_filename }}</a>
             </p>
         @endif
