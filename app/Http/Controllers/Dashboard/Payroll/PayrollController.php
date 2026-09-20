@@ -113,8 +113,8 @@ class PayrollController extends Controller
             ->get();
 
         $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('Y-m', $period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('Y-m', $period)->endOfMonth()->toDateString();
+        $start = Carbon::createFromFormat('!Y-m', $period)->startOfMonth()->toDateString();
+        $end = Carbon::createFromFormat('!Y-m', $period)->endOfMonth()->toDateString();
 
         $generated = 0;
         $skippedLocked = 0;
@@ -150,7 +150,7 @@ class PayrollController extends Controller
             $generated++;
         }
 
-        $message = "{$generated} payroll berhasil digenerate untuk periode " . Carbon::createFromFormat('Y-m', $period)->translatedFormat('F Y') . '.';
+        $message = "{$generated} payroll berhasil digenerate untuk periode " . Carbon::createFromFormat('!Y-m', $period)->translatedFormat('F Y') . '.';
         if ($skippedLocked > 0) {
             $message .= " {$skippedLocked} dilewati karena sudah difinalisasi/dibayar (regenerate gak nimpa histori final).";
         }
@@ -167,8 +167,8 @@ class PayrollController extends Controller
         $payroll->load(['user', 'generator']);
 
         $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('Y-m', $payroll->period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('Y-m', $payroll->period)->endOfMonth()->toDateString();
+        $start = Carbon::createFromFormat('!Y-m', $payroll->period)->startOfMonth()->toDateString();
+        $end = Carbon::createFromFormat('!Y-m', $payroll->period)->endOfMonth()->toDateString();
 
         $shortage = Attendance::monthlyShortageBlocks($payroll->user_id, $payroll->period, $setting);
         $overtimeCount = OvertimeRequest::query()

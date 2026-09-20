@@ -152,7 +152,7 @@ class AttendanceController extends Controller
         $month = $request->query('bulan', Carbon::now()->format('Y-m'));
 
         try {
-            $period = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+            $period = Carbon::createFromFormat('!Y-m', $month)->startOfMonth();
         } catch (\Exception) {
             $period = Carbon::now()->startOfMonth();
             $month = $period->format('Y-m');

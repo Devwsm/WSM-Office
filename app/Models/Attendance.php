@@ -224,7 +224,7 @@ class Attendance extends Model
     public static function monthlyShortageBlocks(int $userId, string $yearMonth, ?OfficeSetting $setting = null): array
     {
         $setting ??= OfficeSetting::current();
-        $period = Carbon::createFromFormat('Y-m', $yearMonth)->startOfMonth();
+        $period = Carbon::createFromFormat('!Y-m', $yearMonth)->startOfMonth();
 
         $rows = static::query()
             ->where('user_id', $userId)

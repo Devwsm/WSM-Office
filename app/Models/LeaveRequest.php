@@ -31,6 +31,12 @@ use Illuminate\Support\Carbon;
     'work_days',
     'reason',
     'status',
+    'approver_id',
+    'decided_at',
+    'decision_note',
+    'cancelled_by',
+    'cancelled_at',
+    'cancellation_reason',
 ])]
 class LeaveRequest extends Model
 {

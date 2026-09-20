@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -61,6 +62,16 @@ class WorkItem extends Model
     public const PROGRESS_OPTIONS = ['Pending', 'On Development', 'Follow Up', 'Confirmed', 'Done', 'Postpone'];
 
     public const PRIORITIES = ['Low', 'Medium', 'High'];
+
+    /**
+     * Kolom `section` NOT NULL, tapi form Task, sinkron action item MoM, dan
+     * import boleh mengosongkannya (null) — tanpa ini insert gagal dengan
+     * error 500. Section kosong disimpan sebagai string kosong.
+     */
+    protected function section(): Attribute
+    {
+        return Attribute::make(set: fn(?string $value) => $value ?? '');
+    }
 
     protected function casts(): array
     {

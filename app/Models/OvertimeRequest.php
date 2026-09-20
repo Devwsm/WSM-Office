@@ -25,6 +25,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'date',
     'reason',
     'status',
+    'approver_id',
+    'decided_at',
+    'decision_note',
+    'cancelled_by',
+    'cancelled_at',
+    'cancellation_reason',
 ])]
 class OvertimeRequest extends Model
 {

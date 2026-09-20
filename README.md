@@ -115,7 +115,55 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 | **Batch 1** — Intelephense (language server, semua severity) pada 10 file PHP yang diubah/ditambah                          | ✅ 0 diagnostik (sebelumnya 12 `P1013` di `PrivateFile.php` dan tes; sudah diperbaiki dengan tipe `FilesystemAdapter`)                                                                                                |
 | **Batch 1** — smoke test ulang 60 URL × 6 peran setelah perubahan                                                           | ✅ 0 error 500, hasil identik dengan sebelum perubahan                                                                                                                                                                |
 
-**Belum diuji:** tampilan/UI di browser, geolocation & kamera di HP, upload file lewat browser sungguhan (yang diuji: upload tiruan di feature test), isi file hasil export Excel/PDF, alur import dengan file nyata, email, dan PHP 8.4 (aplikasi diuji di PHP 8.3 dengan `platform_check` dimatikan; MySQL asli diganti MariaDB). Tes browser manual per halaman tetap diperlukan sebelum go-live.
+**Belum diuji otomatis:** tampilan/UI di browser (layout, modal Alpine, drag-and-drop board, responsif), izin geolocation & kamera di HP, file picker browser sungguhan (yang diuji: upload tiruan), tampilan visual file Excel/PDF (isinya sudah dibaca ulang di tes), pengiriman email, dan MySQL asli (diganti MariaDB 10.11). Sejak 2026-09-20 seluruh checklist manual A–K yang berupa input/edit/hapus sudah otomatis (lihat 2.3); yang tersisa untuk dicek manual sebelum go-live hanya hal-hal di atas.
+
+### 2.3 Tes otomatis (Batch 2 — 2026-09-20)
+
+Menggantikan checklist tes manual di browser (bagian A–K pada README versi commit `634b65d`). Kode seperti `C5` atau `H4` di komentar tiap file tes mengacu ke nomor butir checklist itu.
+
+**Menjalankan:** `php artisan test` (SQLite `:memory:`, tanpa setup apa pun; `public/hot` dan `public/build` tidak perlu ada). Untuk MySQL/MariaDB: buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` — jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya.
+
+**Hasil:** 301 tes = **296 lulus + 5 dilewati (skip) yang sengaja mendokumentasikan celah yang belum diperbaiki**, 2.409 assertion, ±16 detik (SQLite) / ±18 detik (MariaDB). Hasil identik di SQLite dan MariaDB 10.11 (PHP 8.4.25).
+
+| File tes                | Tes | Mencakup (butir checklist)                                                                                                                                                   |
+| ----------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PublicPagesTest`       | 13  | A1–A7: halaman publik, karir, form lamar, form kontak, throttle 429, 404, halaman terproteksi → `/login`                                                                     |
+| `AuthenticationTest`    | 20  | B1–B9, C23, F13: login salah/brute-force, redirect per role, intended URL, remember me, logout, akun nonaktif, ganti password, kunci dashboard                               |
+| `AttendanceFlowTest`    | 30  | C5–C15: geofence, WFH, Lapangan/Gigs multi-sesi, selfie, bentrok cuti, auto-close lupa pulang, riwayat bulanan, throttle                                                     |
+| `EmployeeRequestsTest`  | 24  | C16–C21: cuti (kuota, akhir pekan, batal), lembur, koreksi presensi (validasi, batal, hanya milik sendiri)                                                                   |
+| `ApprovalFlowTest`      | 20  | D1–D9: setujui/tolak/batalkan, wewenang atasan langsung vs Owner vs HRD, audit log, dampak ke saldo cuti/absen/shortage                                                      |
+| `AttendanceRecapTest`   | 13  | E1–E5: cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual (view vs manage)                                                                             |
+| `OwnerAreaTest`         | 24  | F1–F12: CRUD karyawan, nonaktif/aktifkan (+ bawahan naik ke atasan), akses dashboard per modul, pengaturan kantor (16 aturan validasi), pesan kontak                         |
+| `EmployeeAppTest`       | 20  | C1–C4, C24, K1–K4: Home, KPI/metrik, memo & inbox (audiens, aktif/nonaktif, hide/read), balas thread, matriks modul, halaman 403                                             |
+| `WorkControlTest`       | 28  | G1–G13: Memo Forum, Work Tracker (project/task/progress), Timeline Calendar, Meetings/MoM + sync tracker + Blast                                                             |
+| `ManagementModulesTest` | 27  | H1–H14: KPI, kontrak, payroll (generate/regenerate/finalisasi/dibayar/hapus), budget, royalty, legal, audit log, changelog, view vs manage                                   |
+| `RecruitmentTest`       | 15  | I1–I7: lowongan (draft/terbit/tutup), pipeline pelamar, status, convert → akun, alur ujung ke ujung dari form publik                                                         |
+| `ExportImportTest`      | 20  | J1–J10: menu per akses, semua export Excel/PDF dibuat lalu dibaca ulang, tidak ada hash password di export, template, preview → commit (KPI, budget, work tracker, karyawan) |
+| `AccessMatrixTest`      | 27  | K1–K3: 21 URL × 5 akun seeder, smoke test seluruh GET tanpa parameter untuk 5 akun (> 200 request), sinkron dengan `DemoSeeder`                                              |
+| `PrivateFileAccessTest` | 18  | (Batch 1) akses file private                                                                                                                                                 |
+| `ExampleTest` ×2        | 2   | stub bawaan                                                                                                                                                                  |
+
+Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL dan fungsi `FIELD()`/`DATE_FORMAT()` di SQLite — hanya di tes, kode aplikasi tidak disentuh untuk ini) dan `tests/Concerns/CreatesWsmFixtures.php` (5 akun standar + pengaturan kantor + waktu dibekukan ke Senin 2026-09-21).
+
+**Bug aplikasi yang ditemukan tes dan sudah diperbaiki** (perubahan kecil, tinggal di-review; 15 file `app/`):
+
+1. **Data keputusan tidak tersimpan** — `LeaveRequest`, `OvertimeRequest`, `AttendanceCorrectionRequest` tidak mendaftarkan `approver_id`, `decided_at`, `decision_note`, `cancelled_by/at`, `cancellation_reason` (dan `applied_attendance_id`) di `#[Fillable]`, sehingga `update()` membuangnya diam-diam: alasan penolakan/pembatalan tidak pernah sampai ke karyawan, dan siapa yang memutuskan tidak tercatat.
+2. **Inbox memo bocor** — modal Inbox (`AppServiceProvider`) menampilkan SEMUA memo, termasuk yang dinonaktifkan dan yang ditujukan ke karyawan tertentu, plus menghitung badge dari memo yang tidak boleh dilihat. Kini memakai `active()` + `visibleTo()` seperti kartu Home.
+3. **Error 500 di form Task / MoM** — kolom `work_items.section` NOT NULL, tetapi form Task boleh dikosongkan dan sinkron action item MoM → tracker mengirim `null`. Kini `WorkItem` menyimpan string kosong; `nextItemNo()` disesuaikan.
+4. **Bulan meluap pada tanggal 29–31** — `Carbon::createFromFormat('Y-m', …)` memakai hari ini; di tanggal 31, `?bulan=2026-11` menjadi Desember (payroll, riwayat, rekap, export ikut salah bulan). Kini `'!Y-m'` di 14 tempat.
+5. **`?month=` ngawur di kalender → 500** — kini jatuh balik ke bulan ini.
+
+**Celah yang belum diperbaiki (tes di-skip, hapus baris `markTestSkipped` setelah diperbaiki):**
+
+| Tes yang di-skip                                                                              | Masalah                                                                                                                       |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `EmployeeRequestsTest::test_same_date_can_be_resubmitted_after_reject_or_cancel`              | `unique(user_id, date)` di `overtime_requests`: setelah lembur ditolak/dibatalkan, mengajukan lagi di tanggal yang sama → 500 |
+| `RecruitmentTest::test_hr_cannot_create_an_owner_account_through_convert`                     | **Keamanan:** convert pelamar menerima `role=owner`; HRD bisa membuat akun Owner                                              |
+| `EmployeeAppTest::test_user_outside_the_audience_cannot_reply_to_a_targeted_memo`             | endpoint balas/tandai memo tidak memeriksa audiens                                                                            |
+| `ExportImportTest::test_import_with_missing_optional_columns_is_reported_instead_of_crashing` | file import tanpa kolom opsional → 500, bukan pesan error                                                                     |
+| `ExportImportTest::test_impossible_dates_are_rejected_instead_of_silently_rolled_over`        | `31/02/2026` diterima dan digulung jadi 03/03/2026                                                                            |
+
+Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tumpang tindih **tidak** diblokir (C19), dan ganti password **tidak** me-logout pengguna (checklist lama menulis sebaliknya).
 
 ---
 
@@ -319,9 +367,15 @@ storage/
 └── logs/laravel.log                        # ⚠ ±2 MB berisi path lokal `C:/Users/...`, jangan di-upload
 
 tests/
-├── Feature/ExampleTest.php                 # Stub bawaan (menguji GET / = 200)
-├── Feature/PrivateFileAccessTest.php       # 20 tes akses file private (jalan di SQLite `:memory:` dan MySQL/MariaDB)
-└── Unit/ExampleTest.php                    # Stub bawaan — belum ada tes nyata
+├── TestCase.php                            # Dasar semua tes: withoutVite() + emulasi MySQL (DATE, FIELD, DATE_FORMAT) di SQLite
+├── Concerns/CreatesWsmFixtures.php         # Akun standar, pengaturan kantor, waktu dibekukan (Senin 2026-09-21)
+├── Feature/                                # 15 file, 300 tes (lihat tabel Bab 2.3)
+│   ├── PublicPagesTest · AuthenticationTest · AttendanceFlowTest · EmployeeRequestsTest
+│   ├── ApprovalFlowTest · AttendanceRecapTest · OwnerAreaTest · EmployeeAppTest
+│   ├── WorkControlTest · ManagementModulesTest · RecruitmentTest · ExportImportTest · AccessMatrixTest
+│   ├── PrivateFileAccessTest               # Batch 1: 18 tes akses file private
+│   └── ExampleTest                         # Stub bawaan
+└── Unit/ExampleTest.php                    # Stub bawaan — belum ada tes unit murni
 
 (root) .env · .env.example · .gitignore · composer.json/lock · package.json · phpunit.xml · vite.config.js
        AGENTS.md · CLAUDE.md               # File catatan repo, tidak perlu ikut di-deploy
@@ -375,7 +429,7 @@ tests/
 
 ### 4.3 Kualitas & keamanan (sebaiknya sebelum/segera setelah go-live)
 
-- **Tes otomatis:** kini ada 1 file tes nyata (`PrivateFileAccessTest`, 20 tes) di samping 2 stub bawaan, dan seluruh suite jalan dengan `php artisan test` biasa di SQLite `:memory:` (sesuai `phpunit.xml`) maupun MySQL/MariaDB. Tambahkan tes untuk: matriks akses per role, alur absen, approval, generate payroll, import karyawan. Smoke test yang dipakai saat audit ini bisa dijadikan dasarnya.
+- **Tes otomatis:** 301 tes (296 lulus, 5 skip terdokumentasi) di 16 file, jalan dengan `php artisan test` di SQLite `:memory:` maupun MySQL/MariaDB — cakupan lengkap di Bab 2.3. Jalankan sebelum tiap deploy. Perbaiki 5 celah yang di-skip (satu di antaranya soal keamanan: HRD bisa membuat akun Owner lewat convert pelamar), lalu hapus baris `markTestSkipped`-nya. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
 - **Tarif potongan kekurangan jam** default 0: jika Owner belum mengisinya di Pengaturan Kantor, potongan diam-diam nol (form generate payroll sudah menampilkan peringatan).
@@ -404,4 +458,4 @@ Kesenjangan terbesar ada di **modul finansial**: Payroll ada tetapi memakai atur
 
 Yang membuat aplikasi **belum layak dibuka ke publik saat ini** bukan kekurangan fitur, tetapi kesiapan deploy: kebutuhan PHP 8.4.1, `.env` mode lokal/debug, struktur folder cPanel, aset Vite yang belum dibangun, serta password default "password" untuk karyawan hasil import. Semuanya bisa diselesaikan dalam skala hari, bukan minggu.
 
-**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live; blocker #5 sudah selesai dan teruji.
+**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live; blocker #5 sudah selesai dan teruji; tes otomatis kini menutup seluruh checklist manual A–K (301 tes) dan sudah menemukan + memperbaiki 5 bug (Bab 2.3).

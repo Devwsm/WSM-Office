@@ -97,6 +97,6 @@ class PayrollRecord extends Model
     /** Label periode manusiawi ("September 2026") dari kolom `period` (format YYYY-MM). */
     public function periodLabel(): string
     {
-        return Carbon::createFromFormat('Y-m', $this->period)->translatedFormat('F Y');
+        return Carbon::createFromFormat('!Y-m', $this->period)->translatedFormat('F Y');
     }
 }

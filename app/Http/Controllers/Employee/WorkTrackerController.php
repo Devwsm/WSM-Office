@@ -86,9 +86,14 @@ class WorkTrackerController extends Controller
     public function calendar()
     {
         $monthParam = Request::query('month');
-        $anchor = $monthParam
-            ? Carbon::createFromFormat('Y-m', $monthParam)->startOfMonth()
-            : Carbon::today()->startOfMonth();
+        // ?month= ngawur (diketik manual di URL) jatuh balik ke bulan ini, bukan error 500.
+        try {
+            $anchor = $monthParam
+                ? Carbon::createFromFormat('!Y-m', $monthParam)->startOfMonth()
+                : Carbon::today()->startOfMonth();
+        } catch (\Exception) {
+            $anchor = Carbon::today()->startOfMonth();
+        }
 
         $projectFilter = Request::query('project') ? (int) Request::query('project') : null;
         $picFilter = Request::query('pic') ? (int) Request::query('pic') : null;

@@ -237,7 +237,7 @@ class MeetingController extends Controller
     {
         return WorkItem::query()
             ->where('project_id', $projectId)
-            ->where('section', $section)
+            ->where('section', $section ?? '')
             ->max('item_no') + 1;
     }
 }

@@ -46,7 +46,9 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $memos = Memo::query()->latestFirst()->with(['reads' => function ($q) use ($user) {
+            // Sama seperti kartu Home: hanya memo AKTIF yang ditujukan ke user ini
+            // (audience 'semua', dia penerima, atau dia pembuatnya).
+            $memos = Memo::query()->active()->visibleTo($user)->latestFirst()->with(['reads' => function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             }, 'creator'])->get()->reject(fn(Memo $m) => $m->isHiddenBy($user))->values();
 

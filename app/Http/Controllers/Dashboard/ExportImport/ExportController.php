@@ -215,7 +215,7 @@ class ExportController extends Controller
     {
         $employee = User::findOrFail($request->integer('employee_id'));
         $period = $request->query('period') ?: now()->format('Y-m');
-        $periodLabel = Carbon::createFromFormat('Y-m', $period)->translatedFormat('F Y');
+        $periodLabel = Carbon::createFromFormat('!Y-m', $period)->translatedFormat('F Y');
 
         $filename = Str::slug("rekap-absensi-{$employee->name}-{$period}") . '.pdf';
 
@@ -282,8 +282,8 @@ class ExportController extends Controller
         $payroll = PayrollRecord::with(['user', 'generator'])->findOrFail($request->integer('payroll_id'));
 
         $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('Y-m', $payroll->period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('Y-m', $payroll->period)->endOfMonth()->toDateString();
+        $start = Carbon::createFromFormat('!Y-m', $payroll->period)->startOfMonth()->toDateString();
+        $end = Carbon::createFromFormat('!Y-m', $payroll->period)->endOfMonth()->toDateString();
 
         $shortage = Attendance::monthlyShortageBlocks($payroll->user_id, $payroll->period, $setting);
         $overtimeCount = OvertimeRequest::query()
