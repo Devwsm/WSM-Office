@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * add_legal_and_it_modules_to_dashboard_access_table
@@ -13,11 +14,13 @@ use Illuminate\Support\Facades\DB;
  * Royalty, HR Admin (`kpi`/`contracts`/`payroll`), Legal (BARU), IT
  * (BARU).
  *
- * Laravel Schema builder gak bisa ubah nilai enum existing secara
- * langsung (butuh doctrine/dbal buat `change()`), jadi pakai raw SQL
- * `ALTER TABLE ... MODIFY` — pola umum buat kasus ini di MySQL, aman
- * buat shared hosting cPanel yang gak ada akses terminal (migration
- * tetap jalan lewat `php artisan migrate` biasa).
+ * Pakai `Schema::table()->enum()->change()` bawaan Laravel (11+, tanpa
+ * doctrine/dbal). Di MySQL/MariaDB hasilnya sama dengan
+ * `ALTER TABLE ... MODIFY module ENUM(...) NOT NULL`; di SQLite (dipakai
+ * suite tes, lihat phpunit.xml) tabel di-rebuild. Sebelumnya migration
+ * ini memakai raw `ALTER TABLE ... MODIFY` yang bikin SEMUA tes gagal di
+ * SQLite. Tetap aman buat shared hosting cPanel tanpa terminal (impor
+ * SQL hasil `migrate` lokal).
  *
  * PENTING: jangan lupa update juga
  * `App\Models\DashboardAccess::MODULES` (tambah entri 'legal' & 'it'
@@ -29,7 +32,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("ALTER TABLE dashboard_access MODIFY module ENUM(
+        $this->setModules([
             'work',
             'budget',
             'royalty',
@@ -38,8 +41,8 @@ return new class extends Migration
             'contracts',
             'payroll',
             'legal',
-            'it'
-        ) NOT NULL");
+            'it',
+        ]);
     }
 
     public function down(): void
@@ -48,14 +51,29 @@ return new class extends Migration
         // module 'legal'/'it' pas rollback, MySQL bakal nolak (data
         // gak valid buat enum baru) — hapus dulu baris itu manual
         // sebelum rollback kalau kejadian.
-        DB::statement("ALTER TABLE dashboard_access MODIFY module ENUM(
+        $this->setModules([
             'work',
             'budget',
             'royalty',
             'kpi',
             'people',
             'contracts',
-            'payroll'
-        ) NOT NULL");
+            'payroll',
+        ]);
+    }
+
+    /**
+     * Ganti daftar nilai enum `dashboard_access.module`. `->change()`
+     * bawaan Laravel (11+) jalan di MySQL/MariaDB (`ALTER TABLE ... MODIFY`)
+     * maupun SQLite (rebuild tabel), jadi suite tes yang memakai SQLite
+     * `:memory:` (lihat phpunit.xml) bisa menjalankan migrasi ini.
+     *
+     * @param  list<string>  $modules
+     */
+    private function setModules(array $modules): void
+    {
+        Schema::table('dashboard_access', function (Blueprint $table) use ($modules) {
+            $table->enum('module', $modules)->change();
+        });
     }
 };
