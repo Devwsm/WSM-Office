@@ -9,6 +9,7 @@ use App\Models\EmployeeContract;
 use App\Models\LegalDocument;
 use App\Models\User;
 use App\Support\PrivateFile;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -30,12 +31,16 @@ class PrivateFileAccessTest extends TestCase
 
     private const PDF = "%PDF-1.4\n1 0 obj\n<< >>\nendobj\ntrailer\n<< >>\n%%EOF";
 
+    private FilesystemAdapter $local;
+
+    private FilesystemAdapter $public;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        Storage::fake('local');
-        Storage::fake('public');
+        $this->local = Storage::fake('local');
+        $this->public = Storage::fake('public');
     }
 
     private function user(string $role = 'karyawan', array $modules = [], ?int $managerId = null): User
@@ -51,7 +56,7 @@ class PrivateFileAccessTest extends TestCase
 
     private function contract(string $path = 'contracts/1/kontrak.pdf', string $body = self::PDF): EmployeeContract
     {
-        Storage::disk('local')->put($path, $body);
+        $this->local->put($path, $body);
 
         return EmployeeContract::create([
             'employee_id' => $this->user()->id,
@@ -66,7 +71,7 @@ class PrivateFileAccessTest extends TestCase
     private function attendanceWithPhoto(User $employee): Attendance
     {
         $path = "attendance/{$employee->id}/2026-09-19-in-abc12345.png";
-        Storage::disk('local')->put($path, base64_decode(
+        $this->local->put($path, base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
         ));
 
@@ -128,7 +133,7 @@ class PrivateFileAccessTest extends TestCase
     public function test_contract_file_missing_on_disk_returns_404(): void
     {
         $contract = $this->contract();
-        Storage::disk('local')->delete($contract->file_path);
+        $this->local->delete($contract->file_path);
 
         $this->actingAs($this->user('owner'))
             ->get(route('dashboard.contracts.file', $contract))
@@ -137,7 +142,7 @@ class PrivateFileAccessTest extends TestCase
 
     public function test_legacy_file_still_on_public_disk_is_served_through_the_route_only(): void
     {
-        Storage::disk('public')->put('contracts/9/lama.pdf', self::PDF);
+        $this->public->put('contracts/9/lama.pdf', self::PDF);
         $contract = EmployeeContract::create([
             'employee_id' => $this->user()->id,
             'file_path' => 'contracts/9/lama.pdf',
@@ -162,21 +167,21 @@ class PrivateFileAccessTest extends TestCase
 
         $contract = EmployeeContract::firstOrFail();
 
-        Storage::disk('local')->assertExists($contract->file_path);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->local->assertExists($contract->file_path);
+        $this->assertSame([], $this->public->allFiles());
     }
 
     public function test_deleting_a_contract_removes_private_and_legacy_copies(): void
     {
         $contract = $this->contract();
-        Storage::disk('public')->put($contract->file_path, 'sisa lama');
+        $this->public->put($contract->file_path, 'sisa lama');
 
         $this->actingAs($this->user('owner'))
             ->delete(route('dashboard.contracts.destroy', $contract))
             ->assertRedirect();
 
-        Storage::disk('local')->assertMissing($contract->file_path);
-        Storage::disk('public')->assertMissing($contract->file_path);
+        $this->local->assertMissing($contract->file_path);
+        $this->public->assertMissing($contract->file_path);
     }
 
     // ---------------------------------------------------------------
@@ -185,7 +190,7 @@ class PrivateFileAccessTest extends TestCase
 
     public function test_legal_file_requires_login_and_legal_module(): void
     {
-        Storage::disk('local')->put('legal/album/a.pdf', self::PDF);
+        $this->local->put('legal/album/a.pdf', self::PDF);
         $doc = LegalDocument::create([
             'category' => 'album',
             'title' => 'Perjanjian Album',
@@ -215,8 +220,8 @@ class PrivateFileAccessTest extends TestCase
 
         $doc = LegalDocument::firstOrFail();
 
-        Storage::disk('local')->assertExists($doc->file_path);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->local->assertExists($doc->file_path);
+        $this->assertSame([], $this->public->allFiles());
     }
 
     // ---------------------------------------------------------------
@@ -277,8 +282,8 @@ class PrivateFileAccessTest extends TestCase
         $path = $method->invoke($controller, $png, 7, '2026-09-19', 'in');
 
         $this->assertNotNull($path);
-        Storage::disk('local')->assertExists($path);
-        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->local->assertExists($path);
+        $this->assertSame([], $this->public->allFiles());
 
         // Bukan gambar sungguhan (isi teks berlabel png) → ditolak.
         $fake = 'data:image/png;base64,' . base64_encode('<?php echo 1;');
@@ -303,23 +308,23 @@ class PrivateFileAccessTest extends TestCase
 
     public function test_privatize_command_moves_legacy_files_and_dry_run_changes_nothing(): void
     {
-        Storage::disk('public')->put('contracts/1/a.pdf', self::PDF);
-        Storage::disk('public')->put('legal/album/b.pdf', self::PDF);
-        Storage::disk('public')->put('attendance/1/c.png', 'x');
-        Storage::disk('public')->put('lain/d.txt', 'bukan folder terkelola');
+        $this->public->put('contracts/1/a.pdf', self::PDF);
+        $this->public->put('legal/album/b.pdf', self::PDF);
+        $this->public->put('attendance/1/c.png', 'x');
+        $this->public->put('lain/d.txt', 'bukan folder terkelola');
 
         $this->artisan('files:privatize', ['--dry-run' => true])->assertSuccessful();
-        Storage::disk('public')->assertExists('contracts/1/a.pdf');
-        Storage::disk('local')->assertMissing('contracts/1/a.pdf');
+        $this->public->assertExists('contracts/1/a.pdf');
+        $this->local->assertMissing('contracts/1/a.pdf');
 
         $this->artisan('files:privatize')->assertSuccessful();
 
         foreach (['contracts/1/a.pdf', 'legal/album/b.pdf', 'attendance/1/c.png'] as $path) {
-            Storage::disk('local')->assertExists($path);
-            Storage::disk('public')->assertMissing($path);
+            $this->local->assertExists($path);
+            $this->public->assertMissing($path);
         }
 
-        Storage::disk('public')->assertExists('lain/d.txt');
+        $this->public->assertExists('lain/d.txt');
     }
 
     // ---------------------------------------------------------------
@@ -331,7 +336,7 @@ class PrivateFileAccessTest extends TestCase
         $owner = $this->user('owner');
         $contract = $this->contract();
 
-        Storage::disk('local')->put('legal/album/a.pdf', self::PDF);
+        $this->local->put('legal/album/a.pdf', self::PDF);
         $legal = LegalDocument::create([
             'category' => 'album',
             'title' => 'Perjanjian Album',

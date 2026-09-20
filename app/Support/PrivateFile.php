@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -73,7 +74,7 @@ class PrivateFile
         $disk = self::diskHolding($path);
         abort_if($disk === null, 404, 'File tidak ditemukan.');
 
-        $storage = Storage::disk($disk);
+        $storage = self::disk($disk);
         $mime = $storage->mimeType($path) ?: 'application/octet-stream';
         $inline = in_array($mime, self::INLINE_TYPES, true);
 
@@ -87,6 +88,18 @@ class PrivateFile
             ],
             $inline ? 'inline' : 'attachment',
         );
+    }
+
+    /**
+     * Storage::disk() bertipe kontrak `Filesystem` (tanpa `mimeType()` dan
+     * `response()`), padahal instance aslinya `FilesystemAdapter`.
+     */
+    private static function disk(string $name): FilesystemAdapter
+    {
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk($name);
+
+        return $disk;
     }
 
     /** Nama disk yang menyimpan file ini, atau null kalau tidak ada. */
