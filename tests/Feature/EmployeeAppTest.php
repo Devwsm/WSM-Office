@@ -225,19 +225,50 @@ class EmployeeAppTest extends TestCase
     }
 
     /**
-     * GAP KEAMANAN KECIL (ditemukan saat menulis tes): endpoint interaksi memo
-     * tidak memeriksa apakah user termasuk audiens memo — siapa pun yang login
-     * bisa membalas/menandai memo bertarget milik orang lain bila menebak id-nya.
-     * Hapus baris skip setelah controller memeriksa `Memo::isVisibleTo()`.
+     * Dulu endpoint interaksi memo tidak memeriksa audiens: siapa pun yang
+     * login bisa membalas atau menandai memo bertarget milik orang lain bila
+     * menebak id-nya. Kini hanya audiens memo (dan memo harus aktif).
      */
-    public function test_user_outside_the_audience_cannot_reply_to_a_targeted_memo(): void
+    public function test_user_outside_the_audience_cannot_touch_a_targeted_memo(): void
     {
-        $this->markTestSkipped('GAP: MemoInteractionController tidak memeriksa audiens memo (isVisibleTo).');
-
         $private = $this->memo(['audience' => 'tertentu']);
         $private->recipients()->sync([$this->p['gepeng']->id]);
 
-        $this->actingAs($this->p['hrd'])->post(route('employee.memo.reply', $private), ['message' => 'nyelonong'])->assertForbidden();
+        // Orang luar: semua interaksi ditolak dan tidak meninggalkan jejak.
+        $rania = $this->actingAs($this->p['hrd']);
+        $rania->post(route('employee.memo.reply', $private), ['message' => 'nyelonong'])->assertForbidden();
+        $rania->post(route('employee.memo.toggleRead', $private))->assertForbidden();
+        $rania->post(route('employee.memo.toggleHidden', $private))->assertForbidden();
+
+        $this->assertSame(0, MemoThreadMessage::count());
+        $this->assertSame(0, MemoRead::count());
+
+        // Penerima terpilih boleh.
+        $gepeng = $this->actingAs($this->p['gepeng']);
+        $gepeng->post(route('employee.memo.reply', $private), ['message' => 'Siap'])->assertRedirect()->assertSessionHas('status');
+        $gepeng->post(route('employee.memo.toggleRead', $private))->assertRedirect();
+        $gepeng->post(route('employee.memo.toggleHidden', $private))->assertRedirect();
+        $this->assertSame(1, MemoThreadMessage::count());
+
+        // Pembuat memo (Owner) juga boleh, walau tidak ada di daftar penerima.
+        $this->actingAs($this->p['owner'])->post(route('employee.memo.reply', $private), ['message' => 'Terima kasih'])
+            ->assertRedirect()->assertSessionHas('status');
+    }
+
+    public function test_memo_for_everyone_stays_open_to_everyone_but_an_inactive_memo_is_closed(): void
+    {
+        $open = $this->memo(['title' => 'Untuk semua']);
+        $closed = $this->memo(['title' => 'Sudah ditutup', 'active' => false]);
+
+        foreach (['hrd', 'aldora', 'gepeng'] as $who) {
+            $this->actingAs($this->p[$who])->post(route('employee.memo.reply', $open), ['message' => "dari {$who}"])
+                ->assertRedirect()->assertSessionHas('status');
+        }
+
+        $this->actingAs($this->p['gepeng'])->post(route('employee.memo.reply', $closed), ['message' => 'terlambat'])->assertForbidden();
+        $this->post(route('employee.memo.toggleHidden', $closed))->assertForbidden();
+
+        $this->assertSame(3, MemoThreadMessage::count());
     }
 
     // ---- profil ---------------------------------------------------------

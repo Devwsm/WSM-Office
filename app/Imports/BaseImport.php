@@ -6,6 +6,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * BaseImport
@@ -36,6 +37,15 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
 
     /** @var array<int, array{row: int, data: array, errors: array<int, string>}> */
     protected array $invalidRows = [];
+
+    /**
+     * Kolom WAJIB (menurut fieldNotes()) yang tidak ada sama sekali di file.
+     * Diisi saat collection() jalan; kalau tidak kosong, tidak ada baris yang
+     * diproses dan controller menampilkan pesan "kolom X tidak ditemukan".
+     *
+     * @var array<int, string>
+     */
+    protected array $missingColumns = [];
 
     /**
      * Nama kolom buat file TEMPLATE yang didownload user (urutan bebas,
@@ -93,6 +103,16 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows): void
     {
+        $first = $rows->first();
+
+        if ($first !== null) {
+            $this->missingColumns = array_values(array_diff($this->requiredHeadings(), array_keys($first->toArray())));
+
+            if ($this->missingColumns !== []) {
+                return;
+            }
+        }
+
         foreach ($rows as $index => $row) {
             $data = $row->toArray();
 
@@ -106,6 +126,14 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
             // sudah dipotong package, +1 lagi karena Excel mulai dari 1
             // bukan 0.
             $rowNumber = $index + 2;
+
+            // Kolom OPSIONAL yang tidak ada di file dianggap kosong (bukan error
+            // "Undefined array key" di mapRow()). Kolom wajib sudah dicek di atas.
+            foreach ($this->templateHeadings() as $heading) {
+                if (! array_key_exists($heading, $data)) {
+                    $data[$heading] = null;
+                }
+            }
 
             $validator = Validator::make($data, $this->rules());
 
@@ -127,6 +155,73 @@ abstract class BaseImport implements ToCollection, WithHeadingRow
     }
 
     /** @return array<int, array{row: int, data: array}> */
+    /** @return array<int, string> nama kolom wajib yang hilang dari file */
+    public function missingColumns(): array
+    {
+        return $this->missingColumns;
+    }
+
+    /** @return array<int, string> kolom yang ditandai `required` di fieldNotes() */
+    protected function requiredHeadings(): array
+    {
+        return collect($this->fieldNotes())
+            ->filter(fn($note) => ($note['required'] ?? false) === true)
+            ->keys()
+            ->all();
+    }
+
+    /**
+     * Baca tanggal dari sel import, atau null kalau bukan tanggal yang sah.
+     *
+     * Menerima teks "DD/MM/YYYY" (format template), "YYYY-MM-DD", "DD-MM-YYYY",
+     * atau angka serial Excel (sel berformat Date). Tanggal mustahil seperti
+     * 31/02/2026 atau bulan 31 DITOLAK: fungsi tanggal PHP diam-diam
+     * "menggulung" (31/02 jadi 03/03) kecuali kita cek peringatannya. Tahun di
+     * luar 1900–2100 (mis. "01/01/26" terbaca tahun 26) juga ditolak.
+     *
+     * Satu-satunya pembaca tanggal untuk semua importer.
+     */
+    protected function parseDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            try {
+                $date = ExcelDate::excelToDateTimeObject((float) $value);
+            } catch (\Throwable) {
+                return null;
+            }
+
+            return $this->saneYear($date) ? $date->format('Y-m-d') : null;
+        }
+
+        $text = trim((string) $value);
+
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
+            $date = \DateTimeImmutable::createFromFormat('!' . $format, $text);
+            $errors = \DateTimeImmutable::getLastErrors();
+
+            if ($date === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+                continue;
+            }
+
+            if ($this->saneYear($date)) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return null;
+    }
+
+    private function saneYear(\DateTimeInterface $date): bool
+    {
+        $year = (int) $date->format('Y');
+
+        return $year >= 1900 && $year <= 2100;
+    }
+
     public function validRows(): array
     {
         return $this->validRows;

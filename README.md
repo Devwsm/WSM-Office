@@ -22,7 +22,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM), hasil implementasi 
 
 **Konvensi kode:** primary key `id_<tabel>` tidak dipakai di snapshot ini (memakai `id` standar); validasi lewat kelas `FormRequest` (31 kelas di `app/Http/Requests`); akses berbasis **role** (`owner`, `manajer`, `hrd`, `karyawan`) untuk area `/owner` dan `/app`, dan akses berbasis **modul** (`dashboard_access`, level `view`/`manage`) untuk area `/dashboard`, rekap, approval, dan rekrutmen; `throttle` pada route tulis; audit log untuk aksi sensitif (payroll dll).
 
-**Ukuran:** 153 route (71 GET, 82 tulis), 180 file PHP, 40 migrasi, 25 model, 104 view Blade, 3 seeder.
+**Ukuran:** 153 route (71 GET, 82 tulis), 180 file PHP, 41 migrasi, 25 model, 104 view Blade, 3 seeder.
 
 **Peran & akses ringkas**
 
@@ -107,7 +107,7 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 | Tes                                                                                                                         | Hasil                                                                                                                                                                                                                 |
 | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `php -l` seluruh 180 file PHP                                                                                               | ✅ 0 error sintaks                                                                                                                                                                                                    |
-| `migrate:fresh --seed` di MariaDB 10.11 (40 migrasi + 3 seeder)                                                             | ✅ sukses                                                                                                                                                                                                             |
+| `migrate:fresh --seed` di MariaDB 10.11 (41 migrasi + 3 seeder)                                                             | ✅ sukses                                                                                                                                                                                                             |
 | Smoke test 60 URL GET × 6 sudut pandang (tamu, Owner, Manajer, Karyawan work-manage, Karyawan work-view, HRD) = 360 request | ✅ 0 error 500; tamu diarahkan ke `/login` di semua halaman terproteksi; 403/200 mengikuti matriks akses                                                                                                              |
 | Login benar / salah / brute-force                                                                                           | ✅ redirect sesuai role; 429 setelah beberapa percobaan                                                                                                                                                               |
 | Form kontak publik                                                                                                          | ✅ tersimpan ke `contact_messages`                                                                                                                                                                                    |
@@ -126,7 +126,7 @@ Menggantikan checklist tes manual di browser (bagian A–K pada README versi com
 
 **Menjalankan:** `php artisan test` (SQLite `:memory:`, tanpa setup apa pun; `public/hot` dan `public/build` tidak perlu ada). Untuk MySQL/MariaDB: buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` — jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya.
 
-**Hasil:** 301 tes = **296 lulus + 5 dilewati (skip) yang sengaja mendokumentasikan celah yang belum diperbaiki**, 2.409 assertion, ±16 detik (SQLite) / ±18 detik (MariaDB). Hasil identik di SQLite dan MariaDB 10.11 (PHP 8.4.25). _Batch 3 (Bab 2.5) menambah `PageGuideTest` dan Batch 4 (Bab 2.6) 2 tes di `AttendanceRecapTest`: total kini 313 tes._
+**Hasil:** 322 tes, **semuanya lulus (0 skip)**, ±3.800 assertion, ±13 detik (SQLite) / ±16 detik (MariaDB). Hasil identik di SQLite dan MariaDB 10.11 (PHP 8.4.25). _Riwayat: Batch 2 = 301 tes (296 lulus + 5 skip yang mendokumentasikan celah); Batch 3 (Bab 2.5) menambah `PageGuideTest`; Batch 4 (Bab 2.6) menambah 2 tes di `AttendanceRecapTest`; Batch 5 (Bab 2.7) menutup 5 celah dan menambah 9 tes, sehingga semua skip hilang._
 
 | File tes                | Tes | Mencakup (butir checklist)                                                                                                                                                   |
 | ----------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -134,14 +134,14 @@ Menggantikan checklist tes manual di browser (bagian A–K pada README versi com
 | `AuthenticationTest`    | 20  | B1–B9, C23, F13: login salah/brute-force, redirect per role, intended URL, remember me, logout, akun nonaktif, ganti password, kunci dashboard                               |
 | `AttendanceFlowTest`    | 30  | C5–C15: geofence, WFH, Lapangan/Gigs multi-sesi, selfie, bentrok cuti, auto-close lupa pulang, riwayat bulanan, throttle                                                     |
 | `EmployeeRequestsTest`  | 24  | C16–C21: cuti (kuota, akhir pekan, batal), lembur, koreksi presensi (validasi, batal, hanya milik sendiri)                                                                   |
-| `ApprovalFlowTest`      | 20  | D1–D9: setujui/tolak/batalkan, wewenang atasan langsung vs Owner vs HRD, audit log, dampak ke saldo cuti/absen/shortage                                                      |
+| `ApprovalFlowTest`      | 21  | D1–D9: setujui/tolak/batalkan, wewenang atasan langsung vs Owner vs HRD, audit log, dampak ke saldo cuti/absen/shortage                                                      |
 | `AttendanceRecapTest`   | 15  | E1–E5: cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual (view vs manage)                                                                             |
 | `OwnerAreaTest`         | 24  | F1–F12: CRUD karyawan, nonaktif/aktifkan (+ bawahan naik ke atasan), akses dashboard per modul, pengaturan kantor (16 aturan validasi), pesan kontak                         |
-| `EmployeeAppTest`       | 20  | C1–C4, C24, K1–K4: Home, KPI/metrik, memo & inbox (audiens, aktif/nonaktif, hide/read), balas thread, matriks modul, halaman 403                                             |
+| `EmployeeAppTest`       | 21  | C1–C4, C24, K1–K4: Home, KPI/metrik, memo & inbox (audiens, aktif/nonaktif, hide/read), balas thread, matriks modul, halaman 403                                             |
 | `WorkControlTest`       | 28  | G1–G13: Memo Forum, Work Tracker (project/task/progress), Timeline Calendar, Meetings/MoM + sync tracker + Blast                                                             |
-| `ManagementModulesTest` | 27  | H1–H14: KPI, kontrak, payroll (generate/regenerate/finalisasi/dibayar/hapus), budget, royalty, legal, audit log, changelog, view vs manage                                   |
-| `RecruitmentTest`       | 15  | I1–I7: lowongan (draft/terbit/tutup), pipeline pelamar, status, convert → akun, alur ujung ke ujung dari form publik                                                         |
-| `ExportImportTest`      | 20  | J1–J10: menu per akses, semua export Excel/PDF dibuat lalu dibaca ulang, tidak ada hash password di export, template, preview → commit (KPI, budget, work tracker, karyawan) |
+| `ManagementModulesTest` | 28  | H1–H14: KPI, kontrak, payroll (generate/regenerate/finalisasi/dibayar/hapus), budget, royalty, legal, audit log, changelog, view vs manage                                   |
+| `RecruitmentTest`       | 17  | I1–I7: lowongan (draft/terbit/tutup), pipeline pelamar, status, convert → akun, alur ujung ke ujung dari form publik                                                         |
+| `ExportImportTest`      | 24  | J1–J10: menu per akses, semua export Excel/PDF dibuat lalu dibaca ulang, tidak ada hash password di export, template, preview → commit (KPI, budget, work tracker, karyawan) |
 | `AccessMatrixTest`      | 27  | K1–K3: 21 URL × 5 akun seeder, smoke test seluruh GET tanpa parameter untuk 5 akun (> 200 request), sinkron dengan `DemoSeeder`                                              |
 | `PrivateFileAccessTest` | 18  | (Batch 1) akses file private                                                                                                                                                 |
 | `PageGuideTest`         | 10  | (Batch 3) peta route → panduan valid, tidak ada panduan yatim, semua halaman dashboard tanpa parameter punya tombol, label akses View/Manage/Khusus Owner, teks di-escape    |
@@ -159,15 +159,7 @@ Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL dan f
 4. **Bulan meluap pada tanggal 29–31** — `Carbon::createFromFormat('Y-m', …)` memakai hari ini; di tanggal 31, `?bulan=2026-11` menjadi Desember (payroll, riwayat, rekap, export ikut salah bulan). Kini `'!Y-m'` di 14 tempat.
 5. **`?month=` ngawur di kalender → 500** — kini jatuh balik ke bulan ini.
 
-**Celah yang belum diperbaiki (tes di-skip, hapus baris `markTestSkipped` setelah diperbaiki):**
-
-| Tes yang di-skip                                                                              | Masalah                                                                                                                       |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `EmployeeRequestsTest::test_same_date_can_be_resubmitted_after_reject_or_cancel`              | `unique(user_id, date)` di `overtime_requests`: setelah lembur ditolak/dibatalkan, mengajukan lagi di tanggal yang sama → 500 |
-| `RecruitmentTest::test_hr_cannot_create_an_owner_account_through_convert`                     | **Keamanan:** convert pelamar menerima `role=owner`; HRD bisa membuat akun Owner                                              |
-| `EmployeeAppTest::test_user_outside_the_audience_cannot_reply_to_a_targeted_memo`             | endpoint balas/tandai memo tidak memeriksa audiens                                                                            |
-| `ExportImportTest::test_import_with_missing_optional_columns_is_reported_instead_of_crashing` | file import tanpa kolom opsional → 500, bukan pesan error                                                                     |
-| `ExportImportTest::test_impossible_dates_are_rejected_instead_of_silently_rolled_over`        | `31/02/2026` diterima dan digulung jadi 03/03/2026                                                                            |
+**Celah yang dulu di-skip:** kelimanya sudah ditutup pada Batch 5 (Bab 2.7), jadi tidak ada lagi tes yang dilewati.
 
 Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tumpang tindih **tidak** diblokir (C19), dan ganti password **tidak** me-logout pengguna (checklist lama menulis sebaliknya).
 
@@ -179,7 +171,7 @@ Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tu
 
 - **Hijau / PASS**: skenario berjalan sesuai harapan.
 - **Merah / FAIL**: ada yang berubah dan tidak lagi sesuai. Artinya baru saja ada perubahan kode yang merusak sesuatu. Kalau perubahannya disengaja, tes-nya yang perlu disesuaikan; kalau tidak, ada bug yang baru muncul.
-- **Kuning / SKIPPED**: masalah yang sudah diketahui tetapi belum diperbaiki (5 buah, lihat tabel di Bab 2.3). Robot sengaja tidak menjalankannya supaya hasil tetap bersih, tetapi pengingatnya tetap tampil.
+- **Kuning / SKIPPED**: masalah yang sudah diketahui tetapi belum diperbaiki. Robot sengaja tidak menjalankannya supaya hasil tetap bersih, tetapi pengingatnya tetap tampil. **Saat ini tidak ada** (5 yang dulu di-skip sudah ditutup, Bab 2.7).
 
 **Kapan dijalankan?** Setiap selesai mengubah kode dan **wajib sebelum deploy**. Ini pengganti membuka semua halaman satu per satu.
 
@@ -217,6 +209,7 @@ Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tu
 - Cuti tahunan tidak boleh melebihi sisa jatah, sedangkan sakit/izin pribadi tidak memotong jatah.
 - Pengajuan bisa dibatalkan (harus ada alasan) dan jatah cuti kembali.
 - Tidak bisa membatalkan pengajuan orang lain.
+- Lembur yang ditolak atau dibatalkan boleh diajukan lagi di tanggal yang sama. Selama pengajuan sebelumnya masih aktif, pengajuan kedua ditolak.
 
 **Persetujuan atasan (`ApprovalFlowTest`)**
 
@@ -244,6 +237,7 @@ Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tu
 
 - Home terbuka untuk semua peran; KPI yang tampil hanya milik sendiri.
 - Memo: hanya memo aktif dan yang memang ditujukan kepadanya yang muncul, baik di Home maupun di Inbox. Memo bisa disembunyikan, ditandai baca, dan dibalas.
+- Memo untuk orang tertentu tidak bisa dibalas atau ditandai oleh orang lain yang menebak nomornya, dan memo yang sudah dinonaktifkan tidak bisa dibalas lagi.
 - Karyawan yang tidak punya modul tertentu tidak melihat menunya dan mendapat halaman "tidak punya akses" kalau nekat membuka alamatnya.
 
 **Work Control (`WorkControlTest`)**: memo, tracker, kalender, dan rapat.
@@ -266,6 +260,7 @@ Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tu
 - Lowongan: draft tidak tampil publik, terbit tampil, ditutup hilang lagi.
 - Pelamar: bisa dicari dan difilter, statusnya bisa dimajukan.
 - Pelamar yang diterima diubah jadi akun karyawan (hanya sekali) dan langsung bisa login.
+- HRD tidak bisa membuat akun Owner lewat pelamar (pilihan Owner disembunyikan dan ditolak server). Hanya Owner yang bisa membuat Owner baru.
 - Satu skenario penuh dari awal: pelamar mengisi form → HR memproses → akun jadi → login berhasil.
 
 **Export dan Import (`ExportImportTest`)**
@@ -274,6 +269,7 @@ Tes karakterisasi (mengunci perilaku saat ini, sengaja lulus): pengajuan cuti tu
 - Export karyawan tidak pernah memuat password.
 - Menu hanya menampilkan laporan yang boleh dilihat pengguna itu.
 - Import: file dibaca dulu (pratinjau), baris yang salah ditandai dan **tidak** ikut tersimpan, baris yang benar baru masuk setelah dikonfirmasi. Konfirmasi hanya berlaku sekali dan hanya untuk orang yang mengunggah.
+- File import yang kolom wajibnya hilang atau berganti nama ditolak dengan pesan jelas (kolom mana yang hilang). Kolom opsional yang hilang dianggap kosong. Tanggal yang mustahil seperti 31/02/2026 ditolak dan tidak diam-diam berubah jadi 3 Maret.
 
 **Matriks hak akses (`AccessMatrixTest`)**: paling mirip "cek semua pintu".
 
@@ -327,6 +323,24 @@ Fitur baru: tiap halaman dashboard punya tombol **"? Panduan"** (melayang di kan
 **Hasil:** pengguna People level View tetap bisa membuka riwayat absensi bawahannya, tetapi tidak lagi melihat tombol/form "Koreksi jam absen" yang ujungnya 403. Keamanan tidak berubah: route simpan tetap dijaga `module:people,manage` dan scope tim tetap dicek di controller (tes lama `test_view_only_users_cannot_correct_even_by_posting_directly` dan `test_manager_with_manage_access_is_still_limited_to_her_team` tetap hijau). Diuji di SQLite (PHP 8.3.6); belum diuji ulang di MariaDB.
 
 **Catatan tes:** frasa "Koreksi jam absen" juga muncul di modal Panduan halaman, jadi tes memeriksa teks lain yang khusus form ("Simpan Koreksi", placeholder alasan, dan URL simpan).
+
+### 2.7 Penutupan 5 celah (Batch 5 — 2026-09-21)
+
+Kelima celah yang tesnya sebelumnya di-skip (Bab 2.3, 4.3) sudah ditutup. Tes-tesnya diaktifkan kembali dan ditambah 9 tes baru.
+
+| #   | Celah (sebelumnya)                                                                                             | Solusi                                                                                                                                                                                                                                                | Status |
+| --- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | **Keamanan:** HRD bisa membuat akun Owner lewat convert pelamar                                                | Hanya Owner yang boleh memilih role Owner. Opsinya disembunyikan di form, dan server menolak kiriman langsung dengan pesan jelas (`ConvertJobApplicationRequest`, `convert.blade.php`). Owner tetap bisa membuat Owner.                               | ✅     |
+| 2   | Lembur yang ditolak/dibatalkan tidak bisa diajukan ulang di tanggal sama (halaman error)                       | Migrasi baru `2026_09_21_120000_relax_overtime_requests_unique_index` melepas aturan unik lama. "Satu pengajuan aktif per tanggal" tetap dijaga validasi form dan tombol Setujui; payroll kini menghitung tanggal lembur berbeda, bukan jumlah baris. | ✅     |
+| 3   | Memo untuk orang tertentu bisa dibalas/ditandai orang lain yang menebak nomornya                               | `MemoInteractionController` memeriksa dulu: memo harus aktif dan ditujukan ke pengguna itu (semua, penerima terpilih, atau pembuatnya); selain itu 403.                                                                                               | ✅     |
+| 4   | File import tanpa kolom opsional → error 500                                                                   | `BaseImport` menganggap kolom opsional yang hilang sebagai kosong. Kalau kolom **wajib** hilang, proses berhenti dengan pesan "Kolom wajib tidak ditemukan di file: …. Pakai template terbaru…" (berlaku untuk keempat importer).                     | ✅     |
+| 5   | Tanggal mustahil (31/02/2026) diterima dan digulung jadi 03/03/2026                                            | Satu pembaca tanggal bersama di `BaseImport::parseDate()` (menggantikan tiga salinan) yang menolak tanggal mustahil dan tahun di luar 1900–2100, tetapi tetap menerima tanggal sah, 29 Februari tahun kabisat, dan angka serial Excel.                | ✅     |
+| 6   | Migrasi baru diuji naik dan turun di MariaDB (foreign key `user_id` butuh index, jadi index dibuat lebih dulu) | `up()` dan `down()` dijalankan di MariaDB 10.11 dan hasil indeksnya diperiksa.                                                                                                                                                                        | ✅     |
+| 7   | Seluruh tes                                                                                                    | 322 tes lulus di SQLite dan MariaDB, 0 skip.                                                                                                                                                                                                          | ✅     |
+
+**Yang perlu kamu lakukan:** jalankan `php artisan migrate` di lokal (satu migrasi baru). Untuk deploy, migrasi ini ikut masuk ke ekspor SQL blocker 7 (Bab 4.1).
+
+**File `app/` yang berubah:** `ConvertJobApplicationRequest`, `convert.blade.php`, `OvertimeRequestController` (Approval), `PayrollController`, `MemoInteractionController`, `BaseImport`, `KpiImport`, `EmployeeImport`, `WorkItemImport`, `ImportController`, dan migrasi baru di atas.
 
 ---
 
@@ -468,7 +482,7 @@ config/
 database/
 ├── factories/
 │   └── UserFactory.php                     # Factory user untuk testing
-├── migrations/                             # 40 migrasi berurutan (users → sesi, absensi, modul dashboard, rekrutmen, kontak)
+├── migrations/                             # 41 migrasi berurutan (users → sesi, absensi, modul dashboard, rekrutmen, kontak)
 │   ├── ..._dashboard_access.php            # Tabel akses modul
 │   ├── ..._add_legal_and_it_modules_to_dashboard_access.php  # Tambah enum modul via Schema `->change()` (portable, sebelumnya raw MODIFY)
 │   ├── ..._office_settings.php (2×)        # Create + tambahan kolom (nama file sama, membingungkan)
@@ -639,7 +653,7 @@ Butir 1–6 adalah keputusan 2026-09-21 ("eksekusi"); butir 7 keputusan sebelumn
 
 ### 4.3 Kualitas & keamanan (sebaiknya sebelum/segera setelah go-live)
 
-- **Tes otomatis:** 313 tes (308 lulus, 5 skip terdokumentasi) di 17 file, jalan dengan `php artisan test` di SQLite `:memory:` maupun MySQL/MariaDB — cakupan lengkap di Bab 2.3. Jalankan sebelum tiap deploy. Perbaiki 5 celah yang di-skip (satu di antaranya soal keamanan: HRD bisa membuat akun Owner lewat convert pelamar), lalu hapus baris `markTestSkipped`-nya. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
+- **Tes otomatis:** 322 tes, semuanya lulus (0 skip), di 17 file, jalan dengan `php artisan test` di SQLite `:memory:` maupun MySQL/MariaDB. Cakupan lengkap di Bab 2.3, dan 5 celah yang dulu di-skip sudah ditutup (✅ Bab 2.7). Jalankan sebelum tiap deploy. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
 - **Log:** set `LOG_LEVEL=warning` dan rotasi harian di produksi.
@@ -657,7 +671,7 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 5. **Project Budgeting** (4.2 no. 5).
 6. **Royalty Dashboard** (4.2 no. 6).
 7. **Upload CV dan link portofolio** (4.2 no. 7).
-8. **Tutup 5 celah yang di-skip di tes** (4.3), terutama HRD yang bisa membuat akun Owner lewat convert pelamar.
+8. ✅ **Tutup 5 celah yang di-skip di tes** — selesai 2026-09-21 (Bab 2.7), termasuk HRD yang bisa membuat akun Owner lewat convert pelamar.
 9. **Persiapan deploy:** isi konten publik (4.1 no. 9), `.env` produksi (no. 2), ubah path `public/index.php` sesuai struktur cPanel (no. 3), `npm run build` (no. 4), ekspor SQL lalu impor lewat phpMyAdmin (no. 7), bersihkan paket upload (no. 8).
 10. **Uji manual di staging/subdomain** per halaman per role (termasuk HP untuk absensi), baru buka ke publik.
 
@@ -665,10 +679,10 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 
 ## 5. Kesimpulan
 
-WSM-Office **sudah menjadi aplikasi yang utuh dan stabil secara teknis**: seluruh 180 file PHP lolos lint, 40 migrasi dan seeder berjalan, dan 360 request uji (60 halaman × 6 sudut pandang) tidak menghasilkan satu pun error 500, dengan pembatasan akses yang berperilaku sesuai rancangan. Fitur inti harian dari prototype (absensi lengkap dengan geofence dan selfie, izin/cuti/lembur/koreksi dengan approval, Work Tracker, meeting, memo, KPI, kontrak, legal, audit) sudah ada dan sesuai, ditambah rekrutmen, pusat Export/Import, dan panduan halaman (tombol "? Panduan" di tiap halaman dashboard) yang tidak ada di prototype.
+WSM-Office **sudah menjadi aplikasi yang utuh dan stabil secara teknis**: seluruh 180 file PHP lolos lint, 41 migrasi dan seeder berjalan, dan 360 request uji (60 halaman × 6 sudut pandang) tidak menghasilkan satu pun error 500, dengan pembatasan akses yang berperilaku sesuai rancangan. Fitur inti harian dari prototype (absensi lengkap dengan geofence dan selfie, izin/cuti/lembur/koreksi dengan approval, Work Tracker, meeting, memo, KPI, kontrak, legal, audit) sudah ada dan sesuai, ditambah rekrutmen, pusat Export/Import, dan panduan halaman (tombol "? Panduan" di tiap halaman dashboard) yang tidak ada di prototype.
 
 Kesenjangan terbesar ada di **modul finansial**: Payroll ada tetapi memakai aturan potongan yang berbeda dan belum memotong hari tanpa absensi, sementara Budget dan Royalty baru berupa CRUD sederhana dibanding mesin recoupment di prototype. Ketiganya sudah dijadwalkan (Bab 4.2 no. 4–6). Halaman publik dan form lamaran juga belum siap tayang (konten placeholder, belum ada upload CV/portofolio).
 
 Yang membuat aplikasi **belum layak dibuka ke publik saat ini** bukan kekurangan fitur, tetapi kesiapan deploy: paket `vendor/` yang masih mewajibkan PHP 8.4.1 padahal hosting mentok 8.3 (keputusan sudah ada), `.env` mode lokal/debug, penyesuaian `public/index.php` untuk struktur folder cPanel (keputusan sudah ada), aset Vite yang belum dibangun (menunggu deploy production), serta password default "password" untuk karyawan hasil import. Semuanya bisa diselesaikan dalam skala hari, bukan minggu.
 
-**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live (dua di antaranya, PHP 8.3 dan struktur cPanel, keputusannya sudah diambil); blocker #5 sudah selesai dan teruji; tes otomatis kini menutup seluruh checklist manual A–K (313 tes, termasuk 10 tes panduan halaman dan 2 tes form koreksi absen) dan sudah menemukan + memperbaiki 5 bug (Bab 2.3).
+**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live (dua di antaranya, PHP 8.3 dan struktur cPanel, keputusannya sudah diambil); blocker #5 sudah selesai dan teruji; tes otomatis kini menutup seluruh checklist manual A–K (322 tes, termasuk 10 tes panduan halaman dan 2 tes form koreksi absen) dan sudah menemukan + memperbaiki 10 bug (Bab 2.3 dan 2.7); tidak ada lagi tes yang di-skip.

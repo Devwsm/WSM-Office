@@ -53,7 +53,7 @@
             <div>
                 <label class="field-label-wsm mb-1.5">Role</label>
                 <select name="role" class="input-wsm" required>
-                    @foreach (['karyawan' => 'Karyawan', 'manajer' => 'Manajer', 'hrd' => 'HRD', 'owner' => 'Owner'] as $value => $label)
+                    @foreach (array_filter(['karyawan' => 'Karyawan', 'manajer' => 'Manajer', 'hrd' => 'HRD', 'owner' => 'Owner'], fn($value) => $value !== 'owner' || auth()->user()->isOwner(), ARRAY_FILTER_USE_KEY) as $value => $label)
                         <option value="{{ $value }}" @selected(old('role', 'karyawan') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>

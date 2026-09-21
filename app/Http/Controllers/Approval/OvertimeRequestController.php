@@ -62,6 +62,12 @@ class OvertimeRequestController extends Controller
             return back()->with('warning', 'Pengajuan ini sudah diputuskan sebelumnya.');
         }
 
+        // Satu tanggal cuma boleh punya SATU lembur disetujui (pengaman kalau dua
+        // pengajuan sempat masuk bersamaan) — supaya uang lembur tidak dobel.
+        if (OvertimeRequest::approvedFor($overtime->user_id, $overtime->date->toDateString()) !== null) {
+            return back()->with('warning', 'Karyawan ini sudah punya lembur yang disetujui di tanggal tersebut.');
+        }
+
         $overtime->approveBy($me);
 
         AuditLog::record('Lembur disetujui', "Pengajuan lembur {$overtime->user->name} disetujui oleh {$me->name}.", $me);

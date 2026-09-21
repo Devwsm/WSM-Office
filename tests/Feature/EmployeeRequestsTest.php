@@ -262,23 +262,26 @@ class EmployeeRequestsTest extends TestCase
     }
 
     /**
-     * BUG DIKETAHUI (ditemukan saat menulis tes ini): validasi hanya menolak
-     * pengajuan `pending`/`disetujui`, jadi setelah pengajuan ditolak atau
-     * dibatalkan karyawan boleh mengajukan lagi di tanggal yang sama — tetapi
-     * migrasi `overtime_requests` memasang `unique(user_id, date)`, sehingga
-     * insert kedua meledak jadi error 500 (UNIQUE constraint failed).
-     * Perbaikan: buang unique tsb. lewat migrasi baru (atau ubah pengajuan
-     * lama menjadi pending lagi). Hapus baris skip di bawah setelah diperbaiki.
+     * Dulu: UNIQUE(user_id, date) di database membuat pengajuan ulang setelah
+     * ditolak/dibatalkan meledak jadi error 500. Kini boleh; yang tetap
+     * ditolak hanyalah pengajuan kedua selagi yang pertama masih aktif.
      */
     public function test_same_date_can_be_resubmitted_after_reject_or_cancel(): void
     {
-        $this->markTestSkipped('BUG: unique(user_id,date) di overtime_requests → 500 saat ajukan ulang setelah ditolak/dibatalkan.');
+        foreach (['ditolak', 'dibatalkan'] as $status) {
+            OvertimeRequest::query()->delete();
 
-        $this->submitOvertime()->assertRedirect();
-        OvertimeRequest::query()->update(['status' => 'ditolak']);
+            $this->submitOvertime()->assertRedirect()->assertSessionHasNoErrors();
+            OvertimeRequest::query()->update(['status' => $status]);
 
-        $this->submitOvertime()->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertSame(2, OvertimeRequest::count());
+            $this->submitOvertime()->assertRedirect()->assertSessionHasNoErrors();
+
+            $this->assertSame(2, OvertimeRequest::count(), "Ajukan ulang setelah {$status}");
+            $this->assertSame(1, OvertimeRequest::where('status', 'pending')->count());
+        }
+
+        // Selagi yang baru masih pending, pengajuan ketiga tetap ditolak.
+        $this->submitOvertime()->assertSessionHasErrors(['date' => 'Kamu sudah punya pengajuan lembur aktif di tanggal ini.']);
     }
 
     public function test_overtime_can_be_cancelled_with_reason_by_its_owner_only(): void

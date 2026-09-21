@@ -29,7 +29,7 @@ class ConvertJobApplicationRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(['owner', 'manajer', 'karyawan', 'hrd'])],
+            'role' => ['required', Rule::in($this->assignableRoles())],
             'manager_id' => ['nullable', 'exists:users,id'],
             'division' => ['nullable', 'string', 'max:100'],
             'job_title' => ['nullable', 'string', 'max:100'],
@@ -39,9 +39,29 @@ class ConvertJobApplicationRequest extends FormRequest
         ];
     }
 
+    /**
+     * Role yang boleh dipilih pembuat akun. Akun Owner punya akses penuh ke
+     * semua modul, jadi HANYA Owner yang boleh membuat Owner baru; HRD (atau
+     * siapa pun dengan akses recruitment `manage`) tidak boleh menaikkan
+     * pelamar — atau dirinya sendiri lewat akun kedua — menjadi Owner.
+     *
+     * @return array<int, string>
+     */
+    private function assignableRoles(): array
+    {
+        $roles = ['manajer', 'karyawan', 'hrd'];
+
+        if ($this->user()?->isOwner()) {
+            $roles[] = 'owner';
+        }
+
+        return $roles;
+    }
+
     public function messages(): array
     {
         return [
+            'role.in' => 'Role itu tidak boleh dipilih. Akun Owner hanya bisa dibuat oleh Owner.',
             'email.unique' => 'Email ini sudah dipakai user lain.',
             'manager_id.exists' => 'Atasan yang dipilih tidak valid.',
         ];

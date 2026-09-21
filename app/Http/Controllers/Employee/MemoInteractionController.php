@@ -26,6 +26,7 @@ class MemoInteractionController extends Controller
     {
         /** @var User $me */
         $me = Auth::user();
+        $this->authorizeAudience($memo, $me);
         $state = $memo->readStateFor($me);
         $state->read_at = $state->read_at ? null : now();
         $state->save();
@@ -58,6 +59,7 @@ class MemoInteractionController extends Controller
     {
         /** @var User $me */
         $me = Auth::user();
+        $this->authorizeAudience($memo, $me);
         $state = $memo->readStateFor($me);
         $state->hidden_at = $state->hidden_at ? null : now();
         $state->save();
@@ -69,6 +71,7 @@ class MemoInteractionController extends Controller
     {
         /** @var User $me */
         $me = Auth::user();
+        $this->authorizeAudience($memo, $me);
 
         MemoThreadMessage::create([
             'memo_id' => $memo->id,
@@ -86,5 +89,17 @@ class MemoInteractionController extends Controller
         }
 
         return back()->with('status', 'Reply terkirim.');
+    }
+
+    /**
+     * Memo hanya bisa disentuh (dibaca, disembunyikan, dibalas) oleh
+     * audiensnya: memo harus aktif dan ditujukan ke user ini (audience
+     * `semua`, penerima terpilih, atau pembuatnya). Tanpa ini, siapa pun yang
+     * login bisa menebak id memo bertarget milik orang lain lalu ikut
+     * membalas atau menandainya.
+     */
+    private function authorizeAudience(Memo $memo, User $me): void
+    {
+        abort_unless($memo->active && $memo->isVisibleTo($me), 403, 'Memo ini bukan untuk kamu.');
     }
 }

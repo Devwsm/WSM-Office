@@ -5,9 +5,7 @@ namespace App\Imports;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkItem;
-use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * WorkItemImport — Batch 3.
@@ -126,39 +124,5 @@ class WorkItemImport extends BaseImport
             ->where('name', $value)
             ->orWhere('email', $value)
             ->first();
-    }
-
-    /**
-     * Terima 2 bentuk: teks "DD/MM/YYYY" (format yang diminta di
-     * template) ATAU angka serial Excel (kalau cell-nya diformat
-     * sebagai Date beneran di Excel, bukan Text — package baca
-     * mentahnya sebagai float, bukan string tanggal).
-     */
-    private function parseDate(mixed $value): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            try {
-                return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
-            try {
-                $date = Carbon::createFromFormat($format, trim((string) $value));
-                if ($date !== false) {
-                    return $date->format('Y-m-d');
-                }
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
-        return null;
     }
 }

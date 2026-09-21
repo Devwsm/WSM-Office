@@ -135,7 +135,8 @@ class PayrollController extends Controller
                 ->where('user_id', $employee->id)
                 ->where('status', 'disetujui')
                 ->whereBetween('date', [$start, $end])
-                ->count();
+                ->distinct()
+                ->count('date'); // per TANGGAL, bukan per baris: dua pengajuan di tanggal sama tidak dibayar dobel
 
             $shortage = Attendance::monthlyShortageBlocks($employee->id, $period, $setting);
 

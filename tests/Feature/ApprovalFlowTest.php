@@ -415,4 +415,22 @@ class ApprovalFlowTest extends TestCase
         $this->assertSame('Kanaya', $log->actorName());
         $this->assertStringContainsString('Aldora', $log->detail);
     }
+
+    /**
+     * Pengaman ganda: kalau dua pengajuan di tanggal yang sama sempat lolos,
+     * hanya satu yang boleh disetujui, supaya uang lembur tidak dobel.
+     */
+    public function test_only_one_overtime_can_be_approved_per_employee_per_date(): void
+    {
+        $first = $this->overtime($this->p['aldora'], ['date' => '2026-09-22']);
+        $second = $this->overtime($this->p['aldora'], ['date' => '2026-09-22']);
+        $manager = $this->actingAs($this->p['manajer']);
+
+        $manager->post(route('approval.overtime.approve', $first))->assertSessionHas('status');
+        $manager->post(route('approval.overtime.approve', $second))
+            ->assertSessionHas('warning', 'Karyawan ini sudah punya lembur yang disetujui di tanggal tersebut.');
+
+        $this->assertSame('disetujui', $first->fresh()->status);
+        $this->assertSame('pending', $second->fresh()->status);
+    }
 }

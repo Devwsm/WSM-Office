@@ -693,4 +693,17 @@ class ManagementModulesTest extends TestCase
             $owner->get(route("dashboard.{$name}.index"))->assertOk();
         }
     }
+
+    /** Payroll menghitung TANGGAL lembur berbeda, bukan jumlah baris. */
+    public function test_payroll_counts_overtime_per_date_not_per_row(): void
+    {
+        foreach (['2026-09-16', '2026-09-16', '2026-09-17'] as $date) {
+            OvertimeRequest::create(['user_id' => $this->p['aldora']->id, 'date' => $date, 'reason' => 'Rilis', 'status' => 'disetujui']);
+        }
+
+        $this->actingAs($this->p['manajer'])->post(route('dashboard.payroll.generate'), ['period' => '2026-09', 'employee_ids' => [$this->p['aldora']->id]])
+            ->assertRedirect();
+
+        $this->assertEquals(80000, PayrollRecord::sole()->overtime_amount, '2 tanggal berbeda × 40.000, bukan 3 baris.');
+    }
 }

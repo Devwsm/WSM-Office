@@ -89,7 +89,7 @@ class ImportController extends Controller
         );
     }
 
-    public function preview(Request $request, string $key): View
+    public function preview(Request $request, string $key): View|RedirectResponse
     {
         $entry = $this->resolveEntry($request, $key);
 
@@ -102,6 +102,15 @@ class ImportController extends Controller
 
         $importer = $this->resolveImporter($key);
         Excel::import($importer, $request->file('file'));
+
+        // Kolom wajib hilang/berganti nama: berhenti di sini dengan pesan jelas
+        // (bukan error 500 atau puluhan baris "wajib diisi" yang menyesatkan).
+        if ($importer->missingColumns() !== []) {
+            return back()->withErrors([
+                'file' => 'Kolom wajib tidak ditemukan di file: ' . implode(', ', $importer->missingColumns())
+                    . '. Pakai template terbaru dan jangan mengubah nama kolomnya.',
+            ]);
+        }
 
         $token = $this->previewService->stage($request->user(), $key, [
             'valid' => $importer->validRows(),

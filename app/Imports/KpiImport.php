@@ -4,9 +4,7 @@ namespace App\Imports;
 
 use App\Models\Kpi;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
  * KpiImport — Batch 4 (lanjutan, KPI).
@@ -124,34 +122,5 @@ class KpiImport extends BaseImport
             ->where('name', $value)
             ->orWhere('email', $value)
             ->first();
-    }
-
-    /** Sama persis WorkItemImport::parseDate() — lihat komentar di sana buat alasannya. */
-    private function parseDate(mixed $value): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            try {
-                return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format) {
-            try {
-                $date = Carbon::createFromFormat($format, trim((string) $value));
-                if ($date !== false) {
-                    return $date->format('Y-m-d');
-                }
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
-        return null;
     }
 }

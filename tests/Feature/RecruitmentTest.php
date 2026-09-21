@@ -271,23 +271,52 @@ class RecruitmentTest extends TestCase
     }
 
     /**
-     * GAP KEAMANAN (ditemukan saat menulis tes): ConvertJobApplicationRequest
-     * menerima role `owner`, sehingga siapa pun dengan akses recruitment
-     * `manage` (mis. HRD) bisa membuat akun Owner baru dengan password pilihan
-     * sendiri — padahal pembuatan akun hanya seharusnya wewenang Owner.
-     * Perbaikan: batasi role menjadi ['manajer','karyawan','hrd'] kecuali
-     * pengguna adalah Owner. Hapus baris skip setelah diperbaiki.
+     * Keamanan: akun Owner punya akses penuh, jadi hanya Owner yang boleh
+     * membuat Owner baru. HRD (recruitment `manage`) tidak boleh, baik lewat
+     * form (opsi Owner disembunyikan) maupun lewat kiriman langsung ke server.
      */
     public function test_hr_cannot_create_an_owner_account_through_convert(): void
     {
-        $this->markTestSkipped('GAP: role owner bisa dibuat lewat convert pelamar oleh HRD (privilege escalation).');
-
         $application = $this->applicant($this->opening());
+        $rania = $this->actingAs($this->p['hrd']);
 
-        $this->actingAs($this->p['hrd'])->post(route('recruitment.applications.convert.store', $application), $this->convertPayload(['role' => 'owner']))
-            ->assertSessionHasErrors('role');
+        $rania->post(route('recruitment.applications.convert.store', $application), $this->convertPayload(['role' => 'owner']))
+            ->assertSessionHasErrors(['role' => 'Role itu tidak boleh dipilih. Akun Owner hanya bisa dibuat oleh Owner.']);
 
         $this->assertSame(1, User::where('role', 'owner')->count());
+        $this->assertNull($application->fresh()->converted_user_id);
+
+        // Role lain yang sah tetap bisa.
+        foreach (['manajer', 'hrd', 'karyawan'] as $i => $role) {
+            $other = $this->applicant($this->opening(['slug' => "lowongan-{$i}", 'title' => "Lowongan {$i}"]), ['email' => "pelamar{$i}@example.com"]);
+            $rania->post(route('recruitment.applications.convert.store', $other), $this->convertPayload(['email' => "baru{$i}@wsm.local", 'role' => $role]))
+                ->assertRedirect(route('recruitment.applications.show', $other));
+            $this->assertSame($role, User::where('email', "baru{$i}@wsm.local")->value('role'));
+        }
+    }
+
+    public function test_owner_can_still_create_an_owner_account_through_convert(): void
+    {
+        $application = $this->applicant($this->opening());
+
+        $this->actingAs($this->p['owner'])->post(route('recruitment.applications.convert.store', $application), $this->convertPayload(['role' => 'owner']))
+            ->assertRedirect(route('recruitment.applications.show', $application));
+
+        $this->assertSame('owner', User::where('email', 'budi@wsm.local')->value('role'));
+    }
+
+    public function test_convert_form_only_offers_the_owner_role_to_owners(): void
+    {
+        $application = $this->applicant($this->opening());
+
+        $this->actingAs($this->p['hrd'])->get(route('recruitment.applications.convert', $application))
+            ->assertOk()
+            ->assertSee('value="hrd"', false)
+            ->assertDontSee('value="owner"', false);
+
+        $this->actingAs($this->p['owner'])->get(route('recruitment.applications.convert', $application))
+            ->assertOk()
+            ->assertSee('value="owner"', false);
     }
 
     // ---- I6: akses ------------------------------------------------------

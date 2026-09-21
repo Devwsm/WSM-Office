@@ -444,31 +444,135 @@ class ExportImportTest extends TestCase
     }
 
     /**
-     * GAP (ditemukan saat menulis tes): file import yang tidak memuat kolom
-     * opsional (mis. tanpa `capaian` di KPI) meledak jadi error 500
-     * ("Undefined array key"), padahal seharusnya pesan "kolom X tidak ada".
-     * Selama pengguna memakai template, ini tidak muncul. Hapus skip setelah
-     * importer memvalidasi heading.
+     * Dulu file tanpa kolom opsional (mis. tanpa `capaian`) meledak jadi error
+     * 500 "Undefined array key". Kolom opsional yang hilang kini dianggap kosong.
      */
-    public function test_import_with_missing_optional_columns_is_reported_instead_of_crashing(): void
+    public function test_import_with_missing_optional_columns_uses_defaults_instead_of_crashing(): void
     {
-        $this->markTestSkipped('GAP: KpiImport error 500 bila kolom opsional (capaian, dst.) tidak ada di file.');
+        $file = $this->csv(['karyawan', 'judul_kpi', 'periode', 'target'], [['Gepeng', 'KPI ringkas', '2026-Q3', '10']]);
 
-        $file = $this->csv(['karyawan', 'judul_kpi', 'periode', 'target'], [['Gepeng', 'KPI', '2026-Q3', '10']]);
-        $this->preview($this->p['manajer'], 'kpi', $file)->assertOk();
+        $preview = $this->preview($this->p['manajer'], 'kpi', $file)->assertOk();
+        $preview->assertViewHas('valid', fn($v) => count($v) === 1)->assertViewHas('invalid', fn($i) => count($i) === 0);
+
+        $this->post(route('dashboard.export-import.import.commit', ['key' => 'kpi']), ['token' => $preview->viewData('token')])->assertRedirect();
+
+        $kpi = Kpi::where('title', 'KPI ringkas')->firstOrFail();
+        $this->assertEquals(0, $kpi->current, 'Capaian kosong = 0.');
+        $this->assertSame('Active', $kpi->status);
+        $this->assertNull($kpi->due_date);
+    }
+
+    public function test_every_importer_accepts_a_file_with_only_the_required_columns(): void
+    {
+        Project::create(['name' => 'Album Q3', 'priority' => 'High', 'status' => 'On Development', 'created_by' => $this->p['owner']->id]);
+
+        $cases = [
+            [$this->p['aldora'], 'work-tracker', ['judul'], [['Task minimal']]],
+            [$this->p['manajer'], 'budget', ['project', 'kategori', 'item', 'anggaran'], [['Album Q3', 'Produksi', 'Studio', '1000']]],
+            [$this->p['manajer'], 'kpi', ['karyawan', 'judul_kpi', 'periode', 'target'], [['Gepeng', 'KPI', '2026-Q3', '5']]],
+            [$this->p['owner'], 'employees', ['nama', 'email', 'role'], [['Minimal Baru', 'minimal@wsm.local', 'karyawan']]],
+        ];
+
+        foreach ($cases as [$user, $key, $headings, $rows]) {
+            $this->preview($user, $key, $this->csv($headings, $rows))
+                ->assertOk()
+                ->assertViewHas('valid', fn($v) => count($v) === 1)
+                ->assertViewHas('invalid', fn($i) => count($i) === 0);
+        }
+    }
+
+    public function test_import_missing_a_required_column_is_stopped_with_a_clear_message(): void
+    {
+        $kanaya = $this->actingAs($this->p['manajer']);
+        $url = route('dashboard.export-import.import.preview', ['key' => 'kpi']);
+
+        // `judul_kpi` hilang.
+        $kanaya->post($url, ['file' => $this->csv(['karyawan', 'periode', 'target'], [['Gepeng', '2026-Q3', '10']])])
+            ->assertRedirect()
+            ->assertSessionHasErrors(['file' => 'Kolom wajib tidak ditemukan di file: judul_kpi. Pakai template terbaru dan jangan mengubah nama kolomnya.']);
+
+        // Beberapa kolom hilang sekaligus (nama kolom berganti) → semuanya disebut.
+        $kanaya->post($url, ['file' => $this->csv(['Nama Karyawan', 'judul_kpi', 'periode', 'sasaran'], [['Gepeng', 'KPI', '2026-Q3', '10']])])
+            ->assertSessionHasErrors(['file' => 'Kolom wajib tidak ditemukan di file: karyawan, target. Pakai template terbaru dan jangan mengubah nama kolomnya.']);
+
+        $this->assertDatabaseCount('kpis', 0);
+    }
+
+    public function test_missing_required_column_message_also_applies_to_the_other_importers(): void
+    {
+        $this->preview($this->p['owner'], 'employees', $this->csv(['nama', 'role'], [['Tanpa Email', 'karyawan']]))
+            ->assertSessionHasErrors(['file' => 'Kolom wajib tidak ditemukan di file: email. Pakai template terbaru dan jangan mengubah nama kolomnya.']);
+
+        $this->preview($this->p['manajer'], 'budget', $this->csv(['project', 'kategori', 'item'], [['Album Q3', 'Produksi', 'Studio']]))
+            ->assertSessionHasErrors(['file' => 'Kolom wajib tidak ditemukan di file: anggaran. Pakai template terbaru dan jangan mengubah nama kolomnya.']);
+
+        $this->preview($this->p['aldora'], 'work-tracker', $this->csv(['project', 'tenggat'], [['Album Q3', '30/09/2026']]))
+            ->assertSessionHasErrors(['file' => 'Kolom wajib tidak ditemukan di file: judul. Pakai template terbaru dan jangan mengubah nama kolomnya.']);
     }
 
     /**
-     * GAP: tanggal ngawur seperti 31/02/2026 atau 31-31-2026 tidak ditolak —
-     * `Carbon::createFromFormat()` PHP menggulung tanggal (jadi 03/03/2026 dan
-     * 31/07/2028) sehingga baris dianggap valid dengan tanggal yang salah.
-     * Perbaikan: cek `Carbon::getLastErrors()` (warning_count) di parseDate().
+     * Dulu tanggal mustahil seperti 31/02/2026 "digulung" diam-diam jadi
+     * 03/03/2026 dan barisnya dianggap valid. Kini ditolak dengan pesan jelas;
+     * tanggal yang sah (termasuk 29 Februari tahun kabisat) tetap diterima.
      */
     public function test_impossible_dates_are_rejected_instead_of_silently_rolled_over(): void
     {
-        $this->markTestSkipped('GAP: parseDate() menggulung tanggal mustahil (31/02 → 03/03) alih-alih menolak baris.');
+        $serial = (int) \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new \DateTime('2026-09-30'));
 
-        $file = $this->csv($this->kpiHeadings(), [['Gepeng', 'KPI', '2026-Q3', '10', '', '', '', '31/02/2026', '', '']]);
-        $this->preview($this->p['manajer'], 'kpi', $file)->assertViewHas('invalid', fn($i) => count($i) === 1);
+        $expected = [
+            '28/02/2026' => '2026-02-28',
+            '29/02/2028' => '2028-02-29',     // kabisat
+            '2026-09-30' => '2026-09-30',
+            '30-09-2026' => '2026-09-30',
+            (string) $serial => '2026-09-30', // angka serial Excel
+            '31/02/2026' => null,             // Februari tidak punya tanggal 31
+            '29/02/2026' => null,             // bukan tahun kabisat
+            '31/04/2026' => null,
+            '32/01/2026' => null,
+            '15/13/2026' => null,             // bulan 13
+            '31-31-2026' => null,
+            '2026-02-30' => null,
+            '00/00/0000' => null,
+            '01/01/26' => null,               // tahun 26, bukan 2026
+            'besok' => null,
+        ];
+
+        $rows = [];
+        foreach (array_keys($expected) as $i => $date) {
+            $rows[] = ['Gepeng', "KPI {$i}", '2026-Q3', '10', '', '', '', (string) $date, '', ''];
+        }
+
+        $preview = $this->preview($this->p['manajer'], 'kpi', $this->csv($this->kpiHeadings(), $rows))->assertOk();
+
+        $accepted = collect($preview->viewData('valid'))->mapWithKeys(fn($r) => [$r['data']['title'] => $r['data']['due_date']]);
+        $rejected = collect($preview->viewData('invalid'))->pluck('row')->all();
+
+        foreach (array_values($expected) as $i => $wanted) {
+            if ($wanted === null) {
+                $this->assertContains($i + 2, $rejected, "Baris tanggal '" . array_keys($expected)[$i] . "' seharusnya ditolak");
+            } else {
+                $this->assertSame($wanted, $accepted["KPI {$i}"] ?? 'TIDAK-ADA', "Tanggal '" . array_keys($expected)[$i] . "'");
+            }
+        }
+
+        $this->assertSame(5, $accepted->count());
+        $this->assertSame(10, count($rejected));
+    }
+
+    public function test_impossible_dates_are_rejected_by_every_importer_that_reads_dates(): void
+    {
+        $headings = ['nama', 'email', 'password', 'role', 'divisi', 'jabatan', 'tanggal_masuk', 'jatah_cuti', 'tanggal_lahir', 'gaji_pokok', 'target_jam_per_hari', 'tarif_lembur_flat'];
+        $this->preview($this->p['owner'], 'employees', $this->csv($headings, [
+            ['Lahir Mustahil', 'a@wsm.local', '', 'karyawan', '', '', '', '', '31/02/1999', '', '', ''],
+            ['Masuk Mustahil', 'b@wsm.local', '', 'karyawan', '', '', '31/04/2026', '', '', '', '', ''],
+            ['Tanggal Sah', 'c@wsm.local', '', 'karyawan', '', '', '01/10/2026', '', '29/02/2000', '', '', ''],
+        ]))->assertViewHas('valid', fn($v) => count($v) === 1 && $v[0]['data']['birth_date'] === '2000-02-29')
+            ->assertViewHas('invalid', fn($i) => count($i) === 2);
+
+        $this->preview($this->p['aldora'], 'work-tracker', $this->csv(['judul', 'tenggat'], [
+            ['Tenggat mustahil', '31/06/2026'],
+            ['Tenggat sah', '30/06/2026'],
+        ]))->assertViewHas('valid', fn($v) => count($v) === 1 && $v[0]['data']['due_date'] === '2026-06-30')
+            ->assertViewHas('invalid', fn($i) => count($i) === 1);
     }
 }
