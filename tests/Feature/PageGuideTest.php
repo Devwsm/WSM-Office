@@ -167,9 +167,18 @@ class PageGuideTest extends TestCase
     public function test_halaman_khusus_owner_memakai_label_khusus_owner(): void
     {
         $this->actingAs($this->p['owner'])
-            ->get(route('owner.office-settings.edit'))
+            ->get(route('owner.employees.access.edit', $this->p['aldora']))
             ->assertOk()
             ->assertSee('Khusus Owner');
+    }
+
+    public function test_halaman_area_owner_lainnya_memakai_label_owner_dan_developer(): void
+    {
+        $this->actingAs($this->p['owner'])
+            ->get(route('owner.office-settings.edit'))
+            ->assertOk()
+            ->assertSee('Owner &amp; Developer', false)
+            ->assertDontSee('Khusus Owner');
     }
 
     public function test_halaman_tanpa_panduan_tidak_menampilkan_tombol(): void

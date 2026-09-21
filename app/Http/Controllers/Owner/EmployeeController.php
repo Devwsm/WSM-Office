@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Hash;
  * di fase-fase selanjutnya) tidak ikut hilang — bahasanya di UI sengaja
  * "Nonaktifkan", bukan "Hapus".
  *
+ * Akses: Owner dan Developer. Developer TIDAK boleh melihat form edit,
+ * mengubah, menonaktifkan, atau mengaktifkan kembali akun Owner, dan tidak
+ * boleh membuat Owner/Developer baru (User::canManageAccount() dan
+ * User::assignableRoles()). Owner tanpa batasan.
+ *
  * Fase 15 (instrumentasi, 2026-09-13) — semua aksi mutasi di controller
  * ini dicatat ke AuditLog::record() (tambah/edit/nonaktifkan/aktifkan
  * karyawan), aksi PALING sensitif buat modul Audit Log karena langsung
@@ -82,6 +87,8 @@ class EmployeeController extends Controller
 
     public function edit(User $employee)
     {
+        $this->authorizeAccount($employee);
+
         $managers = User::query()->where('id', '!=', $employee->id)->orderBy('name')->get();
 
         return view('owner.employees.edit', ['employee' => $employee, 'managers' => $managers]);
@@ -108,6 +115,8 @@ class EmployeeController extends Controller
 
     public function destroy(User $employee)
     {
+        $this->authorizeAccount($employee);
+
         if ($employee->id === Auth::id()) {
             return back()->with('error', 'Tidak bisa menonaktifkan akun sendiri.');
         }
@@ -128,6 +137,7 @@ class EmployeeController extends Controller
     public function restore(int $employee)
     {
         $user = User::onlyTrashed()->findOrFail($employee);
+        $this->authorizeAccount($user);
         $user->restore();
 
         /** @var User $actor */
@@ -135,5 +145,14 @@ class EmployeeController extends Controller
         AuditLog::record('Karyawan diaktifkan kembali', "{$user->name} diaktifkan kembali oleh {$actor->name}.", $actor);
 
         return back()->with('status', "{$user->name} diaktifkan kembali.");
+    }
+
+    /** Developer tidak boleh menyentuh akun Owner (Owner boleh semua akun). */
+    private function authorizeAccount(User $employee): void
+    {
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        abort_unless($actor->canManageAccount($employee), 403, 'Akun Owner hanya bisa dikelola oleh Owner.');
     }
 }

@@ -57,6 +57,16 @@
         </div>
     </div>
 
+    @if ($user->must_change_password)
+        <div class="mb-3.5 rounded-wsm border border-[#f1c7c2] bg-[#fff0ee] p-4 text-[#a83d35]">
+            <p class="text-sm font-extrabold">Ganti password dulu</p>
+            <p class="mt-1 text-xs">
+                Password kamu masih sementara (hasil reset atau password awal akun). Isi "Password Saat Ini" dengan
+                password sementara itu, lalu buat password baru. Halaman lain baru bisa dibuka setelah ini selesai.
+            </p>
+        </div>
+    @endif
+
     <div class="card-wsm-white">
         <p class="mb-1 text-sm font-extrabold">Ganti Password</p>
         <p class="mb-4 text-xs text-muted">Minimal 8 karakter. Kamu tetap login setelah ganti password.</p>

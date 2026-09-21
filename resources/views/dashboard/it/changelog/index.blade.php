@@ -27,6 +27,11 @@
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Audit
             Log</a>
         <span class="rounded-2xl bg-ink px-3.5 py-2 text-[11px] font-extrabold text-white">System Changelog</span>
+        @if (auth()->user()->canManageModule('it'))
+            <a href="{{ route('dashboard.it.password-resets.index') }}"
+                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset
+                Password</a>
+        @endif
     </div>
 
     <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">

@@ -132,6 +132,22 @@ trait CreatesWsmFixtures
         return compact('owner', 'manajer', 'hrd', 'aldora', 'gepeng');
     }
 
+    /**
+     * Akun Developer (seperti Arga di TestingAccountsSeeder): role `developer`,
+     * Manage ke semua modul dashboard, atasannya Owner.
+     *
+     * @param  array<string,mixed>  $attributes
+     */
+    protected function makeDeveloper(User $owner, array $attributes = []): User
+    {
+        return $this->makeUser(
+            'developer',
+            array_fill_keys(array_keys(DashboardAccess::MODULES), 'manage'),
+            $owner->id,
+            array_merge(['name' => 'Arga', 'email' => 'arga@wsm.local'], $attributes),
+        );
+    }
+
     /** Koordinat persis di titik kantor (jarak 0 m). */
     protected function officeCoordinates(): array
     {

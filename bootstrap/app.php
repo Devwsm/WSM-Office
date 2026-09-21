@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureDashboardUnlocked;
 use App\Http\Middleware\EnsureModuleAccess;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureRole::class,
             'module' => EnsureModuleAccess::class,
             'dashboard.unlocked' => EnsureDashboardUnlocked::class,
+        ]);
+
+        // Paksa ganti password sementara (reset IT / import default) di
+        // SEMUA route web, tanpa perlu ditempel per grup.
+        $middleware->web(append: [
+            EnsurePasswordChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

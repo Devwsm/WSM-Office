@@ -100,7 +100,7 @@
                     /** @var \App\Models\User $u */
                     $u = auth()->user();
                 @endphp
-                @if ($u->isOwner())
+                @if ($u->isOwnerOrDeveloper())
                     <a href="{{ route('owner.dashboard') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
@@ -163,7 +163,7 @@
                 {{-- 1 · PEOPLE — cuma "Organization" (Owner-only, padanan
                     Struktur Organisasi). "Executive People Overview"
                     di-skip, lihat catatan di atas. --}}
-                @if ($u->isOwner())
+                @if ($u->isOwnerOrDeveloper())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
                         style="background-color:#dff3ee">{{ $sectionNo }} · PEOPLE</p>
@@ -253,7 +253,7 @@
                     Access", 'contracts', 'payroll'. Header-nya nongol
                     kalau MINIMAL SATU item di bawah kelihatan. --}}
                 @php
-                    $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwner() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
+                    $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwnerOrDeveloper() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
                 @endphp
                 @if ($hrAdminVisible)
                     @php $sectionNo++; @endphp
@@ -275,7 +275,7 @@
                             <span class="mr-1.5 inline-block w-4 text-center">◎</span>KPI &amp; Performance
                         </a>
                     @endif
-                    @if ($u->isOwner())
+                    @if ($u->isOwnerOrDeveloper())
                         <a href="{{ route('owner.employees.index') }}"
                             class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                             @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
@@ -307,7 +307,7 @@
                     solid pas beneran lagi dibuka. Sebelumnya sempat
                     dicoba versi outline hitam+putih permanen, tapi itu
                     malah bikin beda sendiri dari pola section lain. --}}
-                @if ($u->isOwner())
+                @if ($u->isOwnerOrDeveloper())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
                         style="background-color:#f1ead9">{{ $sectionNo }} · SETTINGS</p>
@@ -348,6 +348,12 @@
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.changelog.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                         <span class="mr-1.5 inline-block w-4 text-center">⟳</span>System Change Log
                     </a>
+                    @if ($u->canManageModule('it'))
+                        <a href="{{ route('dashboard.it.password-resets.index') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.password-resets.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">⚿</span>Reset Password
+                        </a>
+                    @endif
                 @endif
 
                 {{-- 8 · RECRUITMENT — GAK ADA di prototype asli, ditambahin

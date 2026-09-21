@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
 /**
  * Model User
  * ---------------------------------------------------------------------
- * Satu tabel untuk SEMUA role (Owner, Manajer, Karyawan) — dibedakan
+ * Satu tabel untuk SEMUA role (Owner, Developer, Manajer, HRD, Karyawan) — dibedakan
  * lewat kolom `role`. `manager_id` self-reference dipakai untuk org-chart
  * (Fase 2) dan alur approval cuti (Karyawan -> Manajer -> fallback Owner)
  * di Fase 5.
@@ -27,6 +27,7 @@ use Illuminate\Support\Carbon;
     'name',
     'email',
     'password',
+    'must_change_password',
     'role',
     'manager_id',
     'division',
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'join_date' => 'date',
             'birth_date' => 'date',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
             // Fase 12 — field payroll (Gaji Pokok/Target Jam/Flat Overtime
             // Rate), ditunda dari Fase 7 sesuai keputusan README.
             'salary_base' => 'float',
@@ -140,7 +142,7 @@ class User extends Authenticatable
     /** Dipakai buat nampilin/nyembunyiin tombol "Dashboard" di app-mobile. */
     public function hasAnyDashboardAccess(): bool
     {
-        return $this->isOwner() || $this->dashboardAccess->isNotEmpty();
+        return $this->isOwner() || $this->isDeveloper() || $this->dashboardAccess->isNotEmpty();
     }
 
     /** Total hari cuti tahunan yang sudah TERPAKAI (status disetujui aja — pending/ditolak/dibatalkan nggak motong). */
@@ -172,15 +174,105 @@ class User extends Authenticatable
         return $this->role === 'hrd';
     }
 
+    /**
+     * Developer = akses Tingkat 2: area /owner (kecuali Dashboard Access),
+     * lihat absensi semua orang di Rekap, kelola karyawan non-Owner, dan
+     * reset password non-Owner. Hak modul dashboard-nya tetap datang dari
+     * tabel `dashboard_access` (bukan hard-code seperti Owner).
+     */
+    public function isDeveloper(): bool
+    {
+        return $this->role === 'developer';
+    }
+
+    /** Boleh masuk area `/owner/*` (kecuali Dashboard Access yang khusus Owner). */
+    public function isOwnerOrDeveloper(): bool
+    {
+        return $this->isOwner() || $this->isDeveloper();
+    }
+
+    /** Daftar role beserta labelnya (urutan = urutan di dropdown). */
+    public const ROLE_LABELS = [
+        'karyawan' => 'Karyawan',
+        'manajer' => 'Manajer',
+        'hrd' => 'HRD',
+        'developer' => 'Developer',
+        'owner' => 'Owner',
+    ];
+
+    /**
+     * Boleh membuat/mengubah/menonaktifkan/mengaktifkan kembali akun
+     * `$target` lewat menu Karyawan? Owner boleh semuanya; Developer boleh
+     * semua akun KECUALI akun Owner; role lain tidak boleh sama sekali.
+     */
+    public function canManageAccount(User $target): bool
+    {
+        if ($this->isOwner()) {
+            return true;
+        }
+
+        return $this->isDeveloper() && ! $target->isOwner();
+    }
+
+    /**
+     * Boleh mereset password akun `$target` lewat dashboard IT (gerbang
+     * modul `it` dicek terpisah di route)? Tidak boleh mereset akun sendiri
+     * (pakai Profil), akun Owner hanya oleh Owner, dan akun Developer
+     * hanya oleh Owner atau Developer lain (supaya pemegang akses IT biasa
+     * tidak bisa menaikkan dirinya lewat akun Developer).
+     */
+    public function canResetPasswordOf(User $target): bool
+    {
+        if ($this->is($target)) {
+            return false;
+        }
+
+        if ($this->isOwner()) {
+            return true;
+        }
+
+        if ($target->isOwner()) {
+            return false;
+        }
+
+        if ($target->isDeveloper()) {
+            return $this->isDeveloper();
+        }
+
+        return true;
+    }
+
+    /**
+     * Role yang boleh DIPILIH user ini saat membuat/mengubah akun.
+     * Owner: semua. Developer: Karyawan/Manajer/HRD saja, tidak boleh
+     * membuat Owner atau Developer baru (kecuali mempertahankan role
+     * Developer milik akun yang sedang diedit).
+     *
+     * @return list<string>
+     */
+    public function assignableRoles(?User $target = null): array
+    {
+        if ($this->isOwner()) {
+            return array_keys(self::ROLE_LABELS);
+        }
+
+        if (! $this->isDeveloper()) {
+            return [];
+        }
+
+        $roles = ['karyawan', 'manajer', 'hrd'];
+
+        if ($target?->isDeveloper()) {
+            $roles[] = 'developer';
+        }
+
+        return $roles;
+    }
+
     /** Label role yang enak dibaca (dipakai di badge tabel karyawan). */
     public function roleLabel(): string
     {
-        return match ($this->role) {
-            'owner' => 'Owner',
-            'manajer' => 'Manajer',
-            'hrd' => 'HRD',
-            default => 'Karyawan',
-        };
+        return self::ROLE_LABELS[$this->role] ?? 'Karyawan';
     }
 
     /**

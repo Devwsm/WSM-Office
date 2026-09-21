@@ -32,7 +32,7 @@ class ExportCatalog
             'desc' => 'Rekap kehadiran tim per periode — Excel buat rekap tim, PDF buat rekap per-karyawan.',
             'icon' => '◉',
             'module' => 'people',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel', 'pdf'],
             'implemented_exports' => ['excel', 'pdf'], // Batch 1 (excel) + Batch 2 (pdf, per-karyawan).
             'import' => false,
@@ -43,7 +43,7 @@ class ExportCatalog
             'desc' => 'PDF slip gaji per-karyawan, Excel rekap payroll sebulan semua karyawan.',
             'icon' => '$',
             'module' => 'payroll',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['pdf', 'excel'],
             'implemented_exports' => ['pdf', 'excel'], // Batch 2.
             'import' => false,
@@ -54,7 +54,7 @@ class ExportCatalog
             'desc' => 'Tabel target vs capaian KPI seluruh tim per periode.',
             'icon' => '◎',
             'module' => 'kpi',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
@@ -65,7 +65,7 @@ class ExportCatalog
             'desc' => 'Tabel anggaran vs realisasi per project.',
             'icon' => '▦',
             'module' => 'budget',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
@@ -76,7 +76,7 @@ class ExportCatalog
             'desc' => 'Tabel entri royalti per periode & statusnya.',
             'icon' => '♪',
             'module' => 'royalty',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -87,7 +87,7 @@ class ExportCatalog
             'desc' => 'Daftar kontrak kerja karyawan & status jatuh tempo.',
             'icon' => '▤',
             'module' => 'contracts',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -98,7 +98,7 @@ class ExportCatalog
             'desc' => 'Daftar dokumen kontrak album & perjanjian royalti beserta jatuh temponya.',
             'icon' => '▤',
             'module' => 'legal',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -109,7 +109,7 @@ class ExportCatalog
             'desc' => 'Jejak aktivitas sistem, buat kebutuhan review/kepatuhan.',
             'icon' => '≡',
             'module' => 'it',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -120,7 +120,7 @@ class ExportCatalog
             'desc' => 'Data karyawan lengkap — juga bisa dipakai buat onboarding banyak orang sekaligus lewat import.',
             'icon' => '⌘',
             'module' => null,
-            'owner_only' => true,
+            'admin_only' => true,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
@@ -131,7 +131,7 @@ class ExportCatalog
             'desc' => 'Pipeline pelamar per lowongan.',
             'icon' => '✎',
             'module' => 'recruitment',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -142,7 +142,7 @@ class ExportCatalog
             'desc' => 'Daftar tugas per-project — prioritas utama import (nutup gap dari prototype lama).',
             'icon' => '☷',
             'module' => 'work',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => true,
@@ -153,7 +153,7 @@ class ExportCatalog
             'desc' => 'Notulen rapat resmi dalam bentuk PDF, siap diprint/dikirim.',
             'icon' => '≡',
             'module' => 'work',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['pdf'],
             'implemented_exports' => ['pdf'], // Batch 2.
             'import' => false,
@@ -164,7 +164,7 @@ class ExportCatalog
             'desc' => 'Rekap pengajuan izin/cuti tim per periode.',
             'icon' => '◉',
             'module' => 'people',
-            'owner_only' => false,
+            'admin_only' => false,
             'exports' => ['excel'],
             'implemented_exports' => ['excel'], // Batch 1.
             'import' => false,
@@ -175,8 +175,8 @@ class ExportCatalog
     /**
      * Daftar entri catalog yang BOLEH DILIHAT user ini — Owner lihat
      * semua, staf lain cuma lihat entri yang module-nya dia punya akses
-     * (minimal 'view') atau entri owner-only yang emang gak akan pernah
-     * kelihatan buat mereka.
+     * (minimal 'view'). Entri `admin_only` (Manajemen Karyawan, tidak
+     * terikat modul) hanya untuk Owner dan Developer.
      *
      * @return array<string, array>
      */
@@ -184,8 +184,8 @@ class ExportCatalog
     {
         return collect(self::CATALOG)
             ->filter(function (array $entry) use ($user) {
-                if ($entry['owner_only']) {
-                    return $user->isOwner();
+                if ($entry['admin_only']) {
+                    return $user->isOwnerOrDeveloper();
                 }
 
                 return $user->canViewModule($entry['module']);
@@ -202,8 +202,8 @@ class ExportCatalog
             return 'none';
         }
 
-        if ($entry['owner_only']) {
-            return $user->isOwner() ? 'manage' : 'none';
+        if ($entry['admin_only']) {
+            return $user->isOwnerOrDeveloper() ? 'manage' : 'none';
         }
 
         return $user->accessLevel($entry['module']);

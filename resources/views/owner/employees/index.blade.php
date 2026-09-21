@@ -26,7 +26,7 @@
             <label class="field-label-wsm mb-1.5">Role</label>
             <select name="role" class="input-wsm">
                 <option value="">Semua Role</option>
-                @foreach (['owner' => 'Owner', 'manajer' => 'Manajer', 'hrd' => 'HRD', 'karyawan' => 'Karyawan'] as $value => $label)
+                @foreach (['owner' => 'Owner', 'developer' => 'Developer', 'manajer' => 'Manajer', 'hrd' => 'HRD', 'karyawan' => 'Karyawan'] as $value => $label)
                     <option value="{{ $value }}" @selected(($filters['role'] ?? '') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -58,7 +58,7 @@
                         </td>
                         <td class="px-5 py-4">
                             <span
-                                class="badge-wsm-{{ match ($employee->role) {'owner' => 'blue','manajer' => 'green','hrd' => 'yellow',default => 'gray'} }}">
+                                class="badge-wsm-{{ match ($employee->role) {'owner', 'developer' => 'blue','manajer' => 'green','hrd' => 'yellow',default => 'gray'} }}">
                                 {{ $employee->roleLabel() }}
                             </span>
                         </td>
@@ -71,7 +71,9 @@
                         <td class="px-5 py-4 text-[#5e5951]">{{ $employee->manager->name ?? '—' }}</td>
                         <td class="px-5 py-4">
                             <div class="flex justify-end gap-2">
-                                @if ($employee->trashed())
+                                @if (!auth()->user()->canManageAccount($employee))
+                                    <span class="text-[11px] font-bold text-muted">Hanya Owner yang bisa mengelola akun ini</span>
+                                @elseif ($employee->trashed())
                                     <form method="POST" action="{{ route('owner.employees.restore', $employee->id) }}"
                                         data-confirm="{{ $employee->name }} akan bisa login & muncul lagi di daftar aktif."
                                         data-confirm-title="Aktifkan kembali?" data-confirm-button="Ya, aktifkan">
@@ -81,10 +83,10 @@
                                 @else
                                     <a href="{{ route('owner.employees.edit', $employee) }}"
                                         class="btn-wsm-white py-2! px-3.5! text-xs">Edit</a>
-                                    @unless ($employee->isOwner())
+                                    @if (auth()->user()->isOwner() && !$employee->isOwner())
                                         <a href="{{ route('owner.employees.access.edit', $employee) }}"
                                             class="btn-wsm-white py-2! px-3.5! text-xs">Akses</a>
-                                    @endunless
+                                    @endif
                                     <form method="POST" action="{{ route('owner.employees.destroy', $employee) }}"
                                         data-confirm="{{ $employee->name }} tidak akan bisa login lagi, tapi riwayat datanya tetap tersimpan."
                                         data-confirm-title="Nonaktifkan {{ $employee->name }}?"

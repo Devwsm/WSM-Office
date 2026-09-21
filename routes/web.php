@@ -7,10 +7,11 @@
  * dua-duanya masih dipakai, TAPI beda maksud (2026-09-09, lihat README
  * "Dashboard permission-based, bukan role"):
  * - `role:...` -> masih valid buat "apakah user ini jenis akun
- *   internal apa" (Owner vs staf biasa) — Owner tetap satu-satunya
- *   yang boleh masuk grup 'owner.*' (kelola karyawan, struktur
- *   organisasi, assign dashboard_access, dst), itu memang literally
- *   "Owner" sebagai konsep, bukan permission yang bisa didelegasikan.
+ *   internal apa" (Owner vs staf biasa) — grup 'owner.*' (kelola
+ *   karyawan, struktur organisasi, pengaturan kantor, dst) hanya untuk
+ *   Owner dan Developer; assign dashboard_access khusus Owner. Itu
+ *   memang literally jenis akun, bukan permission yang bisa
+ *   didelegasikan per modul.
  * - `module:xxx,view|manage` -> dashboard_access, permission per-user
  *   per-modul yang Owner assign lewat halaman "Dashboard Access".
  *   INI yang dipakai buat fitur yang DULUNYA role-gated
@@ -39,6 +40,7 @@ use App\Http\Controllers\Dashboard\ExportImport\ImportController;
 use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
 use App\Http\Controllers\Dashboard\It\AuditLogController;
+use App\Http\Controllers\Dashboard\It\PasswordResetController;
 use App\Http\Controllers\Dashboard\It\SystemChangelogController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
@@ -80,7 +82,7 @@ Route::name('public.')->group(function () {
 require __DIR__ . '/auth.php';
 
 // --- Karyawan & Manajer (Manajer tetap karyawan; HRD juga staf internal) ---
-Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->name('employee.')->group(function () {
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix('app')->name('employee.')->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
 
     // --- Fase 4 & 7: Absensi (self-service, berlaku buat semua role internal) ---
@@ -147,7 +149,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('app')->n
 // ke modul apa pun (Aldora contohnya, role 'karyawan' biasa, punya
 // akses modul Work Control) — jadi dia juga harus bisa pakai
 // "Kunci Dashboard" buat sesi kerjanya, bukan cuma role tinggi.
-Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd'])->prefix('dashboard-lock')->name('dashboard.lock.')->group(function () {
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix('dashboard-lock')->name('dashboard.lock.')->group(function () {
     Route::post('/kunci', [DashboardLockController::class, 'lock'])->name('lock');
     Route::get('/', [DashboardLockController::class, 'show'])->name('show');
     Route::post('/buka', [DashboardLockController::class, 'unlock'])->middleware('throttle:10,1')->name('unlock');
@@ -161,21 +163,18 @@ Route::middleware(['auth', 'role:manajer,owner', 'dashboard.unlocked'])->prefix(
     // TODO Fase 1: team-overview
 });
 
-// --- Owner only ---
-Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')->name('owner.')->group(function () {
+// --- Owner & Developer ---
+// Developer (akses Tingkat 2) boleh masuk semua halaman area Owner KECUALI
+// Dashboard Access (grup `role:owner` tersendiri di bawah). Aturan siapa
+// boleh menyentuh akun Owner dijaga di controller/FormRequest lewat
+// User::canManageAccount() dan User::assignableRoles().
+Route::middleware(['auth', 'role:owner,developer', 'dashboard.unlocked'])->prefix('owner')->name('owner.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // --- Fase 2: Manajemen Karyawan & Struktur Organisasi ---
     Route::resource('employees', EmployeeController::class)->except(['show'])->parameters(['employees' => 'employee']);
     Route::post('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
     Route::get('/organisasi', [OrganizationController::class, 'index'])->name('organization');
-
-    // --- Fase 6a: Dashboard Access (permission per-user per-modul) ---
-    // Sengaja cuma di grup role:owner (bukan manajer,owner,hrd kayak
-    // fitur lain) — kesepakatan Fase 6: cuma Owner yang boleh
-    // assign/ubah akses modul orang lain.
-    Route::get('/employees/{employee}/akses', [DashboardAccessController::class, 'edit'])->name('employees.access.edit');
-    Route::patch('/employees/{employee}/akses', [DashboardAccessController::class, 'update'])->name('employees.access.update');
 
     // --- Fase 7: Pengaturan Kantor (geo & jam kerja normal) ---
     // Sebelumnya cuma bisa diubah lewat OfficeSettingSeeder (developer
@@ -196,6 +195,15 @@ Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')
     // ('employees.access.*'). Fase 6b (MoM & Memo) ada di grup
     // 'dashboard.work.' di bawah.
     // TODO Fase 8-18: lihat README bagian "Roadmap Modul & Role"
+});
+
+// --- Owner only: Dashboard Access (permission per-user per-modul) ---
+// Sengaja grup `role:owner` tersendiri (Developer TIDAK boleh masuk) —
+// kesepakatan Fase 6: cuma Owner yang boleh assign/ubah akses modul
+// orang lain.
+Route::middleware(['auth', 'role:owner', 'dashboard.unlocked'])->prefix('owner')->name('owner.')->group(function () {
+    Route::get('/employees/{employee}/akses', [DashboardAccessController::class, 'edit'])->name('employees.access.edit');
+    Route::patch('/employees/{employee}/akses', [DashboardAccessController::class, 'update'])->name('employees.access.update');
 });
 
 // --- Rekrutmen (2026-09-09: permission bukan role, lihat README) ---
@@ -298,7 +306,7 @@ Route::middleware(['auth', 'module:people,view', 'dashboard.unlocked'])->prefix(
 // User::canViewModule(), bukan lewat middleware role di sini. Jadi
 // karyawan biasa yang di-assign akses ke 1 modul saja tetap bisa
 // masuk /dashboard, cuma modul itu doang yang kelihatan.
-Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocked'])->prefix('dashboard')->name('dashboard.')->group(function () {
+Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboard.unlocked'])->prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [ModuleDashboardController::class, 'index'])->name('index');
 
     // --- Fase 6b: Work Control -> MoM & Memo ---
@@ -458,6 +466,13 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd', 'dashboard.unlocke
             Route::get('/{changelog}/edit', [SystemChangelogController::class, 'edit'])->middleware('module:it,manage')->name('edit');
             Route::patch('/{changelog}', [SystemChangelogController::class, 'update'])->middleware('module:it,manage')->name('update');
             Route::delete('/{changelog}', [SystemChangelogController::class, 'destroy'])->middleware('module:it,manage')->name('destroy');
+        });
+
+        // Reset password karyawan (butuh Manage `it`). Aturan siapa boleh
+        // mereset siapa ada di User::canResetPasswordOf().
+        Route::prefix('reset-password')->name('password-resets.')->group(function () {
+            Route::get('/', [PasswordResetController::class, 'index'])->middleware('module:it,manage')->name('index');
+            Route::post('/{employee}', [PasswordResetController::class, 'reset'])->middleware(['module:it,manage', 'throttle:10,1'])->name('reset');
         });
     });
 

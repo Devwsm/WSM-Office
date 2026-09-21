@@ -19,7 +19,8 @@
  * 2. `guides` — isi panduan per kunci:
  *    - title    : judul modal
  *    - summary  : 1-2 kalimat "halaman ini untuk apa"
- *    - access   : (opsional) 'owner' -> label "Khusus Owner"; atau nama
+ *    - access   : (opsional) 'owner' -> label "Khusus Owner";
+ *                 'owner-developer' -> label "Owner & Developer"; atau nama
  *                 modul dashboard_access (mis. 'work') -> label dinamis
  *                 "Akses kamu: Manage/View" sesuai user yang login
  *    - sections : heading => daftar butir. Butir = string biasa, atau
@@ -89,6 +90,7 @@ return [
         'dashboard.it.changelog.index' => 'changelog',
         'dashboard.it.changelog.create' => 'changelog-form',
         'dashboard.it.changelog.edit' => 'changelog-form',
+        'dashboard.it.password-resets.*' => 'password-reset',
 
         // --- Recruitment ---
         'recruitment.openings.index' => 'openings',
@@ -114,7 +116,7 @@ return [
         'owner-dashboard' => [
             'title' => 'Dashboard Owner',
             'summary' => 'Ringkasan cepat kondisi tim hari ini. Halaman ini untuk dibaca saja: tiap kartu punya link ke halaman lengkapnya.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Yang bisa kamu lihat' => [
                     ['Ritme mingguan', 'fokus kerja dan mode (WFO/WFH) tiap hari Senin sampai Jumat.'],
@@ -136,7 +138,7 @@ return [
         'contact-messages' => [
             'title' => 'Pesan Kontak',
             'summary' => 'Kumpulan pesan yang dikirim pengunjung lewat form Kontak di halaman publik.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Yang bisa dilakukan' => [
                     ['Baca pesan', 'pesan terbaru ada di atas, lengkap dengan nama, email, waktu kirim, dan isi pesan.'],
@@ -153,7 +155,7 @@ return [
         'organization' => [
             'title' => 'Struktur Organisasi',
             'summary' => 'Bagan hierarki tim yang disusun otomatis dari data Atasan Langsung tiap karyawan aktif.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Yang bisa dilakukan' => [
                     ['Lihat struktur', 'siapa melapor ke siapa, dari Owner sampai level paling bawah.'],
@@ -169,19 +171,21 @@ return [
         'employees' => [
             'title' => 'Karyawan',
             'summary' => 'Daftar semua akun internal. Di sini kamu mengelola akun, role, atasan, dan hak akses modul tiap orang.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Yang bisa dilakukan' => [
                     ['+ Tambah Karyawan', 'membuat akun baru.'],
                     ['Cari dan filter', 'cari berdasarkan nama, email, atau divisi. Filter Role untuk menyaring jenis akun.'],
                     ['Tampilkan yang nonaktif', 'centang lalu Terapkan untuk melihat akun yang sudah dinonaktifkan.'],
                     ['Edit', 'ubah data karyawan.'],
-                    ['Akses', 'atur modul dashboard apa saja yang boleh dibuka orang itu (tidak tersedia untuk akun Owner).'],
+                    ['Akses', 'atur modul dashboard apa saja yang boleh dibuka orang itu (hanya untuk Owner, dan tidak tersedia untuk akun Owner).'],
                     ['Nonaktifkan / Aktifkan', 'akun nonaktif tidak bisa login, tetapi riwayat datanya tetap tersimpan. Bisa diaktifkan lagi kapan saja.'],
                 ],
                 'Perlu diketahui' => [
                     'Role hanyalah label jabatan. Yang menentukan menu apa yang terlihat adalah "Akses" per modul.',
                     'Untuk memasukkan banyak karyawan sekaligus, pakai Export & Import, kartu Manajemen Karyawan.',
+                    'Developer bisa mengelola semua akun kecuali akun Owner: akun Owner tidak bisa diedit, dinonaktifkan, atau diaktifkan kembali oleh Developer.',
+                    'Karyawan yang lupa password direset lewat menu IT, Reset Password.',
                 ],
             ],
         ],
@@ -189,11 +193,11 @@ return [
         'employee-form' => [
             'title' => 'Form Karyawan',
             'summary' => 'Isi atau ubah data akun dan data kerja seorang karyawan.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Arti tiap isian' => [
                     ['Email dan Password', 'dipakai untuk login. Saat mengedit, kosongkan Password Baru kalau tidak ingin mengganti password.'],
-                    ['Role', 'label jabatan (Owner, Manajer, HRD, Karyawan). Hak akses modul diatur terpisah lewat tombol Akses.'],
+                    ['Role', 'label jabatan (Owner, Developer, Manajer, HRD, Karyawan). Hak akses modul diatur terpisah lewat tombol Akses. Developer hanya bisa memilih Karyawan, Manajer, atau HRD; akun Owner dan Developer baru hanya bisa dibuat oleh Owner.'],
                     ['Atasan Langsung', 'menentukan siapa yang menyetujui izin, cuti, lembur, dan koreksi presensi orang ini, sekaligus posisinya di Struktur Organisasi.'],
                     ['Tanggal Bergabung', 'dipakai untuk Work Anniversary dan Service Length.'],
                     ['Tanggal Lahir', 'dipakai untuk pengingat Birthday.'],
@@ -202,10 +206,10 @@ return [
                 'Data Payroll (opsional)' => [
                     ['Gaji Pokok', 'kalau dikosongkan, karyawan ini tidak muncul di daftar generate Payroll.'],
                     ['Target Jam Kerja/Hari', 'acuan jam kerja harian karyawan.'],
-                    ['Flat Rate Lembur', 'nominal per pengajuan lembur yang disetujui, dikalikan jumlah lembur disetujui bulan itu (bukan dihitung per jam).'],
+                    ['Flat Rate Lembur', 'nominal per tanggal lembur yang disetujui, dikalikan jumlah tanggal lembur disetujui bulan itu (bukan dihitung per jam).'],
                 ],
                 'Perlu diketahui' => [
-                    'Minta karyawan baru mengganti password lewat menu Profil setelah login pertama.',
+                    'Minta karyawan baru mengganti password lewat menu Profil setelah login pertama. Password yang diisi di form ini tidak otomatis wajib diganti; kalau seseorang lupa password, pakai menu IT, Reset Password.',
                 ],
             ],
         ],
@@ -232,7 +236,7 @@ return [
         'office-settings' => [
             'title' => 'Pengaturan Kantor',
             'summary' => 'Lokasi kantor, aturan jam kerja, dan warna aksen dashboard. Perubahan langsung berlaku untuk absen berikutnya.',
-            'access' => 'owner',
+            'access' => 'owner-developer',
             'sections' => [
                 'Lokasi & Radius' => [
                     ['Nama, Alamat, Latitude, Longitude', 'titik kantor untuk pengecekan jarak saat absen. Cara cepat cari koordinat: buka lokasi kantor di Google Maps, klik kanan pada titiknya, koordinat otomatis tersalin.'],
@@ -748,10 +752,12 @@ return [
                 'Yang bisa dilakukan' => [
                     ['Cari', 'cari berdasarkan nama aksi, detail, atau nama pelaku, lalu klik Cari. Tombol Reset menghapus pencarian.'],
                     ['Tab System Changelog', 'pindah ke catatan rilis fitur.'],
+                    ['Tab Reset Password', 'reset password karyawan (hanya muncul untuk akses Manage).'],
                 ],
                 'Yang saat ini tercatat' => [
                     'Tambah, ubah, nonaktifkan, dan aktifkan kembali karyawan.',
                     'Perubahan Dashboard Access dan Pengaturan Kantor.',
+                    'Reset password karyawan (password sementaranya tidak dicatat).',
                     'Keputusan izin/cuti, lembur, dan koreksi presensi.',
                     'Payroll: generate, penyesuaian, finalisasi, tandai dibayar, dan hapus draft.',
                 ],
@@ -789,6 +795,30 @@ return [
                     ['Judul', 'nama rilis, mis. Modul Legal & Payroll.'],
                     ['Modul Terkait', 'nama modul dipisah koma (opsional).'],
                     ['Daftar Perubahan', 'satu baris sama dengan satu poin perubahan.'],
+                ],
+            ],
+        ],
+
+        'password-reset' => [
+            'title' => 'Reset Password',
+            'summary' => 'Buat password sementara untuk karyawan yang lupa password. Belum ada reset mandiri lewat email, jadi reset dilakukan oleh tim IT.',
+            'access' => 'it',
+            'sections' => [
+                'Yang bisa dilakukan' => [
+                    ['Cari', 'cari akun berdasarkan nama, email, atau divisi.'],
+                    ['Reset', 'membuat password sementara acak untuk akun itu. Password tampil di kartu hijau di atas daftar.'],
+                ],
+                'Setelah di-reset' => [
+                    'Password sementara hanya tampil satu kali. Kalau halaman dimuat ulang, password hilang dan tidak disimpan di mana pun. Kalau terlanjur hilang, reset lagi.',
+                    'Sampaikan password ke pemilik akun lewat jalur yang aman.',
+                    'Semua sesi login lama akun itu langsung dikeluarkan.',
+                    'Saat login berikutnya, pemilik akun wajib mengganti password sebelum bisa memakai halaman lain.',
+                    'Setiap reset tercatat di Audit Log (tanpa password-nya).',
+                ],
+                'Perlu diketahui' => [
+                    'Akun sendiri tidak bisa direset di sini; ganti lewat halaman Profil.',
+                    'Akun Owner hanya bisa direset oleh Owner. Akun Developer hanya bisa direset oleh Owner atau Developer lain.',
+                    'Halaman ini hanya bisa dibuka dengan akses Manage pada modul IT.',
                 ],
             ],
         ],

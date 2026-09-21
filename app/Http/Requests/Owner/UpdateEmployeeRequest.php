@@ -26,7 +26,10 @@ class UpdateEmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Developer tidak boleh mengubah akun Owner (dan Owner boleh semua).
+        $employee = $this->route('employee');
+
+        return $employee !== null && (bool) $this->user()?->canManageAccount($employee);
     }
 
     public function rules(): array
@@ -37,7 +40,7 @@ class UpdateEmployeeRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($employee?->id)],
             'password' => ['nullable', 'string', 'min:8'],
-            'role' => ['required', Rule::in(['owner', 'manajer', 'karyawan', 'hrd'])],
+            'role' => ['required', Rule::in($this->user()?->assignableRoles($employee) ?? [])],
             'manager_id' => ['nullable', 'exists:users,id'],
             'division' => ['nullable', 'string', 'max:100'],
             'job_title' => ['nullable', 'string', 'max:100'],
@@ -54,6 +57,7 @@ class UpdateEmployeeRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'role.in' => 'Role itu tidak boleh kamu pilih. Akun Owner dan Developer hanya bisa dibuat oleh Owner.',
             'email.unique' => 'Email ini sudah dipakai user lain.',
             'manager_id.exists' => 'Atasan yang dipilih tidak valid.',
         ];

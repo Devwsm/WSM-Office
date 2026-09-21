@@ -18,8 +18,9 @@ class StoreEmployeeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Middleware role:owner sudah jaga route-nya; request ini cuma
-        // dipanggil dari controller yang sudah di belakang middleware itu.
+        // Middleware role:owner,developer sudah jaga route-nya; request ini
+        // cuma dipanggil dari controller yang sudah di belakang middleware
+        // itu. Pembatasan role yang boleh dipilih ada di rules().
         return true;
     }
 
@@ -29,7 +30,7 @@ class StoreEmployeeRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['required', Rule::in(['owner', 'manajer', 'karyawan', 'hrd'])],
+            'role' => ['required', Rule::in($this->user()?->assignableRoles() ?? [])],
             'manager_id' => ['nullable', 'exists:users,id'],
             'division' => ['nullable', 'string', 'max:100'],
             'job_title' => ['nullable', 'string', 'max:100'],
@@ -46,6 +47,7 @@ class StoreEmployeeRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'role.in' => 'Role itu tidak boleh kamu pilih. Akun Owner dan Developer hanya bisa dibuat oleh Owner.',
             'email.unique' => 'Email ini sudah dipakai user lain.',
             'manager_id.exists' => 'Atasan yang dipilih tidak valid.',
         ];

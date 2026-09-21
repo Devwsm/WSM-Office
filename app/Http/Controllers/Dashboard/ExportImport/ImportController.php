@@ -100,7 +100,7 @@ class ImportController extends Controller
             'file.mimes' => 'File harus format .xlsx, .xls, atau .csv.',
         ]);
 
-        $importer = $this->resolveImporter($key);
+        $importer = $this->resolveImporter($key, $request->user());
         Excel::import($importer, $request->file('file'));
 
         // Kolom wajib hilang/berganti nama: berhenti di sini dengan pesan jelas
@@ -141,6 +141,18 @@ class ImportController extends Controller
         $payload = $this->previewService->retrieve($request->user(), $key, $token);
         abort_if($payload === null, 410, 'Sesi preview import sudah kadaluarsa (30 menit) — silakan upload ulang filenya.');
 
+        // Jaring pengaman kedua (aturan utamanya ada di EmployeeImport::rules()):
+        // hanya Owner yang boleh membuat akun Owner/Developer lewat import.
+        if ($key === 'employees' && ! $request->user()->isOwner()) {
+            foreach ($payload['valid'] as $row) {
+                abort_if(
+                    in_array($row['data']['role'] ?? null, ['owner', 'developer'], true),
+                    403,
+                    'Akun Owner dan Developer hanya bisa dibuat oleh Owner.',
+                );
+            }
+        }
+
         $imported = 0;
         foreach ($payload['valid'] as $row) {
             $this->persist($key, $row['data'], $request->user());
@@ -177,11 +189,12 @@ class ImportController extends Controller
         return $entry;
     }
 
-    private function resolveImporter(string $key): BaseImport
+    private function resolveImporter(string $key, ?User $actor = null): BaseImport
     {
         return match ($key) {
             'work-tracker' => new WorkItemImport,
-            'employees' => new EmployeeImport,
+            // Role Owner/Developer di file hanya diterima kalau yang mengimport Owner.
+            'employees' => new EmployeeImport((bool) $actor?->isOwner()),
             'kpi' => new KpiImport,
             'budget' => new ProjectBudgetImport,
             default => abort(404),

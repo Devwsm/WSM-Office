@@ -41,6 +41,14 @@ class UpdatePasswordRequest extends FormRequest
 
             if (! Hash::check($this->input('current_password'), Auth::user()->password)) {
                 $validator->errors()->add('current_password', 'Password saat ini salah.');
+
+                return;
+            }
+
+            // Penting untuk password sementara (reset IT / import default):
+            // memasukkan password yang sama lagi tidak boleh dianggap "sudah diganti".
+            if ($this->input('password') === $this->input('current_password')) {
+                $validator->errors()->add('password', 'Password baru tidak boleh sama dengan password saat ini.');
             }
         });
     }

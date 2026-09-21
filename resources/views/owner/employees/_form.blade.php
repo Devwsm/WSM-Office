@@ -39,8 +39,9 @@
     <div>
         <label class="field-label-wsm mb-1.5">Role</label>
         <select name="role" class="input-wsm" required>
-            @foreach (['karyawan' => 'Karyawan', 'manajer' => 'Manajer', 'hrd' => 'HRD', 'owner' => 'Owner'] as $value => $label)
-                <option value="{{ $value }}" @selected(old('role', $employee->role ?? 'karyawan') === $value)>{{ $label }}</option>
+            @foreach (auth()->user()->assignableRoles($employee) as $value)
+                <option value="{{ $value }}" @selected(old('role', $employee->role ?? 'karyawan') === $value)>
+                    {{ \App\Models\User::ROLE_LABELS[$value] }}</option>
             @endforeach
         </select>
         @error('role')

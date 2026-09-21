@@ -19,12 +19,17 @@
     </div>
 
     {{-- Tab ke System Changelog — "IT" punya 2 sub-halaman: Audit Log
-         (ini, read-only) dan System Changelog (CRUD catatan rilis). --}}
+        (ini, read-only) dan System Changelog (CRUD catatan rilis). --}}
     <div class="mb-5 flex gap-2">
         <span class="rounded-2xl bg-ink px-3.5 py-2 text-[11px] font-extrabold text-white">Audit Log</span>
         <a href="{{ route('dashboard.it.changelog.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">System
             Changelog</a>
+        @if (auth()->user()->canManageModule('it'))
+            <a href="{{ route('dashboard.it.password-resets.index') }}"
+                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset
+                Password</a>
+        @endif
     </div>
 
     <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">

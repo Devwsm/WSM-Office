@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 /**
  * EmployeeImport — Batch 4.
  * Dipakai controller: App\Http\Controllers\Dashboard\ExportImport\ImportController
- * Catalog key: 'employees' (owner_only — lihat App\Support\ExportImport\ExportCatalog)
+ * Catalog key: 'employees' (admin_only: Owner & Developer — lihat App\Support\ExportImport\ExportCatalog)
  *
  * BEDA dari WorkItemImport (Batch 3): baris valid di sini bikin AKUN
  * LOGIN baru (User::create(), kena #[Hidden]/'hashed' cast di model),
@@ -17,7 +17,12 @@ use Illuminate\Validation\Rule;
  * sudah difinalkan Owner (lihat README, bagian "Rencana Batch 4"):
  *   - password BOLEH kosong, default ke literal "password" (BUKAN
  *     random per-orang, biar konsisten sama akun demo/testing lain).
- *   - role diisi langsung per baris (bukan default 'karyawan').
+ *   - password kosong (default) => `must_change_password` menyala, jadi
+ *     akun baru itu dipaksa ganti password saat login pertama.
+ *   - role diisi langsung per baris (bukan default 'karyawan'). Role
+ *     `owner` dan `developer` hanya diterima kalau yang mengimport Owner
+ *     (konstruktor `$canAssignPrivilegedRoles`); Developer hanya boleh
+ *     mengimport manajer/karyawan/hrd.
  *   - manager_id (atasan) SENGAJA TIDAK ada di template — diisi
  *     manual belakangan lewat halaman edit karyawan yang sudah ada.
  *   - email yang UDAH KEPAKE (di DB ATAU dobel di file yang sama)
@@ -40,6 +45,8 @@ class EmployeeImport extends BaseImport
      * @var array<int, string>
      */
     private array $seenEmails = [];
+
+    public function __construct(private readonly bool $canAssignPrivilegedRoles = false) {}
 
     public function templateHeadings(): array
     {
@@ -78,8 +85,8 @@ class EmployeeImport extends BaseImport
         return [
             'nama' => ['required' => true],
             'email' => ['required' => true, 'note' => 'Harus unik. Kalau sudah kepake (atau dobel di file ini), baris ditolak.'],
-            'password' => ['required' => false, 'note' => 'Boleh kosong — kalau kosong, otomatis diisi "password". Kalau diisi manual, dipakai apa adanya (minimal 8 karakter).'],
-            'role' => ['required' => true, 'note' => 'Isi salah satu: owner, manajer, karyawan, hrd (boleh huruf besar/kecil).'],
+            'password' => ['required' => false, 'note' => 'Boleh kosong — kalau kosong, otomatis diisi "password" dan orangnya WAJIB menggantinya saat login pertama. Kalau diisi manual, dipakai apa adanya (minimal 8 karakter).'],
+            'role' => ['required' => true, 'note' => 'Isi salah satu: manajer, karyawan, hrd (boleh huruf besar/kecil). Role owner dan developer hanya diterima kalau yang mengimport adalah Owner.'],
             'divisi' => ['required' => false],
             'jabatan' => ['required' => false],
             'tanggal_masuk' => ['required' => false, 'note' => 'Boleh kosong. Format DD/MM/YYYY.'],
@@ -119,8 +126,16 @@ class EmployeeImport extends BaseImport
             'role' => [
                 'required',
                 function ($attribute, $value, $fail) {
-                    if (! in_array(mb_strtolower(trim((string) $value)), ['owner', 'manajer', 'karyawan', 'hrd'], true)) {
-                        $fail('Role harus salah satu dari: owner, manajer, karyawan, hrd.');
+                    $role = mb_strtolower(trim((string) $value));
+
+                    if (! in_array($role, ['owner', 'developer', 'manajer', 'karyawan', 'hrd'], true)) {
+                        $fail('Role harus salah satu dari: manajer, karyawan, hrd (owner dan developer khusus Owner).');
+
+                        return;
+                    }
+
+                    if (in_array($role, ['owner', 'developer'], true) && ! $this->canAssignPrivilegedRoles) {
+                        $fail('Role owner dan developer hanya bisa diimport oleh Owner.');
                     }
                 },
             ],
@@ -163,6 +178,8 @@ class EmployeeImport extends BaseImport
             // Cast 'hashed' di model User yang urus bcrypt-nya pas
             // disimpan — di sini cukup teks polos.
             'password' => ! empty($validated['password']) ? $validated['password'] : 'password',
+            // Password default "password" = password sementara: wajib diganti saat login pertama.
+            'must_change_password' => empty($validated['password']),
             'role' => mb_strtolower(trim($validated['role'])),
             'division' => $validated['divisi'] ?: null,
             'job_title' => $validated['jabatan'] ?: null,
@@ -183,7 +200,7 @@ class EmployeeImport extends BaseImport
             // WorkItemImport) — biar Owner bisa lihat di preview mana
             // baris yang bakal kena default "password" tanpa nampilin
             // teks password beneran di layar.
-            'password_source' => ! empty($validated['password']) ? 'Diisi manual' : 'Default (password)',
+            'password_source' => ! empty($validated['password']) ? 'Diisi manual' : 'Default (wajib diganti saat login)',
         ];
     }
 }

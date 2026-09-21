@@ -15,7 +15,7 @@
         <div class="flex items-center gap-2">
             <strong class="text-sm">{{ $user->name }}</strong>
             <span
-                class="badge-wsm-{{ match ($user->role) {'owner' => 'blue','manajer' => 'green','hrd' => 'yellow',default => 'gray'} }}">
+                class="badge-wsm-{{ match ($user->role) {'owner', 'developer' => 'blue','manajer' => 'green','hrd' => 'yellow',default => 'gray'} }}">
                 {{ $user->roleLabel() }}
             </span>
         </div>

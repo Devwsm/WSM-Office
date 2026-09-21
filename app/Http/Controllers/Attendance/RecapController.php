@@ -158,7 +158,7 @@ class RecapController extends Controller
     /**
      * Selfie absensi (masuk/pulang). Disimpan di disk private; hanya bisa
      * dibuka user yang lolos gate `module:people,view` DAN scope yang sama
-     * dengan halaman rekap (`scopedUsers()`): Owner/HRD semua orang, selain
+     * dengan halaman rekap (`scopedUsers()`): Owner/HRD/Developer semua orang, selain
      * itu diri sendiri + bawahan.
      */
     public function photo(Attendance $attendance, string $type)
@@ -209,7 +209,7 @@ class RecapController extends Controller
         /** @var User $me */
         $me = Auth::user();
 
-        if ($me->isOwner() || $me->isHrd()) {
+        if ($me->isOwner() || $me->isHrd() || $me->isDeveloper()) {
             return User::query()->orderBy('name')->get();
         }
 

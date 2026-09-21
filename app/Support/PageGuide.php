@@ -65,8 +65,9 @@ class PageGuide
     }
 
     /**
-     * 'owner' -> label statis "Khusus Owner"; nama modul -> label dinamis
-     * sesuai level akses user (Manage/View); selain itu tidak ada label.
+     * 'owner' -> label statis "Khusus Owner"; 'owner-developer' -> label
+     * statis "Owner & Developer"; nama modul -> label dinamis sesuai level
+     * akses user (Manage/View); selain itu tidak ada label.
      *
      * @return array{label:string,tone:string}|null
      */
@@ -78,6 +79,10 @@ class PageGuide
 
         if ($access === 'owner') {
             return ['label' => 'Khusus Owner', 'tone' => 'gray'];
+        }
+
+        if ($access === 'owner-developer') {
+            return ['label' => 'Owner & Developer', 'tone' => 'gray'];
         }
 
         if ($user === null) {
