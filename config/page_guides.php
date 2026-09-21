@@ -448,11 +448,11 @@ return [
                     ['Bulan Lalu dan Bulan Depan', 'pindah bulan.'],
                     ['Lihat lokasi', 'membuka titik lokasi absen masuk atau pulang di Google Maps, lengkap dengan jaraknya dari kantor.'],
                     ['Lihat selfie', 'thumbnail foto absen masuk dan pulang (kalau ada).'],
-                    ['Koreksi jam absen', 'ubah jam masuk dan/atau pulang. Alasan koreksi wajib diisi dan bisa dilihat karyawan.'],
+                    ['Koreksi jam absen', 'ubah jam masuk dan/atau pulang. Alasan koreksi wajib diisi dan bisa dilihat karyawan. Tombolnya hanya tampil untuk akses Manage pada modul People.'],
                 ],
                 'Perlu diketahui' => [
                     'Setelah dikoreksi, kartu menampilkan siapa yang mengoreksi, kapan, dan alasannya.',
-                    'Koreksi langsung membutuhkan akses Manage pada modul People. Karyawan sendiri bisa mengajukan koreksi lewat aplikasinya, lalu diputuskan di halaman Persetujuan Koreksi Presensi.',
+                    'Kalau tombol koreksi tidak muncul, aksesmu di modul People masih View. Karyawan sendiri bisa mengajukan koreksi lewat aplikasinya, lalu diputuskan di halaman Persetujuan Koreksi Presensi.',
                     'Panel "Izin/Cuti Bulan Ini" muncul di atas kalau karyawan punya pengajuan di bulan itu.',
                 ],
             ],

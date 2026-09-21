@@ -124,7 +124,7 @@ Menggantikan checklist tes manual di browser (bagian A–K pada README versi com
 
 **Menjalankan:** `php artisan test` (SQLite `:memory:`, tanpa setup apa pun; `public/hot` dan `public/build` tidak perlu ada). Untuk MySQL/MariaDB: buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` — jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya.
 
-**Hasil:** 301 tes = **296 lulus + 5 dilewati (skip) yang sengaja mendokumentasikan celah yang belum diperbaiki**, 2.409 assertion, ±16 detik (SQLite) / ±18 detik (MariaDB). Hasil identik di SQLite dan MariaDB 10.11 (PHP 8.4.25). _Batch 3 (Bab 2.5) menambah `PageGuideTest`: total kini 311 tes, lihat 2.5._
+**Hasil:** 301 tes = **296 lulus + 5 dilewati (skip) yang sengaja mendokumentasikan celah yang belum diperbaiki**, 2.409 assertion, ±16 detik (SQLite) / ±18 detik (MariaDB). Hasil identik di SQLite dan MariaDB 10.11 (PHP 8.4.25). _Batch 3 (Bab 2.5) menambah `PageGuideTest` dan Batch 4 (Bab 2.6) 2 tes di `AttendanceRecapTest`: total kini 313 tes._
 
 | File tes                | Tes | Mencakup (butir checklist)                                                                                                                                                   |
 | ----------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -133,7 +133,7 @@ Menggantikan checklist tes manual di browser (bagian A–K pada README versi com
 | `AttendanceFlowTest`    | 30  | C5–C15: geofence, WFH, Lapangan/Gigs multi-sesi, selfie, bentrok cuti, auto-close lupa pulang, riwayat bulanan, throttle                                                     |
 | `EmployeeRequestsTest`  | 24  | C16–C21: cuti (kuota, akhir pekan, batal), lembur, koreksi presensi (validasi, batal, hanya milik sendiri)                                                                   |
 | `ApprovalFlowTest`      | 20  | D1–D9: setujui/tolak/batalkan, wewenang atasan langsung vs Owner vs HRD, audit log, dampak ke saldo cuti/absen/shortage                                                      |
-| `AttendanceRecapTest`   | 13  | E1–E5: cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual (view vs manage)                                                                             |
+| `AttendanceRecapTest`   | 15  | E1–E5: cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual (view vs manage)                                                                             |
 | `OwnerAreaTest`         | 24  | F1–F12: CRUD karyawan, nonaktif/aktifkan (+ bawahan naik ke atasan), akses dashboard per modul, pengaturan kantor (16 aturan validasi), pesan kontak                         |
 | `EmployeeAppTest`       | 20  | C1–C4, C24, K1–K4: Home, KPI/metrik, memo & inbox (audiens, aktif/nonaktif, hide/read), balas thread, matriks modul, halaman 403                                             |
 | `WorkControlTest`       | 28  | G1–G13: Memo Forum, Work Tracker (project/task/progress), Timeline Calendar, Meetings/MoM + sync tracker + Blast                                                             |
@@ -310,7 +310,21 @@ Fitur baru: tiap halaman dashboard punya tombol **"? Panduan"** (melayang di kan
 
 **Belum termasuk:** halaman aplikasi karyawan (`/app`, layout terpisah) belum punya tombol panduan.
 
-**Ditemukan saat menulis panduan (belum diperbaiki):** form "Koreksi jam absen" di `attendance/recap/show.blade.php` tampil untuk semua yang bisa membuka halaman, termasuk akses People level View, padahal route penyimpanannya mewajibkan Manage (akan kena 403). Panduan sudah menyebut bahwa koreksi butuh akses Manage.
+**Ditemukan saat menulis panduan:** form "Koreksi jam absen" tampil untuk akses People level View padahal simpannya 403. Sudah diperbaiki di Bab 2.6.
+
+### 2.6 Perbaikan susulan: form Koreksi jam absen (Batch 4 — 2026-09-21)
+
+| #   | Langkah                                                                                          | Status                                  |
+| --- | ------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| 1   | Tulis 2 tes dulu (level View tidak boleh melihat form, Manage boleh) dan pastikan tes View gagal | ✅ gagal sebelum perbaikan              |
+| 2   | Bungkus form koreksi di `attendance/recap/show.blade.php` dengan cek `canManageModule('people')` | ✅                                      |
+| 3   | Uji mutasi: cek dikembalikan jadi `@if (true)` → tes View harus gagal lagi                       | ✅ gagal, lalu hijau setelah dipulihkan |
+| 4   | Seluruh tes                                                                                      | ✅ 313 tes: 308 lulus + 5 skip          |
+| 5   | Sesuaikan teks Panduan "Riwayat Absensi Karyawan" (tombol koreksi hanya untuk Manage)            | ✅                                      |
+
+**Hasil:** pengguna People level View tetap bisa membuka riwayat absensi bawahannya, tetapi tidak lagi melihat tombol/form "Koreksi jam absen" yang ujungnya 403. Keamanan tidak berubah: route simpan tetap dijaga `module:people,manage` dan scope tim tetap dicek di controller (tes lama `test_view_only_users_cannot_correct_even_by_posting_directly` dan `test_manager_with_manage_access_is_still_limited_to_her_team` tetap hijau). Diuji di SQLite (PHP 8.3.6); belum diuji ulang di MariaDB.
+
+**Catatan tes:** frasa "Koreksi jam absen" juga muncul di modal Panduan halaman, jadi tes memeriksa teks lain yang khusus form ("Simpan Koreksi", placeholder alasan, dan URL simpan).
 
 ---
 
@@ -519,7 +533,7 @@ storage/
 tests/
 ├── TestCase.php                            # Dasar semua tes: withoutVite() + emulasi MySQL (DATE, FIELD, DATE_FORMAT) di SQLite
 ├── Concerns/CreatesWsmFixtures.php         # Akun standar, pengaturan kantor, waktu dibekukan (Senin 2026-09-21)
-├── Feature/                                # 16 file, 310 tes (lihat tabel Bab 2.3 dan 2.5)
+├── Feature/                                # 16 file, 312 tes (lihat tabel Bab 2.3, 2.5, 2.6)
 │   ├── PublicPagesTest · AuthenticationTest · AttendanceFlowTest · EmployeeRequestsTest
 │   ├── ApprovalFlowTest · AttendanceRecapTest · OwnerAreaTest · EmployeeAppTest
 │   ├── WorkControlTest · ManagementModulesTest · RecruitmentTest · ExportImportTest · AccessMatrixTest
@@ -580,7 +594,7 @@ tests/
 
 ### 4.3 Kualitas & keamanan (sebaiknya sebelum/segera setelah go-live)
 
-- **Tes otomatis:** 311 tes (306 lulus, 5 skip terdokumentasi) di 17 file, jalan dengan `php artisan test` di SQLite `:memory:` maupun MySQL/MariaDB — cakupan lengkap di Bab 2.3. Jalankan sebelum tiap deploy. Perbaiki 5 celah yang di-skip (satu di antaranya soal keamanan: HRD bisa membuat akun Owner lewat convert pelamar), lalu hapus baris `markTestSkipped`-nya. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
+- **Tes otomatis:** 313 tes (308 lulus, 5 skip terdokumentasi) di 17 file, jalan dengan `php artisan test` di SQLite `:memory:` maupun MySQL/MariaDB — cakupan lengkap di Bab 2.3. Jalankan sebelum tiap deploy. Perbaiki 5 celah yang di-skip (satu di antaranya soal keamanan: HRD bisa membuat akun Owner lewat convert pelamar), lalu hapus baris `markTestSkipped`-nya. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
 - **Tarif potongan kekurangan jam** default 0: jika Owner belum mengisinya di Pengaturan Kantor, potongan diam-diam nol (form generate payroll sudah menampilkan peringatan).
@@ -609,4 +623,4 @@ Kesenjangan terbesar ada di **modul finansial**: Payroll ada tetapi memakai atur
 
 Yang membuat aplikasi **belum layak dibuka ke publik saat ini** bukan kekurangan fitur, tetapi kesiapan deploy: kebutuhan PHP 8.4.1, `.env` mode lokal/debug, struktur folder cPanel, aset Vite yang belum dibangun, serta password default "password" untuk karyawan hasil import. Semuanya bisa diselesaikan dalam skala hari, bukan minggu.
 
-**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live; blocker #5 sudah selesai dan teruji; tes otomatis kini menutup seluruh checklist manual A–K (311 tes, termasuk 10 tes panduan halaman) dan sudah menemukan + memperbaiki 5 bug (Bab 2.3).
+**Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial); kesiapan produksi masih perlu 8 blocker tersisa (dari 9) pada Bab 4.1 sebelum go-live; blocker #5 sudah selesai dan teruji; tes otomatis kini menutup seluruh checklist manual A–K (313 tes, termasuk 10 tes panduan halaman dan 2 tes form koreksi absen) dan sudah menemukan + memperbaiki 5 bug (Bab 2.3).

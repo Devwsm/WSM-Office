@@ -215,6 +215,41 @@ class AttendanceRecapTest extends TestCase
         $this->assertFalse($row->fresh()->wasCorrected());
     }
 
+    public function test_correction_form_is_hidden_for_view_only_users(): void
+    {
+        $row = $this->attendance($this->p['aldora'], '2026-09-18', '11:00', '15:00');
+
+        // Kanaya: people = view, Aldora bawahannya -> halaman terbuka, tapi tanpa form koreksi
+        // (POST-nya memang 403, jadi tombolnya tidak boleh dipajang).
+        $this->actingAs($this->p['manajer'])
+            ->get(route('attendance.recap.show', $this->p['aldora']))
+            ->assertOk()
+            ->assertSee('18 Sep')
+            // Bukan 'Koreksi jam absen': frasa itu juga ada di modal Panduan halaman.
+            ->assertDontSee('Simpan Koreksi')
+            ->assertDontSee('Alasan koreksi (wajib')
+            ->assertDontSee(route('attendance.recap.correct', $row), false);
+    }
+
+    public function test_correction_form_is_shown_for_manage_users(): void
+    {
+        $row = $this->attendance($this->p['aldora'], '2026-09-18', '11:00', '15:00');
+
+        $this->actingAs($this->p['hrd'])
+            ->get(route('attendance.recap.show', $this->p['aldora']))
+            ->assertOk()
+            ->assertSee('Simpan Koreksi')
+            ->assertSee(route('attendance.recap.correct', $row), false);
+
+        // Manajer yang dinaikkan ke Manage juga melihatnya.
+        $this->grant($this->p['manajer'], 'people', 'manage');
+
+        $this->actingAs($this->p['manajer'])
+            ->get(route('attendance.recap.show', $this->p['aldora']))
+            ->assertOk()
+            ->assertSee('Simpan Koreksi');
+    }
+
     public function test_manager_with_manage_access_is_still_limited_to_her_team(): void
     {
         $this->grant($this->p['manajer'], 'people', 'manage');
