@@ -439,6 +439,10 @@
             </main>
         </div>
     </div>
+
+    {{-- Tombol "? Panduan" + modal panduan halaman (config/page_guides.php).
+        Tampil otomatis kalau route yang sedang dibuka punya panduan. --}}
+    @include('partials.page-guide')
 </body>
 
 </html>
