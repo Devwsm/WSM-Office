@@ -76,7 +76,7 @@ jobs:
       # the data connection with a decode_error alert as a result. lftp is a
       # separate C binary with its own correct TLS handling, so it isn't
       # affected by that Node bug.
-      - name: Deploy public website
+      - name: Deploy Laravel application
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USERNAME_PUBLIC: ${{ secrets.FTP_USERNAME_PUBLIC }}
