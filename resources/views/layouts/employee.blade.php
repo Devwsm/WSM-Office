@@ -33,8 +33,8 @@
         @include('partials.entry-popups', ['door' => 'app'])
     @endunless
 
-    <div class="min-h-screen pb-28">
-        <div class="mx-auto max-w-140 px-4 pb-10 pt-5">
+    <div class="employee-app-shell min-h-screen pb-32 sm:pb-28">
+        <div class="employee-app-container mx-auto w-full max-w-3xl px-3 pb-10 pt-3 sm:px-5 sm:pt-5 lg:px-6">
             {{-- 2026-09-10 — `inboxOpened` (beda dari `inboxOpen`, yang itu
                 buka/tutup modal): flag one-way, begitu Inbox dibuka
                 sekali di kunjungan ini, badge unread di ikon ✉ langsung
@@ -46,96 +46,73 @@
                 `true` kalau emang udah 0 unread dari awal, biar gak fetch
                 sia-sia. --}}
             <div x-data="{ inboxOpen: false, inboxOpened: {{ ($inboxUnreadCount ?? 0) === 0 ? 'true' : 'false' }} }">
-                <header class="mb-8 flex items-center justify-between">
-                    <div class="flex items-center gap-2.5">
-                        <div
-                            class="grid h-11 w-11 place-items-center rounded-2xl bg-ink text-[10px] font-black text-white">
-                            WSM
+                <header
+                    class="employee-app-header mb-6 rounded-wsm-lg border border-line bg-paper/95 p-3 shadow-[0_8px_30px_rgba(16,16,16,0.04)] backdrop-blur sm:mb-8 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+                    <div class="employee-header-main flex items-center justify-between gap-3">
+                        <div class="flex min-w-0 items-center gap-2.5">
+                            <div
+                                class="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-ink text-[10px] font-black text-white sm:h-11 sm:w-11">
+                                WSM
+                            </div>
+                            <span class="truncate text-xs font-extrabold text-muted">{{ $title ?? 'WSM' }}</span>
                         </div>
-                        <span class="text-xs font-extrabold text-muted">{{ $title ?? 'WSM' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        {{--
-                        2026-09-09 — refactor "permission bukan role" (lihat
-                        README). SEBELUMNYA `isManajer() || isOwner() ||
-                        isHrd()` — role apa pun di 3 itu otomatis lihat
-                        tombol ini & bisa masuk Rekap Absensi/Persetujuan,
-                        gak peduli beneran ditugasin ngurus tim atau
-                        enggak. SEKARANG `canViewModule('people')` — sama
-                        modul yang gerbangin route attendance.recap.* &
-                        approval.leave./overtime.* (lihat routes/web.php).
-                        Owner otomatis lolos (accessLevel() hardcode
-                        'manage' semua modul), gak perlu di-assign manual.
-                    --}}
-                        @if (auth()->user()->canViewModule('people'))
-                            {{-- Entry point tunggal ke dashboard (pola prototype: 1 tombol
-                            di halaman/header, bukan tab terpisah di bottom-nav). Landing
-                            di attendance.recap.index karena itu satu-satunya route yang
-                            dibolehkan buat modul 'people' — dari situ sidebar
-                            layouts.app nampilin link lain (Persetujuan, Pelamar, dst)
-                            sesuai modul yang di-assign ke user ini. --}}
-                            <a href="{{ route('attendance.recap.index') }}"
-                                class="grid h-10 place-items-center rounded-2xl bg-ink px-3.5 text-[10px] font-extrabold text-white">
-                                Kelola Tim
-                            </a>
-                        @endif
-                        @if (auth()->user()->hasAnyDashboardAccess())
-                            {{-- Terpisah dari "Kelola Tim" di atas: dua-duanya SEKARANG
-                            sama-sama dashboard_access (Fase 6a/2026-09-09), tapi
-                            beda modul — "Kelola Tim" khusus modul 'people'
-                            (attendance.recap.*), tombol ini nyala kalau punya
-                            akses ke modul APA PUN (termasuk 'work', 'budget',
-                            dst — lihat DashboardAccess::MODULES). Bisa aja
-                            Karyawan biasa lihat tombol ini doang tanpa
-                            tanpa "Kelola Tim", atau sebaliknya. --}}
-                            <a href="{{ route('dashboard.index') }}"
-                                class="grid h-10 place-items-center rounded-2xl border border-line bg-white px-3.5 text-[10px] font-extrabold text-ink">
-                                Dashboard
-                            </a>
-                        @endif
-                        <form method="POST" action="{{ route('logout') }}"
-                            data-confirm="Kamu akan keluar dari akun ini." data-confirm-title="Keluar akun?"
-                            data-confirm-button="Ya, keluar">
-                            @csrf
-                            <button
-                                class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd] text-xs font-black">
-                                ⏻
-                            </button>
-                        </form>
-                        {{-- Inbox (audit ronde 6, 2026-09-09) — padanan ikon amplop +
-                        badge unread `mail-icon-v19` di prototype. Data
-                        `$inboxMemos`/`$inboxUnreadCount` dari View Composer
-                        (AppServiceProvider), makanya kelihatan di SEMUA halaman
-                        App Mode, bukan cuma Home. Posisi persis prototype:
-                        sebelum avatar. --}}
-                        <button type="button" aria-label="Inbox"
-                            @click="inboxOpen = true; if (!inboxOpened) {
-                                inboxOpened = true;
-                                fetch('{{ route('employee.memo.markAllRead') }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                                        'Accept': 'application/json',
-                                    },
-                                });
-                            }"
-                            class="relative grid h-10 w-10 flex-none place-items-center rounded-2xl bg-[#ece7dd] text-sm">
-                            ✉
-                            @if ($inboxUnreadCount ?? 0)
-                                <span x-show="!inboxOpened" x-cloak
-                                    class="absolute -right-1 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full border-2 border-cream bg-[#ef5c50] px-1 text-[8px] font-black text-white">
-                                    {{ $inboxUnreadCount > 9 ? '9+' : $inboxUnreadCount }}
-                                </span>
+
+                        <div class="employee-header-actions flex flex-none items-center gap-1.5 sm:gap-2">
+                            @if (auth()->user()->canViewModule('people'))
+                                <a href="{{ route('attendance.recap.index') }}"
+                                    class="employee-header-link grid min-h-10 place-items-center rounded-2xl bg-ink px-3 text-[10px] font-extrabold text-white sm:px-3.5">
+                                    <span class="employee-header-link-label">Kelola Tim</span>
+                                    <span class="employee-header-link-short" aria-hidden="true">Tim</span>
+                                </a>
                             @endif
-                        </button>
-                        {{-- Avatar user (posisi paling kanan header, mengikuti pola
-                        prototype) — link ke tab Profile. Sengaja cuma inisial
-                        nama, belum ada foto profil karyawan sama sekali di
-                        sistem ini. --}}
-                        <a href="{{ route('employee.profile.index') }}"
-                            class="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-ink text-xs font-black text-white">
-                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                        </a>
+                            @if (auth()->user()->hasAnyDashboardAccess())
+                                <a href="{{ route('dashboard.index') }}"
+                                    class="employee-header-link grid min-h-10 place-items-center rounded-2xl border border-line bg-white px-3 text-[10px] font-extrabold text-ink sm:px-3.5">
+                                    <span class="employee-header-link-label">Dashboard</span>
+                                    <span class="employee-header-link-short" aria-hidden="true">Menu</span>
+                                </a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}"
+                                data-confirm="Kamu akan keluar dari akun ini." data-confirm-title="Keluar akun?"
+                                data-confirm-button="Ya, keluar">
+                                @csrf
+                                <button type="submit" aria-label="Keluar"
+                                    class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd] text-xs font-black">
+                                    ⏻
+                                </button>
+                            </form>
+                            <button type="button" aria-label="Inbox"
+                                @click="inboxOpen = true; if (!inboxOpened) {
+                                    inboxOpened = true;
+                                    fetch('{{ route('employee.memo.markAllRead') }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                            'Accept': 'application/json',
+                                        },
+                                    });
+                                }"
+                                class="relative grid h-10 w-10 flex-none place-items-center rounded-2xl bg-[#ece7dd] text-sm">
+                                ✉
+                                @if ($inboxUnreadCount ?? 0)
+                                    <span x-show="!inboxOpened" x-cloak
+                                        class="absolute -right-1 -top-1.5 grid min-h-4.5 min-w-4.5 place-items-center rounded-full border-2 border-cream bg-[#ef5c50] px-1 text-[8px] font-black text-white">
+                                        {{ $inboxUnreadCount > 9 ? '9+' : $inboxUnreadCount }}
+                                    </span>
+                                @endif
+                            </button>
+                            <a href="{{ route('employee.profile.index') }}" aria-label="Profil saya"
+                                class="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-ink text-xs font-black text-white">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </a>
+                        </div>
+                    </div>
+
+                    <div
+                        class="employee-header-mobile-meta mt-3 flex items-center justify-between gap-2 border-t border-line pt-2.5 sm:hidden">
+                        <span class="truncate text-[10px] font-semibold text-muted">{{ auth()->user()->name }}</span>
+                        <span
+                            class="flex-none rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-[#68635c]">{{ ucfirst(auth()->user()->role) }}</span>
                     </div>
                 </header>
 

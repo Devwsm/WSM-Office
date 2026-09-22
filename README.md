@@ -160,7 +160,7 @@ Beberapa tes sengaja mengunci perilaku saat ini, mis. pengajuan cuti tumpang tin
 
 ### 2.3 Panduan tes untuk non-teknis: tiap tes ngapain dan apa yang dicek
 
-**Apa itu "tes otomatis"?** Robot yang berperan jadi pengguna. Ia membuka halaman, mengisi form, menekan tombol, lalu memeriksa apakah hasilnya benar, persis yang dulu kamu lakukan manual di browser, tapi 370 skenario selesai dalam sekitar 16 detik dan tidak pernah lupa langkah. Semua dilakukan di **database sementara yang kosong** dan hilang begitu tes selesai, jadi data aplikasimu yang asli tidak tersentuh.
+**Apa itu "tes otomatis"?** Robot yang berperan jadi pengguna. Ia membuka halaman, mengisi form, menekan tombol, lalu memeriksa apakah hasilnya benar, persis yang dulu kamu lakukan manual di browser, tapi 380 skenario selesai dalam sekitar 16 detik dan tidak pernah lupa langkah. Semua dilakukan di **database sementara yang kosong** dan hilang begitu tes selesai, jadi data aplikasimu yang asli tidak tersentuh.
 
 **Cara membaca hasil** setelah menjalankan `php artisan test`:
 
@@ -554,15 +554,16 @@ tests/
 
 ### 4.0 Keputusan yang sudah diambil
 
-| Topik                            | Keputusan                                                                                                                                                                                          |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Versi PHP hosting                | cPanel Rumahweb mentok di **PHP 8.3** (tidak ada 8.4). Tindakannya di 4.1 no. 1.                                                                                                                   |
-| Struktur folder cPanel           | `public_html` hanya berisi isi folder `public/` project. Sisa project (`app/`, `vendor/`, `storage/`, `.env`, dst.) berada **di luar** `public_html`, sejajar dengannya. Tindakannya di 4.1 no. 3. |
-| Status deployment                | Masih lokal, belum ada deploy production. Karena itu `public/build` belum dibangun (4.1 no. 4).                                                                                                    |
-| Fitur yang dikerjakan berikutnya | Pengaturan Kantor, ritme mingguan Dashboard Owner, Payroll, Project Budgeting, Royalty Dashboard (4.2 no. 2–6). Payroll, Budgeting, dan Royalty ditandai penting/krusial. Urutannya di 4.4.        |
-| Role developer                   | Sudah dibuat sebagai akses **Tingkat 2** (aturan di Bab 1). Ancha (office manager) memakai role `manajer` dengan Manage 10 modul (`TestingAccountsSeeder`).                                        |
-| Panduan halaman dashboard        | Tampilan di HP dan desktop sudah dicek, aman (Bab 2.4).                                                                                                                                            |
-| Popup informasi preview          | Selesai (2026-09-22, 4.2 no. 8): modal preview di publik+login, App Mode (+sambutan), dan Dashboard. Saat operasional, slot ini dipakai ulang untuk Himbauan.                                      |
+| Topik                                       | Keputusan                                                                                                                                                                                                  |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Versi PHP hosting                           | cPanel Rumahweb mentok di **PHP 8.3** (tidak ada 8.4). Tindakannya di 4.1 no. 1.                                                                                                                           |
+| Struktur folder cPanel                      | `public_html` hanya berisi isi folder `public/` project. Sisa project (`app/`, `vendor/`, `storage/`, `.env`, dst.) berada **di luar** `public_html`, sejajar dengannya. Tindakannya di 4.1 no. 3.         |
+| Status deployment                           | Masih lokal, belum ada deploy production. Karena itu `public/build` belum dibangun (4.1 no. 4).                                                                                                            |
+| Fitur yang dikerjakan berikutnya            | Pengaturan Kantor, ritme mingguan Dashboard Owner, Payroll, Project Budgeting, Royalty Dashboard (4.2 no. 2–6). Payroll, Budgeting, dan Royalty ditandai penting/krusial. Urutannya di 4.4.                |
+| Role developer                              | Sudah dibuat sebagai akses **Tingkat 2** (aturan di Bab 1). Ancha (office manager) memakai role `manajer` dengan Manage 10 modul (`TestingAccountsSeeder`).                                                |
+| Panduan halaman dashboard                   | Tampilan di HP dan desktop sudah dicek, aman (Bab 2.4).                                                                                                                                                    |
+| Popup informasi preview                     | Selesai (2026-09-22, 4.2 no. 8): modal preview di publik+login, App Mode (+sambutan), dan Dashboard. Saat operasional, slot ini dipakai ulang untuk Himbauan.                                              |
+| **App Mode responsif untuk semua karyawan** | Selesai (2026-09-22): layout `/app/*` dibuat mobile-first, header tidak meluber di layar kecil, tombol tetap mudah disentuh, bottom navigation aman di HP, dan area konten tetap nyaman di tablet/desktop. |
 
 ### 4.1 Blocker deploy (wajib beres sebelum publik)
 
@@ -570,7 +571,7 @@ Satu tabel untuk status sekaligus tindakan. Penjelasan blocker 4, 8, dan 9 ada d
 
 | #   | Blocker                               | Apa artinya                                                                                                                                                                                                                                                       | Tindakan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Status                                                     |
 | --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| 1   | **Versi PHP**                         | Paket Symfony v8.1 di `vendor/` (`clock`, `css-selector`, `event-dispatcher`, `string`, `translation`) mewajibkan PHP ≥ 8.4.1 (`vendor/composer/platform_check.php` menolak jalan di bawahnya), padahal `composer.json` menulis `^8.3` dan hosting mentok di 8.3. | Set `config.platform.php = 8.3.0` di `composer.json`, jalankan `composer update` di lokal supaya paket Symfony turun ke 7.4, lalu `php artisan test`. Folder `vendor/` hasilnya ikut di-upload (server tanpa terminal tidak bisa `composer install`). Cek awal (2026-09-21): 370 tes lulus di PHP 8.3.6 saat platform check dimatikan; itu bukan pengganti `composer update`. **Samakan dulu konstrain `maatwebsite/excel` di `composer.json` ke `^4.0`:** sekarang tertulis `^3.1` padahal yang terpasang di lock 4.0.3, jadi `composer update` tidak akan mempertahankannya. | 🟡 dilaporkan beres oleh pengguna (2026-09-22)             |
+| 1   | **Versi PHP**                         | Paket Symfony v8.1 di `vendor/` (`clock`, `css-selector`, `event-dispatcher`, `string`, `translation`) mewajibkan PHP ≥ 8.4.1 (`vendor/composer/platform_check.php` menolak jalan di bawahnya), padahal `composer.json` menulis `^8.3` dan hosting mentok di 8.3. | Set `config.platform.php = 8.3.0` di `composer.json`, jalankan `composer update` di lokal supaya paket Symfony turun ke 7.4, lalu `php artisan test`. Folder `vendor/` hasilnya ikut di-upload (server tanpa terminal tidak bisa `composer install`). Cek awal (2026-09-21): 380 tes lulus di PHP 8.3.6 saat platform check dimatikan; itu bukan pengganti `composer update`. **Samakan dulu konstrain `maatwebsite/excel` di `composer.json` ke `^4.0`:** sekarang tertulis `^3.1` padahal yang terpasang di lock 4.0.3, jadi `composer update` tidak akan mempertahankannya. | 🟡 dilaporkan beres oleh pengguna (2026-09-22)             |
 | 2   | **`.env` produksi**                   | `.env` yang ada khusus lokal: `APP_ENV=local`, `APP_DEBUG=true`, `APP_URL` localhost, DB user `root`.                                                                                                                                                             | Buat `.env` baru: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://...`, user DB khusus, `SESSION_SECURE_COOKIE=true`, `QUEUE_CONNECTION=sync`, dan `WOS_PREVIEW_MODE=false` begitu sistem dipakai operasional (4.2 no. 8).                                                                                                                                                                                                                                                                                                                                           | ⬜                                                         |
 | 3   | **Struktur folder cPanel**            | Kalau seluruh project ditaruh di `public_html`, `.env` dan `app/` bisa dibuka lewat URL (tidak ada `.htaccess` di root project).                                                                                                                                  | Sesuai keputusan (4.0): isi `public/` ke `public_html`, sisanya di luar sejajar `public_html`. Ubah 3 path di `public/index.php` (`maintenance.php`, `vendor/autoload.php`, `bootstrap/app.php`) dari `__DIR__.'/../...'` ke folder project, mis. `__DIR__.'/../wsm-office/...'`. Folder `storage/` otomatis ikut di luar `public_html`, dan itu syarat agar file private tetap aman.                                                                                                                                                                                          | ⬜ keputusan ada; path diubah saat deploy                  |
 | 4   | **Aset Vite**                         | Halaman butuh file CSS/JS hasil "rakitan" Vite di `public/build/` (penjelasan di bawah). Saat ini `public/hot` ada dan `public/build` belum ada.                                                                                                                  | Hapus `public/hot`, jalankan `npm run build` di lokal, upload isi `public/build` ke `public_html/build`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | ⬜ ditunda sampai deploy production (saat ini masih lokal) |
@@ -633,7 +634,7 @@ Butir 2–6 dan 8 adalah keputusan 2026-09-21 ("eksekusi"); butir 7 keputusan se
     - **Aturan tampil:** ditandai di `sessionStorage` browser dengan kunci gabungan pintu + popup + versi + token sesi (hash ID sesi login). Login ulang, akun lain, atau tab baru = muncul lagi. Ditutup lewat tombol, ✕, Esc, atau klik area gelap = dianggap sudah dibaca. Teks diubah → naikkan `version` di config supaya muncul lagi.
     - **Catatan Owner:** setelah login Owner mendarat di `/owner/dashboard`, jadi Owner melihat Peringatan versi dashboard dulu; Sambutan baru muncul saat Owner membuka App Mode lewat "← App Saya".
     - **Tidak muncul di:** halaman error, layar Kunci Dashboard, dan selama akun masih wajib ganti password (supaya tidak menumpuk dengan pengalihan ke Profil).
-    - **Saklar (`.env`):** `WOS_PREVIEW_MODE` (default `true`) mematikan Peringatan preview di semua pintu sekaligus; wajib di-set `false` saat sistem mulai dipakai operasional (4.1 no. 2). `WOS_ENTRY_POPUPS` (default `true`) mematikan semua popup; `phpunit.xml` mengisinya `false` supaya 370 tes yang ada tidak berubah.
+    - **Saklar (`.env`):** `WOS_PREVIEW_MODE` (default `true`) mematikan Peringatan preview di semua pintu sekaligus; wajib di-set `false` saat sistem mulai dipakai operasional (4.1 no. 2). `WOS_ENTRY_POPUPS` (default `true`) mematikan semua popup; `phpunit.xml` mengisinya `false` supaya 380 tes yang ada tidak berubah.
     - **Struktur kode:** teks, urutan, dan versi di `config/entry_popups.php`; pemilih popup `App\Support\EntryPopups` (pola sama dengan `PageGuide`); tampilan `partials/entry-popups.blade.php` + isi per jenis (`entry-popups/welcome`, `entry-popups/notice`); antrean dan `sessionStorage` di `resources/js/entry-popups.js` (`Alpine.data`); animasi di `resources/css/app.css`. Di-include di `layouts/public`, `layouts/employee`, `layouts/app`, dan `auth/login`. Butuh `npm run build` (4.1 no. 4).
     - **Isi Peringatan preview** (bahasa santai): (1) sistem masih preview dan belum untuk operasional, silakan dicoba dulu; (2) data yang dimasukkan hanya untuk testing; (3) data testing akan di-reset saat sistem siap dipakai operasional, jadi jangan memasukkan data asli atau rahasia.
     - **Sambutan:** kartu gelap dengan equalizer dan piringan hitam berputar (CSS murni, tanpa gambar atau library baru), sapaan menurut jam (WIB), nama depan, dan label role; animasi mati bila perangkat memilih `prefers-reduced-motion`.
@@ -647,6 +648,30 @@ Butir 2–6 dan 8 adalah keputusan 2026-09-21 ("eksekusi"); butir 7 keputusan se
 - **Tampilan teks:** UI berbahasa Inggris, teks penting/rawan salah paham berbahasa Indonesia. Saat ini banyak label campur; rapikan saat mengisi konten publik.
 - **Ditunda sesuai keputusan lama:** foto profil, tema per user, editor landing, Team Groups, reset password mandiri lewat email (tunggu email asli).
 
+### 4.2.1 App Mode — tampilan untuk semua karyawan
+
+Per 2026-09-22, layout `resources/views/layouts/employee.blade.php` dan style bersama `resources/css/app.css` sudah dipoles sebagai satu **App Mode responsif** untuk seluruh akun internal yang masuk ke `/app/*` (Karyawan, Manajer, HRD, Owner, dan Developer).
+
+Yang diperbaiki:
+
+- Header dibuat tetap rapi saat tombol Kelola Tim/Dashboard, Inbox, Profil, dan Keluar tampil bersamaan.
+- Pada layar HP kecil, label tombol yang panjang dipendekkan supaya tidak saling dorong.
+- Area konten menggunakan lebar yang aman untuk HP, tablet, dan desktop; tidak lagi bergantung pada `max-w-140` lama.
+- Bottom navigation dibuat lebih aman untuk layar sentuh dan area gesture/notch HP.
+- Ukuran target sentuh tombol utama dijaga agar nyaman digunakan dari HP.
+- Tidak mengubah route, hak akses, data, atau alur fitur; perubahan ini khusus shell/tampilan App Mode.
+
+**Yang perlu dicek manual di browser sebelum dianggap final:**
+
+1. HP kecil (sekitar 320–360 px): login → Home → buka Inbox → Profil → Request → Riwayat.
+2. HP normal (360–430 px): tombol header tidak terpotong dan bottom navigation tidak menutup konten.
+3. Tablet: kartu/form tetap terbaca tanpa scroll horizontal.
+4. Desktop: App Mode tetap berada di tengah dan tidak menjadi terlalu lebar.
+5. Absensi: tombol Test Lokasi, modal konfirmasi, kamera/selfie, dan peta tetap nyaman disentuh.
+6. Work Tracker dan kalender: tidak ada scroll horizontal yang tidak diperlukan.
+
+Tes otomatis tetap tidak menggantikan pengecekan visual browser karena responsif, kamera, geolocation, drag-and-drop, dan perilaku perangkat memang perlu diuji langsung.
+
 ### 4.3 Kualitas & keamanan (sebaiknya sebelum/segera setelah go-live)
 
 **Bug dan keterbatasan yang diketahui**
@@ -657,7 +682,7 @@ Butir 2–6 dan 8 adalah keputusan 2026-09-21 ("eksekusi"); butir 7 keputusan se
 
 **Lainnya**
 
-- **Tes otomatis:** 370 tes lulus di 19 file (Bab 2.2); jalankan sebelum tiap deploy. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
+- **Tes otomatis:** 380 tes lulus di 19 file (Bab 2.2); jalankan sebelum tiap deploy. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
 - **Log:** set `LOG_LEVEL=warning` dan rotasi harian di produksi.
@@ -684,7 +709,7 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 
 ## 5. Ringkasan
 
-WSM-Office sudah berjalan utuh dan stabil secara teknis: 370 tes otomatis lulus dan menutup seluruh checklist manual A–K. Fitur inti harian dari prototype (absensi lengkap dengan geofence dan selfie, izin/cuti/lembur/koreksi dengan approval, Work Tracker, meeting, memo, KPI, kontrak, legal, audit) sudah ada, ditambah rekrutmen, pusat Export/Import, dan panduan halaman yang tidak ada di prototype.
+WSM-Office sudah berjalan utuh dan stabil secara teknis: 380 tes otomatis lulus dan menutup seluruh checklist manual A–K. Fitur inti harian dari prototype (absensi lengkap dengan geofence dan selfie, izin/cuti/lembur/koreksi dengan approval, Work Tracker, meeting, memo, KPI, kontrak, legal, audit) sudah ada, dan App Mode untuk semua karyawan sekarang memakai shell responsif yang sama di HP, tablet, dan desktop, ditambah rekrutmen, pusat Export/Import, dan panduan halaman yang tidak ada di prototype.
 
 Kesenjangan terbesar ada di **modul finansial** (Payroll, Budget, Royalty; Bab 4.2 no. 4–6) serta halaman publik dan form lamaran yang belum siap tayang (konten placeholder, belum ada upload CV/portofolio). Yang menahan go-live bukan kekurangan fitur, tetapi kesiapan deploy: 7 dari 9 blocker di Bab 4.1 masih terbuka (versi PHP, `.env` produksi, struktur folder cPanel, aset Vite, database tanpa terminal, pembersihan paket, konten publik); blocker file sensitif dan password default sudah selesai.
 
