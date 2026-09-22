@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             OfficeSettingSeeder::class,
             DemoSeeder::class,
+            TestingAccountsSeeder::class,
         ]);
     }
 }

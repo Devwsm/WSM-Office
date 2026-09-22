@@ -5,6 +5,7 @@
 import Alpine from "alpinejs";
 import "./alerts";
 import "./attendance";
+import "./entry-popups";
 
 window.Alpine = Alpine;
 Alpine.start();

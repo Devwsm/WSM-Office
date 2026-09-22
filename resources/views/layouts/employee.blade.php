@@ -13,8 +13,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {{-- 2026-09-10 — dibutuhkan buat fetch() auto mark-read Inbox modal
-         di bawah (pola sama kayak layouts/app.blade.php buat drag-drop
-         Work Tracker board, lihat catatan di situ). --}}
+        di bawah (pola sama kayak layouts/app.blade.php buat drag-drop
+        Work Tracker board, lihat catatan di situ). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'WSM' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -23,18 +23,28 @@
 <body class="bg-cream text-ink antialiased">
     @include('partials.flash-data')
 
+    {{-- Popup informasi preview (README Bab 4.2 no. 8): Sambutan "Welcome to
+        W.O.S" + Peringatan preview, tampil sekali per login. DIBUNGKUS @unless
+        must_change_password — user yang masih wajib ganti password otomatis
+        dialihkan ke halaman ini (EnsurePasswordChanged), jadi popup ditunda
+        biar gak numpuk sama pengalihan paksa itu; muncul normal begitu
+        passwordnya sudah diganti. --}}
+    @unless (auth()->user()?->must_change_password)
+        @include('partials.entry-popups', ['door' => 'app'])
+    @endunless
+
     <div class="min-h-screen pb-28">
         <div class="mx-auto max-w-140 px-4 pb-10 pt-5">
             {{-- 2026-09-10 — `inboxOpened` (beda dari `inboxOpen`, yang itu
-                 buka/tutup modal): flag one-way, begitu Inbox dibuka
-                 sekali di kunjungan ini, badge unread di ikon ✉ langsung
-                 disembunyikan (Alpine, instan, gak nunggu reload) SEKALIGUS
-                 fetch() ke server nandain semua memo yang kelihatan sebagai
-                 sudah dibaca (Memo::markAllReadFor(), lihat
-                 MemoInteractionController::markAllRead()) — biar kunjungan
-                 App Mode BERIKUTNYA juga gak nampilin badge itu lagi. Mulai
-                 `true` kalau emang udah 0 unread dari awal, biar gak fetch
-                 sia-sia. --}}
+                buka/tutup modal): flag one-way, begitu Inbox dibuka
+                sekali di kunjungan ini, badge unread di ikon ✉ langsung
+                disembunyikan (Alpine, instan, gak nunggu reload) SEKALIGUS
+                fetch() ke server nandain semua memo yang kelihatan sebagai
+                sudah dibaca (Memo::markAllReadFor(), lihat
+                MemoInteractionController::markAllRead()) — biar kunjungan
+                App Mode BERIKUTNYA juga gak nampilin badge itu lagi. Mulai
+                `true` kalau emang udah 0 unread dari awal, biar gak fetch
+                sia-sia. --}}
             <div x-data="{ inboxOpen: false, inboxOpened: {{ ($inboxUnreadCount ?? 0) === 0 ? 'true' : 'false' }} }">
                 <header class="mb-8 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
@@ -183,12 +193,12 @@
                                         {{ $memo->created_at->translatedFormat('d M, H:i') }}
                                     </p>
                                     {{-- 2026-09-10 — tombol "Mark Read/Unread" manual DICABUT
-                                         (permintaan Arga): begitu Inbox modal ini dibuka, SEMUA
-                                         memo yang kelihatan otomatis ke-mark read (fetch di tombol
-                                         ✉ header, lihat Memo::markAllReadFor()). Status "Read"/
-                                         "Unread" di badge atas tetap ditampilin apa adanya (jujur
-                                         soal status kunjungan SEBELUM ini), cuma tombolnya yang
-                                         hilang. "Hide" tetap ada, itu aksi beda. --}}
+                                        (permintaan Arga): begitu Inbox modal ini dibuka, SEMUA
+                                        memo yang kelihatan otomatis ke-mark read (fetch di tombol
+                                        ✉ header, lihat Memo::markAllReadFor()). Status "Read"/
+                                        "Unread" di badge atas tetap ditampilin apa adanya (jujur
+                                        soal status kunjungan SEBELUM ini), cuma tombolnya yang
+                                        hilang. "Hide" tetap ada, itu aksi beda. --}}
                                     <div class="mt-2.5 flex flex-wrap gap-1.5">
                                         <form method="POST" action="{{ route('employee.memo.toggleHidden', $memo) }}">
                                             @csrf

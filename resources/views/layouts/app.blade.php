@@ -48,6 +48,10 @@
 <body class="bg-cream text-ink antialiased">
     @include('partials.flash-data')
 
+    {{-- Popup informasi preview (README Bab 4.2 no. 8): "semua data di
+        dashboard ini hanya data uji", tampil sekali per login. --}}
+    @include('partials.entry-popups', ['door' => 'dashboard'])
+
     <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
             class="fixed inset-y-0 left-0 z-30 flex h-screen w-64 -translate-x-full flex-col border-r border-line bg-paper p-4 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0">

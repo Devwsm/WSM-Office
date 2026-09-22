@@ -43,7 +43,7 @@ class TestingAccountsSeeder extends Seeder
         }
 
         $ancha = User::updateOrCreate(
-            ['email' => 'ancha@wsm.test'],
+            ['email' => 'ancha@wsm.local'],
             [
                 'name' => 'Ancha',
                 'password' => Hash::make('password'),
@@ -70,7 +70,7 @@ class TestingAccountsSeeder extends Seeder
             ->update(['manager_id' => $ancha->id]);
 
         $arga = User::updateOrCreate(
-            ['email' => 'arga@wsm.test'],
+            ['email' => 'arga@wsm.local'],
             [
                 'name' => 'Arga',
                 'password' => Hash::make('password'),
@@ -79,8 +79,8 @@ class TestingAccountsSeeder extends Seeder
                 'division' => 'IT',
                 'job_title' => 'Developer',
                 'manager_id' => $ancha->id,
-                'join_date' => '2025-03-03',
-                'salary_base' => 9500000,
+                'join_date' => '2025-06-20',
+                'salary_base' => 3000000,
                 'target_hours_per_day' => 8,
                 'flat_overtime_rate' => 60000,
             ],

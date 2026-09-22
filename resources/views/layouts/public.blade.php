@@ -72,6 +72,9 @@
         <span class="floating-nav-wsm-divider"></span>
         <a href="{{ route('login') }}" class="floating-nav-wsm-cta">Masuk</a>
     </nav>
+
+    {{-- Popup informasi preview (README Bab 4.2 no. 8) — tampil sekali per tab browser. --}}
+    @include('partials.entry-popups', ['door' => 'public'])
 </body>
 
 </html>

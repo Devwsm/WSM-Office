@@ -50,6 +50,9 @@
             </button>
         </form>
     </div>
+
+    {{-- Popup informasi preview (README Bab 4.2 no. 8) — tampil sekali per tab browser. --}}
+    @include('partials.entry-popups', ['door' => 'public'])
 </body>
 
 </html>
