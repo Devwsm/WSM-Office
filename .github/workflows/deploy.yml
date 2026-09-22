@@ -58,33 +58,33 @@ jobs:
           rm -f AGENTS.md CLAUDE.md phpunit.xml package.json package-lock.json vite.config.js
           rm -rf storage/framework/views/*.php storage/logs/*.log
 
-      # --- Upload 1: isi public/ -> public_html ---
+      # --- Upload 1: isi public/ -> public_html (akun FTP ter-jail ke public_html) ---
       - name: Upload public/ to public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          username: ${{ secrets.FTP_USERNAME_PUBLIC }}
+          password: ${{ secrets.FTP_PASSWORD_PUBLIC }}
           protocol: ftps
           local-dir: ./public/
-          server-dir: /public_html/
+          server-dir: /
           exclude: |
             **/.git*
             **/.git*/**
 
-      # --- Upload 2: sisa project -> folder sibling di luar public_html ---
-      # DEPLOY_APP_DIR harus sama persis dengan folder yang dirujuk oleh
-      # public/index.php hasil patch di atas, dan sudah ada di server
-      # (buat sekali manual lewat File Manager di luar public_html).
+      # --- Upload 2: sisa project -> folder sibling (akun FTP ter-jail ke folder itu) ---
+      # DEPLOY_APP_DIR tetap dipakai buat patch path index.php di atas,
+      # walau server-dir upload di sini sudah "/" karena akunnya sendiri
+      # sudah dikunci ke folder itu.
       - name: Upload app files to sibling folder
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          username: ${{ secrets.FTP_USERNAME_APP }}
+          password: ${{ secrets.FTP_PASSWORD_APP }}
           protocol: ftps
           local-dir: ./
-          server-dir: /${{ secrets.DEPLOY_APP_DIR }}/
+          server-dir: /
           exclude: |
             public/**
             **/.git*
