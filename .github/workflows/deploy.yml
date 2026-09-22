@@ -71,6 +71,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_PUBLIC }}
           password: ${{ secrets.FTP_PASSWORD_PUBLIC }}
           protocol: ftps
+          port: 21
+          security: loose
+          timeout: 120000
           local-dir: ./public/
           server-dir: ./
           log-level: standard
@@ -90,6 +93,9 @@ jobs:
           username: ${{ secrets.FTP_USERNAME_APP }}
           password: ${{ secrets.FTP_PASSWORD_APP }}
           protocol: ftps
+          port: 21
+          security: loose
+          timeout: 120000
           local-dir: ./
           server-dir: ./
           log-level: standard
