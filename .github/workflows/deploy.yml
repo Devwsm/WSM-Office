@@ -1,0 +1,102 @@
+name: Deploy WSM-Office to cPanel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+
+      - name: Install PHP dependencies (with dev, for testing)
+        run: composer install --optimize-autoloader --prefer-dist
+
+      - name: Run test suite (blocks deploy if red)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
+      - name: Strip dev dependencies for production upload
+        run: composer install --no-dev --optimize-autoloader --prefer-dist
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & build front-end assets
+        run: |
+          npm ci
+          npm run build
+
+      # Blocker #3: index.php di public_html tidak sejajar vendor/app lagi,
+      # jadi 3 path __DIR__.'/../...' diarahkan ke folder sibling di luar
+      # public_html. Nama folder DIATUR lewat secret DEPLOY_APP_DIR supaya
+      # file asli di repo tetap apa adanya untuk dev lokal.
+      - name: Patch public/index.php paths for cPanel layout
+        env:
+          DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+        run: |
+          sed -i "s#__DIR__.'/../storage/framework/maintenance.php'#__DIR__.'/../${DEPLOY_APP_DIR}/storage/framework/maintenance.php'#" public/index.php
+          sed -i "s#__DIR__.'/../vendor/autoload.php'#__DIR__.'/../${DEPLOY_APP_DIR}/vendor/autoload.php'#" public/index.php
+          sed -i "s#__DIR__.'/../bootstrap/app.php'#__DIR__.'/../${DEPLOY_APP_DIR}/bootstrap/app.php'#" public/index.php
+
+      # Blocker #8: file yang tidak boleh ikut ke server.
+      - name: Remove files that must not ship
+        run: |
+          rm -rf .git node_modules tests database/database.sqlite
+          rm -f public/hot public/fonts-manifest.dev.json .phpunit.result.cache
+          rm -f AGENTS.md CLAUDE.md phpunit.xml package.json package-lock.json vite.config.js
+          rm -rf storage/framework/views/*.php storage/logs/*.log
+
+      # --- Upload 1: isi public/ -> public_html ---
+      - name: Upload public/ to public_html
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./public/
+          server-dir: /public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+
+      # --- Upload 2: sisa project -> folder sibling di luar public_html ---
+      # DEPLOY_APP_DIR harus sama persis dengan folder yang dirujuk oleh
+      # public/index.php hasil patch di atas, dan sudah ada di server
+      # (buat sekali manual lewat File Manager di luar public_html).
+      - name: Upload app files to sibling folder
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: /${{ secrets.DEPLOY_APP_DIR }}/
+          exclude: |
+            public/**
+            **/.git*
+            **/.git*/**
+            .github/**
+
+      # Blocker #7 (bagian operasional) + cache: lihat DeployHookController.
+      # .env TIDAK ikut ter-upload (dikecualikan lewat .gitignore, jadi
+      # memang tidak ada di checkout ini) — .env produksi tetap dikelola
+      # manual sekali di server, tidak lewat pipeline ini.
+      - name: Run migrations & refresh cache on server
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "${{ secrets.DEPLOY_HOOK_URL }}" \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_HOOK_TOKEN }}"

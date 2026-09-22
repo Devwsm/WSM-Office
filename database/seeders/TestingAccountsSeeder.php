@@ -43,7 +43,7 @@ class TestingAccountsSeeder extends Seeder
         }
 
         $ancha = User::updateOrCreate(
-            ['email' => 'ancha@wsm.local'],
+            ['email' => 'ancha@wsm.test'],
             [
                 'name' => 'Ancha',
                 'password' => Hash::make('password'),
@@ -70,7 +70,7 @@ class TestingAccountsSeeder extends Seeder
             ->update(['manager_id' => $ancha->id]);
 
         $arga = User::updateOrCreate(
-            ['email' => 'arga@wsm.local'],
+            ['email' => 'arga@wsm.test'],
             [
                 'name' => 'Arga',
                 'password' => Hash::make('password'),
