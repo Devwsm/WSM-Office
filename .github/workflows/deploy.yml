@@ -4,11 +4,17 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: wsm-office-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -16,87 +22,95 @@ jobs:
           php-version: '8.3'
           tools: composer:v2
 
-      - name: Install PHP dependencies (with dev, for testing)
-        run: composer install --optimize-autoloader --prefer-dist
+      - name: Install PHP dependencies for tests
+        run: composer install --optimize-autoloader --prefer-dist --no-interaction
 
-      - name: Run test suite (blocks deploy if red)
+      - name: Run automated tests
         run: |
           cp .env.example .env
-          php artisan key:generate
+          php artisan key:generate --force
           php artisan test
 
-      - name: Strip dev dependencies for production upload
-        run: composer install --no-dev --optimize-autoloader --prefer-dist
+      - name: Install production PHP dependencies
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
-      - name: Install & build front-end assets
+      - name: Install and build frontend
         run: |
           npm ci
           npm run build
 
-      # Blocker #3: index.php di public_html tidak sejajar vendor/app lagi,
-      # jadi 3 path __DIR__.'/../...' diarahkan ke folder sibling di luar
-      # public_html. Nama folder DIATUR lewat secret DEPLOY_APP_DIR supaya
-      # file asli di repo tetap apa adanya untuk dev lokal.
-      - name: Patch public/index.php paths for cPanel layout
+      - name: Patch public/index.php for cPanel folder structure
         env:
           DEPLOY_APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
         run: |
+          test -n "$DEPLOY_APP_DIR"
           sed -i "s#__DIR__.'/../storage/framework/maintenance.php'#__DIR__.'/../${DEPLOY_APP_DIR}/storage/framework/maintenance.php'#" public/index.php
           sed -i "s#__DIR__.'/../vendor/autoload.php'#__DIR__.'/../${DEPLOY_APP_DIR}/vendor/autoload.php'#" public/index.php
           sed -i "s#__DIR__.'/../bootstrap/app.php'#__DIR__.'/../${DEPLOY_APP_DIR}/bootstrap/app.php'#" public/index.php
 
-      # Blocker #8: file yang tidak boleh ikut ke server.
-      - name: Remove files that must not ship
+      - name: Remove development-only files
         run: |
           rm -rf .git node_modules tests database/database.sqlite
           rm -f public/hot public/fonts-manifest.dev.json .phpunit.result.cache
           rm -f AGENTS.md CLAUDE.md phpunit.xml package.json package-lock.json vite.config.js
           rm -rf storage/framework/views/*.php storage/logs/*.log
 
-      # --- Upload 1: isi public/ -> public_html (akun FTP ter-jail ke public_html) ---
-      - name: Upload public/ to public_html
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # Public website:
+      # FTP account must be jailed directly to
+      # /home/whim4521/public_html/wos.whisnusantika.com/
+      - name: Deploy public website
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME_PUBLIC }}
           password: ${{ secrets.FTP_PASSWORD_PUBLIC }}
           protocol: ftps
           local-dir: ./public/
-          server-dir: /
+          server-dir: ./
+          log-level: standard
           exclude: |
             **/.git*
             **/.git*/**
+            **/hot
+            **/fonts-manifest.dev.json
 
-      # --- Upload 2: sisa project -> folder sibling (akun FTP ter-jail ke folder itu) ---
-      # DEPLOY_APP_DIR tetap dipakai buat patch path index.php di atas,
-      # walau server-dir upload di sini sudah "/" karena akunnya sendiri
-      # sudah dikunci ke folder itu.
-      - name: Upload app files to sibling folder
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # Laravel application:
+      # FTP account must be jailed directly to
+      # /home/whim4521/wsm-office/
+      - name: Deploy Laravel application
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME_APP }}
           password: ${{ secrets.FTP_PASSWORD_APP }}
           protocol: ftps
           local-dir: ./
-          server-dir: /
+          server-dir: ./
+          log-level: standard
           exclude: |
             public/**
+            storage/**
             **/.git*
             **/.git*/**
             .github/**
+            .env
 
-      # Blocker #7 (bagian operasional) + cache: lihat DeployHookController.
-      # .env TIDAK ikut ter-upload (dikecualikan lewat .gitignore, jadi
-      # memang tidak ada di checkout ini) — .env produksi tetap dikelola
-      # manual sekali di server, tidak lewat pipeline ini.
-      - name: Run migrations & refresh cache on server
+      # Runs Laravel migrations and rebuilds production caches through
+      # /system/deploy-hook. The token must match .env on the server.
+      - name: Run production deploy hook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+          DEPLOY_HOOK_TOKEN: ${{ secrets.DEPLOY_HOOK_TOKEN }}
         run: |
+          test -n "$DEPLOY_HOOK_URL"
+          test -n "$DEPLOY_HOOK_TOKEN"
           curl --fail --silent --show-error \
-            -X POST "${{ secrets.DEPLOY_HOOK_URL }}" \
-            -H "X-Deploy-Token: ${{ secrets.DEPLOY_HOOK_TOKEN }}"
+            --max-time 120 \
+            -X POST "$DEPLOY_HOOK_URL" \
+            -H "X-Deploy-Token: $DEPLOY_HOOK_TOKEN"
