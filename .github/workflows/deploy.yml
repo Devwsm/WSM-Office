@@ -1,0 +1,64 @@
+name: Deploy to cPanel (FTP)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install Composer dependencies (vendor ikut di-upload, server gak bisa composer install)
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload kode aplikasi ke ~/wsm-office
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_APP_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/storage/**
+            **/public/**
+            **/.env
+            **/.env.example
+
+      - name: Upload hasil build ke public_html
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./public/build/
+          server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
+
+      - name: Trigger migrate & cache lewat deploy-hook
+        run: |
+          curl -sf "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
