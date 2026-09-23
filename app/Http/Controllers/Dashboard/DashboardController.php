@@ -51,20 +51,12 @@ class DashboardController extends Controller
                     'label' => $meta['label'],
                     'desc' => $meta['desc'],
                     'level' => $user->accessLevel($key),
-                    // 'work', 'kpi', 'contracts', 'payroll', 'budget',
-                    // 'royalty', 'legal' & 'it' udah punya konten beneran
-                    // (Fase 6b/9, 10, 11, 12, 13, 14, 15) — 8 dari 10
-                    // modul dashboard_access.
-                    //
-                    // ⚠️ BUG (belum diperbaiki, 2026-09-15 audit): match()
-                    // di bawah ini TIDAK menangani 'people' & 'recruitment'
-                    // (2 modul sisanya dari total 10 di DashboardAccess::MODULES).
-                    // Keduanya PUNYA halaman asli (route('attendance.recap.index')
-                    // buat 'people', route('recruitment.openings.index') buat
-                    // 'recruitment') tapi belum ditambahkan ke match() ini,
-                    // jadi masih jatuh ke default => dashboard.show($key) —
-                    // card modul itu di /dashboard nunjukin placeholder
-                    // "Modul ini belum dibangun" walau sebenarnya sudah ada.
+                    // Semua 10 modul dashboard_access sekarang punya
+                    // pemetaan ke halaman aslinya masing-masing.
+                    // (Fix 2026-09-23: 'people' & 'recruitment' sebelumnya
+                    // tidak ditangani di sini, jadi jatuh ke default =>
+                    // dashboard.show($key) dan nunjukin placeholder "Modul
+                    // ini belum dibangun" walau halaman aslinya sudah ada.)
                     'route' => match ($key) {
                         'work' => route('dashboard.work.index'),
                         'kpi' => route('dashboard.kpi.index'),
@@ -74,6 +66,8 @@ class DashboardController extends Controller
                         'royalty' => route('dashboard.royalty.index'),
                         'legal' => route('dashboard.legal.index'),
                         'it' => route('dashboard.it.index'),
+                        'people' => route('attendance.recap.index'),
+                        'recruitment' => route('recruitment.openings.index'),
                         default => route('dashboard.show', $key),
                     },
                 ];
