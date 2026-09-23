@@ -352,7 +352,7 @@ app/
 │   │   ├── Auth/
 │   │   │   └── LoginController.php         # Login/logout 1 form semua role, redirect per role
 │   │   ├── Dashboard/
-│   │   │   ├── DashboardController.php     # Landing dashboard per modul + halaman modul placeholder (masih dipakai kartu People & Recruitment, lihat 4.3)
+│   │   │   ├── DashboardController.php     # Landing dashboard per modul (semua 10 modul termasuk People & Recruitment sudah terpetakan ke halaman aslinya)
 │   │   │   ├── DashboardLockController.php # Lock/unlock dashboard (server-side)
 │   │   │   ├── Budget/BudgetController.php       # CRUD project budgeting
 │   │   │   ├── Contracts/ContractController.php  # CRUD kontrak karyawan + upload private + route file()
@@ -676,8 +676,8 @@ Tes otomatis tetap tidak menggantikan pengecekan visual browser karena responsif
 
 **Bug dan keterbatasan yang diketahui**
 
-- **Kartu modul People dan Recruitment di `/dashboard` salah arah.** `DashboardController::index()` belum memetakan keduanya ke halaman aslinya (`attendance.recap.index` dan `recruitment.openings.index`), sehingga kartunya membuka halaman placeholder "Modul ini belum dibangun". Lewat sidebar keduanya normal. Perbaikannya menambah dua baris di `match()`.
-- **Export Rekap Absensi tidak dibatasi scope tim.** Halaman Rekap membatasi manajer ke timnya, tetapi export Excel/PDF (`AttendanceRecapExport`) membaca absensi semua karyawan, jadi pemegang akses `people` bisa mengekspor absensi orang di luar timnya lewat Export & Import.
+- ~~**Kartu modul People dan Recruitment di `/dashboard` salah arah.**~~ **Sudah diperbaiki (2026-09-23).** `DashboardController::index()` sekarang memetakan `people` -> `attendance.recap.index` dan `recruitment` -> `recruitment.openings.index` di `match()`.
+- ~~**Export Rekap Absensi tidak dibatasi scope tim.**~~ **Sudah diperbaiki (2026-09-23).** Scope-nya (siapa boleh lihat siapa) dipindah ke `User::visibleAttendanceUserIds()` supaya satu sumber logic dipakai bareng oleh halaman Rekap (`RecapController::scopedUsers()`) dan Export (`AttendanceRecapExport` + dropdown filter karyawan di `ExportController`). Sekarang keduanya konsisten: manajer cuma bisa lihat/export timnya sendiri, Owner/HRD/Developer tetap semua karyawan.
 - **Pengajuan cuti tumpang tindih tidak diblokir:** dua pengajuan di tanggal yang sama sama-sama tersimpan (dikunci oleh tes `test_overlapping_leave_requests_are_currently_not_blocked`).
 
 **Lainnya**
@@ -701,7 +701,7 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 4. **Project Budgeting** (4.2 no. 5).
 5. **Royalty Dashboard** (4.2 no. 6).
 6. **Upload CV dan link portofolio** (4.2 no. 7).
-7. **Perbaiki bug dan keterbatasan yang diketahui** (4.3): kartu People/Recruitment di `/dashboard`, scope export Rekap Absensi, dan pengajuan cuti tumpang tindih.
+7. **Perbaiki bug dan keterbatasan yang diketahui yang tersisa** (4.3): pengajuan cuti tumpang tindih. (Kartu People/Recruitment di `/dashboard` dan scope export Rekap Absensi sudah diperbaiki 2026-09-23.)
 8. **Persiapan deploy:** isi konten publik (4.1 no. 9), `.env` produksi (no. 2, termasuk `WOS_PREVIEW_MODE` sesuai tahap), ubah path `public/index.php` sesuai struktur cPanel (no. 3), `npm run build` (no. 4), ekspor SQL lalu impor lewat phpMyAdmin (no. 7), bersihkan paket upload (no. 8).
 9. **Uji manual di staging/subdomain** per halaman per role (termasuk HP untuk absensi), baru buka ke publik.
 

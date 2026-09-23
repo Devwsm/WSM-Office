@@ -12,9 +12,18 @@ use Illuminate\Support\Collection;
  */
 class AttendanceRecapExport extends BaseExport
 {
+    /**
+     * @param  \Illuminate\Support\Collection<int, int>|null  $allowedUserIds
+     *     ID karyawan yang boleh dilihat requester (dari
+     *     User::visibleAttendanceUserIds()). Wajib diisi controller —
+     *     fix 2026-09-23: sebelumnya export ini baca SEMUA karyawan
+     *     kalau $userId kosong, tidak dibatasi scope tim manajer
+     *     seperti halaman Rekap Absensi aslinya.
+     */
     public function __construct(
         private readonly string $period, // format 'Y-m'
         private readonly ?int $userId = null,
+        private readonly ?Collection $allowedUserIds = null,
     ) {}
 
     public function rows(): Collection
@@ -26,6 +35,10 @@ class AttendanceRecapExport extends BaseExport
             ->with('user')
             ->whereBetween('date', [$start, $end])
             ->when($this->userId, fn($q) => $q->where('user_id', $this->userId))
+            ->when(
+                ! $this->userId && $this->allowedUserIds !== null,
+                fn($q) => $q->whereIn('user_id', $this->allowedUserIds ?? []),
+            )
             ->orderBy('date')
             ->orderBy('user_id')
             ->orderBy('session_number')

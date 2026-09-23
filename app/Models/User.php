@@ -191,6 +191,46 @@ class User extends Authenticatable
         return $this->isOwner() || $this->isDeveloper();
     }
 
+    /**
+     * ID user yang absensinya boleh dilihat oleh user ini.
+     * Dipakai bareng oleh Rekap Absensi (RecapController::scopedUsers(),
+     * TIDAK berubah perilakunya) dan Export Rekap Absensi
+     * (AttendanceRecapExport, fix 2026-09-23 — sebelumnya export
+     * membaca SEMUA karyawan tanpa scope, beda dari halaman Rekapnya
+     * sendiri yang sudah dibatasi).
+     *
+     * - Owner, HRD, Developer -> semua karyawan.
+     * - Selain itu (termasuk Manajer, atau karyawan biasa yang
+     *   di-assign modul `people`) -> diri sendiri + seluruh bawahan
+     *   turunan (bukan cuma bawahan langsung).
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public function visibleAttendanceUserIds(): \Illuminate\Support\Collection
+    {
+        if ($this->isOwner() || $this->isHrd() || $this->isDeveloper()) {
+            return static::query()->pluck('id');
+        }
+
+        $all = static::query()->get(['id', 'manager_id']);
+        $byManager = $all->groupBy('manager_id');
+
+        $ids = collect([$this->id]);
+        $queue = [$this->id];
+
+        while ($queue) {
+            $currentId = array_shift($queue);
+            foreach ($byManager->get($currentId, collect()) as $child) {
+                if (! $ids->contains($child->id)) {
+                    $ids->push($child->id);
+                    $queue[] = $child->id;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
     /** Daftar role beserta labelnya (urutan = urutan di dropdown). */
     public const ROLE_LABELS = [
         'karyawan' => 'Karyawan',

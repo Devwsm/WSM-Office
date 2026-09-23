@@ -203,33 +203,20 @@ class RecapController extends Controller
         return back()->with('status', 'Absensi berhasil dikoreksi.');
     }
 
-    /** Daftar user yang boleh dilihat rekapnya oleh user yang lagi login. */
+    /**
+     * Daftar user yang boleh dilihat rekapnya oleh user yang lagi login.
+     * Logic pemilihan ID dipindah ke User::visibleAttendanceUserIds()
+     * (fix 2026-09-23) supaya dipakai bareng oleh Export Rekap Absensi
+     * juga — perilaku di halaman ini sendiri TIDAK berubah.
+     */
     private function scopedUsers()
     {
         /** @var User $me */
         $me = Auth::user();
 
-        if ($me->isOwner() || $me->isHrd() || $me->isDeveloper()) {
-            return User::query()->orderBy('name')->get();
-        }
-
-        // Manajer: diri sendiri + seluruh bawahan turunan.
-        $all = User::query()->orderBy('name')->get(['id', 'name', 'email', 'role', 'division', 'job_title', 'manager_id']);
-        $byManager = $all->groupBy('manager_id');
-
-        $ids = collect([$me->id]);
-        $queue = [$me->id];
-
-        while ($queue) {
-            $currentId = array_shift($queue);
-            foreach ($byManager->get($currentId, collect()) as $child) {
-                if (! $ids->contains($child->id)) {
-                    $ids->push($child->id);
-                    $queue[] = $child->id;
-                }
-            }
-        }
-
-        return $all->whereIn('id', $ids)->sortBy('name')->values();
+        return User::query()
+            ->whereIn('id', $me->visibleAttendanceUserIds())
+            ->orderBy('name')
+            ->get();
     }
 }

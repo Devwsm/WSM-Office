@@ -139,9 +139,12 @@ class ExportController extends Controller
      */
     private function resolve(Request $request, string $key, string $format): array
     {
+        /** @var User $user */
+        $user = $request->user();
+
         $entry = ExportCatalog::CATALOG[$key] ?? null;
         abort_if($entry === null, 404, 'Modul export tidak ditemukan.');
-        abort_unless(ExportCatalog::canView($request->user(), $key), 403);
+        abort_unless(ExportCatalog::canView($user, $key), 403);
         abort_unless(in_array($format, $entry['implemented_exports'], true), 404, 'Format export ini belum tersedia.');
         abort_unless(in_array($format, ['excel', 'pdf'], true), 404);
 
@@ -150,12 +153,27 @@ class ExportController extends Controller
         $employeeId = $request->integer('employee_id') ?: null;
         $requiresSelection = $key === 'attendance-recap' && $format === 'pdf' && ! $employeeId;
 
+        // Fix 2026-09-23: scope Export Rekap Absensi ke tim requester,
+        // sama seperti halaman Rekap Absensi (User::visibleAttendanceUserIds()).
+        // Sebelumnya export ini bisa baca absensi SEMUA karyawan walau
+        // requester cuma manajer tim tertentu.
+        $allowedUserIds = null;
+        if ($key === 'attendance-recap') {
+            $allowedUserIds = $user->visibleAttendanceUserIds();
+
+            abort_if(
+                $employeeId && ! $allowedUserIds->contains($employeeId),
+                403,
+                'Kamu tidak punya akses ke absensi karyawan ini.',
+            );
+        }
+
         [$export, $filters] = match ($key) {
             'attendance-recap' => [
-                new AttendanceRecapExport($period ?: now()->format('Y-m'), $employeeId),
+                new AttendanceRecapExport($period ?: now()->format('Y-m'), $employeeId, $allowedUserIds),
                 [
                     $this->monthFilter($period),
-                    $this->employeeFilter($employeeId, required: $format === 'pdf'),
+                    $this->employeeFilter($employeeId, required: $format === 'pdf', allowedUserIds: $allowedUserIds),
                 ],
             ],
             'kpi' => [
@@ -233,7 +251,9 @@ class ExportController extends Controller
      */
     private function pickerPreview(Request $request, string $key): View
     {
-        abort_unless(ExportCatalog::canView($request->user(), $key), 403);
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless(ExportCatalog::canView($user, $key), 403);
 
         return match ($key) {
             'payroll' => $this->payrollPicker($request),
@@ -277,7 +297,9 @@ class ExportController extends Controller
 
     private function downloadPayrollSlip(Request $request): Response
     {
-        abort_unless(ExportCatalog::canView($request->user(), 'payroll'), 403);
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless(ExportCatalog::canView($user, 'payroll'), 403);
 
         $payroll = PayrollRecord::with(['user', 'generator'])->findOrFail($request->integer('payroll_id'));
 
@@ -341,7 +363,9 @@ class ExportController extends Controller
 
     private function downloadMeetingMinutes(Request $request): Response
     {
-        abort_unless(ExportCatalog::canView($request->user(), 'meetings'), 403);
+        /** @var User $user */
+        $user = $request->user();
+        abort_unless(ExportCatalog::canView($user, 'meetings'), 403);
 
         $meeting = Meeting::with(['project', 'creator', 'attendees', 'actionItems.pic'])
             ->findOrFail($request->integer('meeting_id'));
@@ -372,14 +396,23 @@ class ExportController extends Controller
         ];
     }
 
-    private function employeeFilter(?int $value, bool $required = false): array
+    /**
+     * @param  \Illuminate\Support\Collection<int, int>|null  $allowedUserIds
+     *     Kalau diisi, dropdown-nya cuma nampilin karyawan dalam scope
+     *     itu (fix 2026-09-23 — dipakai attendance-recap).
+     */
+    private function employeeFilter(?int $value, bool $required = false, ?\Illuminate\Support\Collection $allowedUserIds = null): array
     {
         return [
             'name' => 'employee_id',
             'label' => 'Karyawan' . ($required ? ' (wajib untuk PDF)' : ' (kosongkan = semua)'),
             'type' => 'select',
             'value' => $value,
-            'options' => User::query()->orderBy('name')->pluck('name', 'id')->all(),
+            'options' => User::query()
+                ->when($allowedUserIds !== null, fn($q) => $q->whereIn('id', $allowedUserIds))
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->all(),
         ];
     }
 
