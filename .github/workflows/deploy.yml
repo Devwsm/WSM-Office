@@ -62,4 +62,4 @@ jobs:
 
       - name: Trigger migrate & cache lewat deploy-hook
         run: |
-          curl -sfk "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
+          curl -sf "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
