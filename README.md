@@ -2,7 +2,7 @@
 
 Sistem manajemen kantor internal Whisnu Santika Music (WSM), hasil implementasi dari prototype `WOS_2_0_App_v32` (HTML/JS satu file) ke aplikasi Laravel multi-halaman yang akan di-deploy dan diakses publik.
 
-> **Status kode (dicek 2026-09-22, deployment & prototype diperbarui 2026-09-23):** 380 tes otomatis lulus (4.156 assertion, PHP 8.3.6, SQLite), 159 route, 42 migrasi. Isi dokumen ini dicocokkan dengan kode yang berjalan; kolom "Prototype v32" di Bab 2.1 sekarang dicocokkan langsung ke source prototype (`WOS_2_0_STANDALONE_v32.html`).
+> **Status kode (dicek ulang 2026-09-24 terhadap kode, riwayat git, dan log GitHub Actions; Bab 5 Production baru):** 380 tes otomatis lulus (4.156 assertion, PHP 8.3.6, SQLite) **selama `.env` lokal tidak berisi `WOS_PREVIEW_MODE=false`** (kalau berisi, 376 lulus dan 4 tes `EntryPopupsTest` gagal, lihat 5.6), 159 route aplikasi (+ `/up`), 42 migrasi, 5 seeder. Isi dokumen ini dicocokkan dengan kode yang berjalan. Kolom "Prototype v32" di Bab 2.1 dicocokkan langsung ke source prototype (`WOS_2_0_STANDALONE_v32.html`) pada 2026-09-23; baris Bab 2.1 tidak diaudit ulang satu per satu pada 2026-09-24 (yang dicek ulang: angka, struktur file, klaim deployment, dan butir yang ditandai sudah/belum dikerjakan).
 
 **Legenda status:** ✅ ada & sesuai · ⚠️ ada tapi tidak sesuai / lebih sederhana · ❌ belum ada · ➕ tambahan (tidak ada di prototype)
 
@@ -12,13 +12,13 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM), hasil implementasi 
 
 **WSM-Office** adalah aplikasi web internal untuk mengelola operasional kantor WSM: absensi, pengajuan izin/cuti/lembur, pelacakan pekerjaan, rapat, memo, KPI, kontrak, payroll, budget, royalti, legal, audit, dan rekrutmen. Selain area internal, aplikasi punya 5 halaman publik (beranda, tentang kami, layanan, karir, kontak) dan form lamaran kerja.
 
-**Stack:** Laravel 13.30 · PHP 8.3 (batas cPanel Rumahweb; `vendor/` saat ini masih mewajibkan 8.4.1, lihat 4.1 no. 1) · MySQL · Tailwind CSS v4 + Vite · Alpine.js · Leaflet (peta geofence absensi) · SweetAlert2 · `maatwebsite/excel` 4.0 (export/import) · `barryvdh/laravel-dompdf` 3.1 (PDF).
+**Stack:** Laravel 13.32 · PHP 8.3 (batas cPanel Rumahweb; `composer.json` mengunci platform ke 8.3.0, lihat 5.7 no. 1) · MySQL · Tailwind CSS v4 + Vite · Alpine.js · Leaflet (peta geofence absensi) · SweetAlert2 · `maatwebsite/excel` 4.0 (export/import) · `barryvdh/laravel-dompdf` 3.1 (PDF).
 
-**Hosting target:** shared cPanel (Rumahweb), tanpa terminal. Konsekuensinya: tidak ada cron (rekonsiliasi absensi ikut trafik web lewat `AttendanceReconciler`), tidak bisa `artisan` di server, dan file build (`public/build`) harus di-upload manual. Struktur folder di server: `public_html` hanya berisi isi folder `public/`, sisa project berada di luar, sejajar dengan `public_html` (Bab 4.0).
+**Hosting target:** shared cPanel (Rumahweb), tanpa terminal. Konsekuensinya: tidak ada cron (rekonsiliasi absensi ikut trafik web lewat `AttendanceReconciler`), tidak bisa `artisan` di server, dan migrasi dijalankan lewat deploy-hook. Deploy `main` berjalan otomatis lewat GitHub Actions → FTPS (build `public/build` ikut otomatis); `vendor/`, `.env`, `storage/`, dan file `public/` selain `build/` masih manual. Struktur folder di server: `public_html/<domain>` hanya berisi isi folder `public/`, sisa project berada di luar, sejajar dengan `public_html`. Detail lengkap di **Bab 5**.
 
 **Konvensi kode:** validasi lewat kelas `FormRequest` (31 kelas di `app/Http/Requests`); `/owner` untuk role `owner` dan `developer` (Dashboard Access khusus `owner`), `/app` untuk semua akun internal; akses berbasis **modul** (`dashboard_access`, level `view`/`manage`) untuk area `/dashboard`, rekap, approval, dan rekrutmen; `throttle` pada login, form publik (kontak, lamaran), absen, pengajuan, balasan memo, buka kunci dashboard, blast memo, import, dan reset password; audit log untuk aksi penting (karyawan, akses modul, approval, payroll, pengaturan kantor, import karyawan, reset password).
 
-**Ukuran:** 159 route (76 GET, 83 tulis), 42 migrasi, 25 model, 31 FormRequest, 109 view Blade, 4 seeder, 380 tes.
+**Ukuran:** 159 route aplikasi (75 GET, 84 tulis; + `/up`, health-check bawaan Laravel), 42 migrasi, 25 model, 31 FormRequest, 109 view Blade, 5 seeder, 380 tes.
 
 **Peran & akses ringkas**
 
@@ -51,6 +51,8 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 - Password sementara hasil reset tampil satu kali, tidak masuk audit log, dan semua sesi login lama akun itu dikeluarkan. Akun ditandai `must_change_password`: sebelum diganti, semua halaman selain Profil dan logout dialihkan ke Profil. Tanda yang sama dipasang pada akun hasil import dengan password kosong (default `password`).
 
 **Akun testing lokal:** `php artisan db:seed --class=TestingAccountsSeeder` (jalankan setelah `DemoSeeder`; tidak ikut `DatabaseSeeder`, jangan dipakai di produksi). Membuat Ancha (`ancha@wsm.test`, manajer, Manage 10 modul, atasan langsung di puncak struktur sehingga Rekap-nya mencakup semua orang) dan Arga (`arga@wsm.test`, developer, Manage 10 modul); password keduanya `password`.
+
+**Seeder (berubah 2026-09-23):** `DatabaseSeeder` sekarang hanya memanggil `OfficeSettingSeeder` dan `ProductionSeeder` (akun asli), jadi `php artisan migrate:fresh --seed` di lokal membuat akun asli, bukan data demo. Untuk data demo lokal jalankan `php artisan db:seed --class=DemoSeeder`, lalu `--class=TestingAccountsSeeder` bila perlu. `ProductionSeeder` hanya untuk production dan hanya boleh dijalankan sekali (Bab 5.5).
 
 ---
 
@@ -124,11 +126,11 @@ Akses modul bersifat **data**, bukan hard-code: pada data demo, Manajer Kanaya t
 
 Menggantikan checklist tes manual di browser (bagian A–K pada README versi commit `634b65d`). Kode seperti `C5` atau `H4` di komentar tiap file tes mengacu ke nomor butir checklist itu.
 
-**Menjalankan:** `php artisan test` (SQLite `:memory:`, tanpa setup apa pun; `public/hot` dan `public/build` tidak perlu ada). Untuk MySQL/MariaDB: buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` — jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya.
+**Menjalankan:** `php artisan test` (SQLite `:memory:`; `public/hot` dan `public/build` tidak perlu ada; **`.env` lokal tidak boleh berisi `WOS_PREVIEW_MODE=false`**, kalau tidak 4 tes `EntryPopupsTest` gagal, lihat 5.6). Untuk MySQL/MariaDB: buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` — jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya.
 
-**Hasil terakhir:** 380 tes lulus, 0 dilewati, 4.156 assertion, di SQLite (±16 detik) **dan** MySQL 8.0.46 asli (±20 detik), PHP 8.3.6 — sama-sama 380/380, isolasi maupun full suite.
+**Hasil terakhir:** 380 tes lulus, 0 dilewati, 4.156 assertion, di SQLite (±16 detik) **dan** MySQL 8.0.46 asli (±20 detik), PHP 8.3.6 — sama-sama 380/380, isolasi maupun full suite. **Dicek ulang 2026-09-24** (SQLite, PHP 8.3.6): 380/380 dengan `WOS_PREVIEW_MODE=true`; dengan `.env` dari working copy (`WOS_PREVIEW_MODE=false`) hasilnya 376 lulus dan 4 gagal, semuanya di `EntryPopupsTest` (5.6).
 
-> **Catatan (2026-09-22):** Sekali laporan dari pengguna (Windows, MySQL, `php artisan test` penuh) menunjukkan 2 tes gagal di `PasswordResetTest` (dua tes `TestingAccountsSeeder`) dengan `378 passed` — tapi tes yang sama, dijalankan sendiri maupun sebagai bagian full suite, **tidak bisa direproduksi** di sini baik di SQLite maupun MySQL 8.0.46 asli (selalu 380/380). Kemungkinan bukan bug di kode (bukti: 2 backend, isolasi & full suite, semua hijau), lebih ke sesuatu yang spesifik di mesin pengguna — dugaan: `composer update` yang menurunkan target PHP ke 8.3 (lihat Bab 4.1 no. 1) sempat mengganti versi paket lain secara tidak sengaja, atau environment MySQL lokal (`sql_mode`, koneksi) beda dari default. **Belum ada fix** karena belum bisa dipastikan akar masalahnya. Kalau kegagalan itu muncul lagi secara konsisten: jalankan `php artisan test --filter=PasswordResetTest` sendirian di mesin yang sama (untuk pastikan bukan soal urutan tes/polusi antar-tes) dan bandingkan isi `composer.lock` dengan versi di repo ini.
+> **Catatan (2026-09-22):** Sekali laporan dari pengguna (Windows, MySQL, `php artisan test` penuh) menunjukkan 2 tes gagal di `PasswordResetTest` (dua tes `TestingAccountsSeeder`) dengan `378 passed` — tapi tes yang sama, dijalankan sendiri maupun sebagai bagian full suite, **tidak bisa direproduksi** di sini baik di SQLite maupun MySQL 8.0.46 asli (selalu 380/380). Kemungkinan bukan bug di kode (bukti: 2 backend, isolasi & full suite, semua hijau), lebih ke sesuatu yang spesifik di mesin pengguna — dugaan: `composer update` yang menurunkan target PHP ke 8.3 (lihat Bab 5.7 no. 1) sempat mengganti versi paket lain secara tidak sengaja, atau environment MySQL lokal (`sql_mode`, koneksi) beda dari default. **Belum ada fix** karena belum bisa dipastikan akar masalahnya. Kalau kegagalan itu muncul lagi secara konsisten: jalankan `php artisan test --filter=PasswordResetTest` sendirian di mesin yang sama (untuk pastikan bukan soal urutan tes/polusi antar-tes) dan bandingkan isi `composer.lock` dengan versi di repo ini.
 
 | File tes                | Tes | Mencakup (butir checklist)                                                                                                                                                                                                                                                        |
 | ----------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -309,7 +311,7 @@ Tiap halaman dashboard punya tombol **"? Panduan"** (melayang di kanan bawah). D
 
 Panduan dicari dari nama route lewat `App\Support\PageGuide`, jadi tidak ada view halaman yang diubah; satu-satunya keterkaitan di layout adalah satu baris `@include` (`partials/page-guide`). Isi: 45 panduan untuk 55 pola route, ditulis dalam bahasa Indonesia dan dicocokkan dengan perilaku kode.
 
-**Menambah atau mengubah panduan:** edit `config/page_guides.php`. Halaman baru cukup ditambah satu baris di `routes` (nama route → kunci) dan satu entri di `guides`; `PageGuideTest` akan gagal kalau halaman dashboard baru belum punya panduan. Halaman tanpa panduan tidak menampilkan tombol dan tidak error. Setelah mengubah class Tailwind di view, jalankan ulang `npm run build` (Bab 4.1 no. 4).
+**Menambah atau mengubah panduan:** edit `config/page_guides.php`. Halaman baru cukup ditambah satu baris di `routes` (nama route → kunci) dan satu entri di `guides`; `PageGuideTest` akan gagal kalau halaman dashboard baru belum punya panduan. Halaman tanpa panduan tidak menampilkan tombol dan tidak error. Setelah mengubah class Tailwind di view, jalankan ulang `npm run build` (Bab 5.7 no. 4).
 
 **Belum termasuk:** halaman aplikasi karyawan (`/app`, layout terpisah) belum punya tombol panduan.
 
@@ -391,9 +393,11 @@ app/
 │   │   │   └── ContactMessageController.php       # Baca pesan dari form kontak publik
 │   │   ├── Public/
 │   │   │   └── PageController.php                 # Beranda, Tentang, Layanan, Karir, Kontak, lamar, kirim pesan
-│   │   └── Recruitment/
-│   │       ├── JobOpeningController.php           # CRUD lowongan
-│   │       └── JobApplicationController.php       # Pipeline pelamar + konversi jadi karyawan
+│   │   ├── Recruitment/
+│   │   │   ├── JobOpeningController.php           # CRUD lowongan
+│   │   │   └── JobApplicationController.php       # Pipeline pelamar + konversi jadi karyawan
+│   │   └── System/
+│   │       └── DeployHookController.php           # POST /system/deploy-hook (token di header): migrate + cache. Tidak dipakai workflow saat ini (Bab 5.4)
 │   ├── Middleware/
 │   │   ├── EnsureRole.php                  # Jaga route per role (owner/developer/manajer/hrd/karyawan)
 │   │   ├── EnsureModuleAccess.php          # Jaga route per modul & level (view/manage)
@@ -451,7 +455,7 @@ config/
 ├── logging.php · mail.php · queue.php
 ├── page_guides.php                         # Peta route → panduan + teks panduan tiap halaman dashboard (edit di sini)
     ├── entry_popups.php                    # Teks, versi, & saklar WOS_PREVIEW_MODE/WOS_ENTRY_POPUPS popup informasi preview (Bab 4.2 no. 8)
-├── services.php
+├── services.php                            # Termasuk `deploy_hook.token` (DEPLOY_HOOK_TOKEN) untuk DeployHookController
 └── session.php                             # Session 120 menit, driver database
 
 database/
@@ -466,8 +470,9 @@ database/
 │   ├── ..._add_developer_role_and_must_change_password_to_users.php  # Role developer + kolom must_change_password
 │   └── ...                                 # 30+ migrasi fitur lain (payroll, kpi, legal, audit, dst.)
 ├── seeders/
-│   ├── DatabaseSeeder.php                  # Entry point seeding
-│   ├── OfficeSettingSeeder.php             # Pengaturan kantor awal
+│   ├── DatabaseSeeder.php                  # Entry point seeding: OfficeSettingSeeder + ProductionSeeder (bukan lagi Demo/Testing)
+│   ├── OfficeSettingSeeder.php             # Pengaturan kantor awal (updateOrCreate: menjalankan ulang menimpa pengaturan yang diubah Owner)
+│   ├── ProductionSeeder.php                # 11 akun asli (Owner, Developer, 9 karyawan) + memo "Welcome WSM v1" — jalankan SEKALI (Bab 5.5)
 │   ├── DemoSeeder.php                      # Data demo (5 user, password "password") — HANYA lokal
 │   └── TestingAccountsSeeder.php           # Ancha (manajer) & Arga (developer), dijalankan manual setelah DemoSeeder — HANYA lokal
 └── database.sqlite                         # Sisa setup awal (koneksi aktif MySQL) — hapus
@@ -509,7 +514,7 @@ resources/
     └── errors/                             # 403, 404, 500, 503
 
 routes/
-├── web.php                                 # 159 route: publik, /app, /owner, /dashboard, rekrutmen, approval
+├── web.php                                 # 159 route aplikasi (+ /up): publik, /app, /owner, /dashboard, rekrutmen, approval, system/deploy-hook
 ├── auth.php                                # Login/logout
 └── console.php                             # Command `files:privatize` (pindah file lama ke disk private)
 
@@ -544,6 +549,8 @@ tests/
 
 (root) .env · .env.example · .gitignore · composer.json/lock · package.json · phpunit.xml · vite.config.js · .phpunit.result.cache
        AGENTS.md · CLAUDE.md               # File catatan repo, tidak perlu ikut di-deploy
+.github/workflows/deploy.yml            # Pipeline auto-deploy GitHub Actions → FTPS cPanel (Bab 5.1)
+(hanya di server) public_html/<domain>/deploy-hook.php   # Pemicu migrate + cache, tidak ada di repo (Bab 5.4)
 ```
 
 ---
@@ -554,59 +561,20 @@ tests/
 
 ### 4.0 Keputusan yang sudah diambil
 
-| Topik                                       | Keputusan                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Versi PHP hosting                           | cPanel Rumahweb mentok di **PHP 8.3** (tidak ada 8.4). Tindakannya di 4.1 no. 1.                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Struktur folder cPanel                      | `public_html` hanya berisi isi folder `public/` project. Sisa project (`app/`, `vendor/`, `storage/`, `.env`, dst.) berada **di luar** `public_html`, sejajar dengannya. Tindakannya di 4.1 no. 3.                                                                                                                                                                                                                                                                                |
-| Status deployment                           | **Sudah live di production** sejak 2026-09-23: auto-deploy `main` → GitHub Actions (build + `npm run build`) → FTP ke cPanel → deploy-hook (`migrate --force` + cache). Sudah beberapa commit ter-deploy, termasuk 2 bug yang ketemu & diperbaiki langsung dari testing di production (Bab 4.3). Detail pipeline di Bab 3 / `.github/workflows/deploy.yml`. Yang masih perlu dipastikan manual di server: isi `.env` produksi final dan pembersihan paket upload (4.1 no. 2 & 8). |
-| Fitur yang dikerjakan berikutnya            | Pengaturan Kantor, ritme mingguan Dashboard Owner, Payroll, Project Budgeting, Royalty Dashboard (4.2 no. 2–6). Payroll, Budgeting, dan Royalty ditandai penting/krusial. Urutannya di 4.4.                                                                                                                                                                                                                                                                                       |
-| Role developer                              | Sudah dibuat sebagai akses **Tingkat 2** (aturan di Bab 1). Ancha (office manager) memakai role `manajer` dengan Manage 10 modul (`TestingAccountsSeeder`).                                                                                                                                                                                                                                                                                                                       |
-| Panduan halaman dashboard                   | Tampilan di HP dan desktop sudah dicek, aman (Bab 2.4).                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Popup informasi preview                     | Selesai (2026-09-22, 4.2 no. 8): modal preview di publik+login, App Mode (+sambutan), dan Dashboard. Saat operasional, slot ini dipakai ulang untuk Himbauan.                                                                                                                                                                                                                                                                                                                     |
-| **App Mode responsif untuk semua karyawan** | Selesai (2026-09-22): layout `/app/*` dibuat mobile-first, header tidak meluber di layar kecil, tombol tetap mudah disentuh, bottom navigation aman di HP, dan area konten tetap nyaman di tablet/desktop.                                                                                                                                                                                                                                                                        |
+| Topik                                       | Keputusan                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Versi PHP hosting                           | cPanel Rumahweb mentok di **PHP 8.3** (tidak ada 8.4). Sudah ditangani (5.7 no. 1).                                                                                                                                                                                                                                                                                                                                      |
+| Struktur folder cPanel                      | `public_html` hanya berisi isi folder `public/` project. Sisa project (`app/`, `vendor/`, `storage/`, `.env`, dst.) berada **di luar** `public_html`, sejajar dengannya. Tindakannya di 5.7 no. 3.                                                                                                                                                                                                                       |
+| Status deployment                           | **Sudah live di production** sejak 2026-09-23: auto-deploy `main` → GitHub Actions (build) → FTPS ke cPanel → deploy-hook (`migrate --force` + cache). Semua hal production (alur, otomatis vs manual, secrets, seeder, riwayat masalah, panduan kalau gagal) ada di **Bab 5**. Yang masih perlu dipastikan manual di server: isi `.env` produksi final, seed data awal, dan pembersihan paket upload (5.7 no. 2, 7, 8). |
+| Fitur yang dikerjakan berikutnya            | Pengaturan Kantor, ritme mingguan Dashboard Owner, Payroll, Project Budgeting, Royalty Dashboard (4.2 no. 2–6). Payroll, Budgeting, dan Royalty ditandai penting/krusial. Urutannya di 4.4.                                                                                                                                                                                                                              |
+| Role developer                              | Sudah dibuat sebagai akses **Tingkat 2** (aturan di Bab 1). Ancha (office manager) memakai role `manajer` dengan Manage 10 modul (`TestingAccountsSeeder`).                                                                                                                                                                                                                                                              |
+| Panduan halaman dashboard                   | Tampilan di HP dan desktop sudah dicek, aman (Bab 2.4).                                                                                                                                                                                                                                                                                                                                                                  |
+| Popup informasi preview                     | Selesai (2026-09-22, 4.2 no. 8): modal preview di publik+login, App Mode (+sambutan), dan Dashboard. Saat operasional, slot ini dipakai ulang untuk Himbauan.                                                                                                                                                                                                                                                            |
+| **App Mode responsif untuk semua karyawan** | Selesai (2026-09-22): layout `/app/*` dibuat mobile-first, header tidak meluber di layar kecil, tombol tetap mudah disentuh, bottom navigation aman di HP, dan area konten tetap nyaman di tablet/desktop.                                                                                                                                                                                                               |
 
-### 4.1 Blocker deploy (wajib beres sebelum publik)
+### 4.1 Blocker deploy
 
-Satu tabel untuk status sekaligus tindakan. Penjelasan blocker 4, 8, dan 9 ada di bawah tabel.
-
-| #   | Blocker                               | Apa artinya                                                                                                                                                                                                                                                       | Tindakan                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Status                                                                                                                                                                                                      |
-| --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Versi PHP**                         | Paket Symfony v8.1 di `vendor/` (`clock`, `css-selector`, `event-dispatcher`, `string`, `translation`) mewajibkan PHP ≥ 8.4.1 (`vendor/composer/platform_check.php` menolak jalan di bawahnya), padahal `composer.json` menulis `^8.3` dan hosting mentok di 8.3. | Set `config.platform.php = 8.3.0` di `composer.json`, jalankan `composer update` di lokal supaya paket Symfony turun ke 7.4, lalu `php artisan test`. Folder `vendor/` hasilnya ikut di-upload (server tanpa terminal tidak bisa `composer install`). Cek awal (2026-09-21): 380 tes lulus di PHP 8.3.6 saat platform check dimatikan; itu bukan pengganti `composer update`. **Samakan dulu konstrain `maatwebsite/excel` di `composer.json` ke `^4.0`:** sekarang tertulis `^3.1` padahal yang terpasang di lock 4.0.3, jadi `composer update` tidak akan mempertahankannya. | ✅ **terbukti jalan** — deploy-hook migrate + halaman berfungsi di production (2026-09-23)                                                                                                                  |
-| 2   | **`.env` produksi**                   | `.env` yang ada khusus lokal: `APP_ENV=local`, `APP_DEBUG=true`, `APP_URL` localhost, DB user `root`.                                                                                                                                                             | Buat `.env` baru: `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://...`, user DB khusus, `SESSION_SECURE_COOKIE=true`, `QUEUE_CONNECTION=sync`, dan `WOS_PREVIEW_MODE=false` begitu sistem dipakai operasional (4.2 no. 8).                                                                                                                                                                                                                                                                                                                                           | ⬜                                                                                                                                                                                                          |
-| 3   | **Struktur folder cPanel**            | Kalau seluruh project ditaruh di `public_html`, `.env` dan `app/` bisa dibuka lewat URL (tidak ada `.htaccess` di root project).                                                                                                                                  | Sesuai keputusan (4.0): isi `public/` ke `public_html`, sisanya di luar sejajar `public_html`. Ubah 3 path di `public/index.php` (`maintenance.php`, `vendor/autoload.php`, `bootstrap/app.php`) dari `__DIR__.'/../...'` ke folder project, mis. `__DIR__.'/../wsm-office/...'`. Folder `storage/` otomatis ikut di luar `public_html`, dan itu syarat agar file private tetap aman.                                                                                                                                                                                          | ✅ **otomatis** — workflow deploy sudah men-patch 3 path `public/index.php` tiap build (2026-09-23)                                                                                                         |
-| 4   | **Aset Vite**                         | Halaman butuh file CSS/JS hasil "rakitan" Vite di `public/build/` (penjelasan di bawah). Saat ini `public/hot` ada dan `public/build` belum ada.                                                                                                                  | Hapus `public/hot`, jalankan `npm run build` di lokal, upload isi `public/build` ke `public_html/build`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | ✅ **otomatis** — `npm run build` + upload `public/build` jadi bagian workflow, sudah live (2026-09-23)                                                                                                     |
-| 5   | **File sensitif terbuka tanpa login** | Kontrak karyawan, dokumen legal, dan selfie absensi dulu disimpan di disk `public`.                                                                                                                                                                               | Dipindah ke disk private + route unduh yang mengecek modul/pemilik (catatan di bawah).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | ✅ **selesai (batch 1)**                                                                                                                                                                                    |
-| 6   | **Password default "password"**       | `EmployeeImport` mengisi "password" jika kolom kosong. Akun itu kini ditandai `must_change_password`, jadi dipaksa mengganti password saat login pertama.                                                                                                         | Tidak ada; sudah dikerjakan bersama reset password IT.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | ✅ **selesai**                                                                                                                                                                                              |
-| 7   | **Database tanpa terminal**           | `migrate` tidak bisa dijalankan di server.                                                                                                                                                                                                                        | Jalankan `migrate` + `OfficeSettingSeeder` di lokal, ekspor SQL, impor lewat phpMyAdmin. **Jangan** jalankan `DemoSeeder` dan `TestingAccountsSeeder`; keduanya hanya untuk lokal. Migrasi enum sudah portabel (MySQL/MariaDB dan SQLite).                                                                                                                                                                                                                                                                                                                                     | ⚠️ **migrate sudah otomatis** lewat deploy-hook tiap deploy (2026-09-23); **seed data awal** (`OfficeSettingSeeder`, akun Owner pertama) masih perlu dipastikan sudah/belum diimpor manual lewat phpMyAdmin |
-| 8   | **Bersihkan paket upload**            | Zip proyek berisi file dev/pribadi yang tidak boleh ikut ke server.                                                                                                                                                                                               | Ikuti daftar di bawah tabel.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | ⬜                                                                                                                                                                                                          |
-| 9   | **Konten publik placeholder**         | Empat halaman publik masih berisi teks "Placeholder" atau teks generik.                                                                                                                                                                                           | Isi konten asli (tetap statis di Blade sesuai keputusan). Daftarnya di bawah tabel.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | ⬜                                                                                                                                                                                                          |
-
-**Blocker 4 (Aset Vite) dalam bahasa sederhana:** browser tidak memakai kode CSS Tailwind dan JavaScript Alpine apa adanya; Vite "merakitnya" menjadi file jadi di folder `public/build/`. Server cPanel tanpa terminal tidak bisa menjalankan Vite, jadi rakitannya dibuat di komputer lokal (`npm run build`) lalu folder hasilnya di-upload. `public/hot` adalah penanda "server dev Vite sedang jalan": kalau ikut ter-upload, Laravel mencari CSS/JS ke alamat localhost dan halaman tampil tanpa gaya. Tanpa `public/build`, halaman menampilkan error `Vite manifest not found`. Setiap ada perubahan tampilan (termasuk class Tailwind baru), rakit ulang dan upload ulang. Tes otomatis tidak butuh ini karena `tests/TestCase.php` mematikan Vite.
-
-**Blocker 8, yang jangan di-upload:**
-
-- `.git/` dan `node_modules/`
-- `.env` lokal (ganti dengan `.env` produksi; `.env.example` boleh)
-- `database/database.sqlite`
-- `storage/logs/laravel.log` (±2 MB, memuat path lokal `C:/Users/...`)
-- isi `storage/framework/views/` (cache Blade), bila ada
-- `public/hot` dan `public/fonts-manifest.dev.json`
-- `.phpunit.result.cache`
-- `AGENTS.md` dan `CLAUDE.md` (catatan repo)
-- `tests/`, `phpunit.xml`, `package.json`, `package-lock.json`, `vite.config.js`: tidak dipakai di server (hanya untuk tes dan build lokal), boleh dilewati
-
-Yang **tetap di-upload:** `vendor/` (server tanpa Composer) dan hasil `npm run build` (`public/build`, ke `public_html/build`).
-
-**Blocker 9, teks yang perlu diganti:**
-
-- **Beranda:** teks pengantar dan label hero, tiga kartu "Yang kami kerjakan", dan kalimat penjelas "Ringkasan singkat layanan/keunggulan tim..." (masih generik).
-- **Tentang:** teks pengantar, Visi, Misi, dan timeline "Perjalanan Kami" (dua baris "Tahun —" / "Tonggak sejarah placeholder").
-- **Layanan:** kalimat pengantar dan empat deskripsi (Produksi Musik, Kampanye & Promosi, Arahan Kreatif, Manajemen Tim).
-- **Kontak:** alamat kantor, nomor telepon, dan alamat email.
-
-**Catatan blocker 5 (selesai):** kontrak karyawan, dokumen legal, dan selfie absensi tersimpan di `storage/app/private` dan tidak punya URL publik. Semuanya hanya bisa dibuka lewat route yang mewajibkan login + akses modul yang sama dengan halaman pemiliknya (`contracts`/`legal` level view; selfie: modul `people` dengan scope rekap, yaitu Owner/HRD semua orang, selain itu diri sendiri + bawahan). Kebutuhan `storage:link` hilang, jadi tidak perlu terminal di server. Tes: `PrivateFileAccessTest` (18 tes).
-
-**Yang perlu kamu lakukan di lokal sebelum deploy:** jalankan `php artisan files:privatize --dry-run` untuk melihat rencana, lalu `php artisan files:privatize` (memindahkan file lama dari disk publik ke private; path di database tidak berubah). Jika belum ada file lama, hasilnya 0 file dan tidak ada yang perlu dilakukan.
+Semua hal production, termasuk 9 blocker deploy, dipindahkan ke **Bab 5** supaya terkumpul di satu tempat. Tabel blocker ada di **5.7**. Ringkasan per 2026-09-24: ✅ selesai untuk no. 1 (versi PHP), 3 (struktur folder, masih manual), 4 (aset Vite, otomatis), 5 (file sensitif), dan 6 (password default); ⚠️ sebagian untuk no. 2 (`.env` produksi) dan 7 (seed data awal); ⬜ belum untuk no. 8 (bersihkan paket upload) dan 9 (konten publik).
 
 ### 4.2 Fitur yang akan dikerjakan
 
@@ -634,8 +602,8 @@ Butir 2–6 dan 8 adalah keputusan 2026-09-21 ("eksekusi"); butir 7 keputusan se
     - **Aturan tampil:** ditandai di `sessionStorage` browser dengan kunci gabungan pintu + popup + versi + token sesi (hash ID sesi login). Login ulang, akun lain, atau tab baru = muncul lagi. Ditutup lewat tombol, ✕, Esc, atau klik area gelap = dianggap sudah dibaca. Teks diubah → naikkan `version` di config supaya muncul lagi.
     - **Catatan Owner:** setelah login Owner mendarat di `/owner/dashboard`, jadi Owner melihat Peringatan versi dashboard dulu; Sambutan baru muncul saat Owner membuka App Mode lewat "← App Saya".
     - **Tidak muncul di:** halaman error, layar Kunci Dashboard, dan selama akun masih wajib ganti password (supaya tidak menumpuk dengan pengalihan ke Profil).
-    - **Saklar (`.env`):** `WOS_PREVIEW_MODE` (default `true`) mematikan Peringatan preview di semua pintu sekaligus; wajib di-set `false` saat sistem mulai dipakai operasional (4.1 no. 2). `WOS_ENTRY_POPUPS` (default `true`) mematikan semua popup; `phpunit.xml` mengisinya `false` supaya 380 tes yang ada tidak berubah.
-    - **Struktur kode:** teks, urutan, dan versi di `config/entry_popups.php`; pemilih popup `App\Support\EntryPopups` (pola sama dengan `PageGuide`); tampilan `partials/entry-popups.blade.php` + isi per jenis (`entry-popups/welcome`, `entry-popups/notice`); antrean dan `sessionStorage` di `resources/js/entry-popups.js` (`Alpine.data`); animasi di `resources/css/app.css`. Di-include di `layouts/public`, `layouts/employee`, `layouts/app`, dan `auth/login`. Butuh `npm run build` (4.1 no. 4).
+    - **Saklar (`.env`):** `WOS_PREVIEW_MODE` (default `true`) mematikan Peringatan preview di semua pintu sekaligus; wajib di-set `false` saat sistem mulai dipakai operasional (5.7 no. 2). `WOS_ENTRY_POPUPS` (default `true`) mematikan semua popup; `phpunit.xml` mengisinya `false` supaya 380 tes yang ada tidak berubah.
+    - **Struktur kode:** teks, urutan, dan versi di `config/entry_popups.php`; pemilih popup `App\Support\EntryPopups` (pola sama dengan `PageGuide`); tampilan `partials/entry-popups.blade.php` + isi per jenis (`entry-popups/welcome`, `entry-popups/notice`); antrean dan `sessionStorage` di `resources/js/entry-popups.js` (`Alpine.data`); animasi di `resources/css/app.css`. Di-include di `layouts/public`, `layouts/employee`, `layouts/app`, dan `auth/login`. Butuh `npm run build` (5.7 no. 4).
     - **Isi Peringatan preview** (bahasa santai): (1) sistem masih preview dan belum untuk operasional, silakan dicoba dulu; (2) data yang dimasukkan hanya untuk testing; (3) data testing akan di-reset saat sistem siap dipakai operasional, jadi jangan memasukkan data asli atau rahasia.
     - **Sambutan:** kartu gelap dengan equalizer dan piringan hitam berputar (CSS murni, tanpa gambar atau library baru), sapaan menurut jam (WIB), nama depan, dan label role; animasi mati bila perangkat memilih `prefers-reduced-motion`.
     - **Tes:** `EntryPopupsTest` (tampil per pintu, urutan Sambutan → Peringatan, kedua saklar, tidak muncul di halaman error/Kunci Dashboard/wajib ganti password, teks di-escape, smoke 5 akun). Yang tetap manual: antrean + `sessionStorage`, animasi, tampilan di HP.
@@ -687,20 +655,20 @@ Tes otomatis tetap tidak menggantikan pengecekan visual browser karena responsif
 
 **Lainnya**
 
-- **Tes otomatis:** 380 tes lulus di 19 file (Bab 2.2); jalankan sebelum tiap deploy. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
+- **Tes otomatis:** 380 tes lulus di 19 file (Bab 2.2); jalankan sebelum tiap deploy. Pipeline deploy saat ini tidak menjalankan tes (Bab 5.1), jadi ini murni manual. Belum ada tes unit murni dan belum ada tes browser (Dusk/Playwright) untuk UI, geolocation, dan kamera.
 - **Rate limit login** sudah ada, tetapi tambahkan honeypot atau captcha sederhana pada form kontak & lamaran (saat ini hanya throttle per IP).
 - **Security header** (CSP, X-Frame-Options, HSTS) belum ada; tambahkan lewat middleware atau `.htaccess`.
-- **Log:** set `LOG_LEVEL=warning` dan rotasi harian di produksi.
+- **Log:** set `LOG_LEVEL=warning` dan rotasi harian di produksi (5.6).
 - **Migrasi:** dua pasang migrasi bernama sama (`office_settings`, `attendances` create + alter) sebaiknya diberi nama yang membedakan; tidak memengaruhi fungsi.
-- **Route manajer kosong** (`Team Overview`) atau isi, atau hapus.
+- **Team Overview (Manajer):** halamannya belum ada dan belum ada route-nya; di `routes/web.php` baru berupa komentar `// TODO Fase 1: team-overview`. Buat halamannya, atau hapus komentar dan rencananya.
 
 ### 4.4 Urutan kerja yang disarankan
 
 Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus jalan di versi final; langkah 2 harus sebelum 3 karena Payroll memakai blok potongan dari Pengaturan Kantor; Royalty paling besar sehingga paling akhir.
 
-**Sudah dikerjakan lebih dulu:** Popup informasi preview (4.2 no. 8) — selesai 2026-09-22, 380/380 tes lulus. Langkah 1 di bawah menjalankan ulang seluruh tes (termasuk `EntryPopupsTest`) di versi paket final.
+**Sudah dikerjakan lebih dulu:** Popup informasi preview (4.2 no. 8) — selesai 2026-09-22, 380/380 tes lulus. Langkah 1 (sudah selesai) menjalankan ulang seluruh tes (termasuk `EntryPopupsTest`) di versi paket final.
 
-1. **Turunkan target PHP ke 8.3** (4.1 no. 1): samakan konstrain `maatwebsite/excel` ke `^4.0`, set platform di `composer.json`, `composer update`, jalankan `php artisan test`.
+1. ✅ **Turunkan target PHP ke 8.3**: selesai (dicek dari kode 2026-09-24). `maatwebsite/excel` `^4.0`, `config.platform.php = 8.3.0`, Symfony 7.4.x di `composer.lock`, dan 380 tes lulus di PHP 8.3.6 (5.7 no. 1).
 2. **Pengaturan Kantor dan ritme mingguan Dashboard Owner** (4.2 no. 2 dan 3).
 3. **Payroll** (4.2 no. 4), lalu perbarui baris Payroll di Bab 2.1 dan tambahkan tesnya.
 4. **Project Budgeting** (4.2 no. 5).
@@ -708,15 +676,282 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 6. **Upload CV dan link portofolio** (4.2 no. 7).
 7. **Assign / Reminder dari dashboard** (4.2 no. 9, scope baru diklarifikasi 2026-09-23).
 8. **Perbaiki bug dan keterbatasan yang diketahui yang tersisa** (4.3): pengajuan cuti tumpang tindih. (Kartu People/Recruitment di `/dashboard` dan scope export Rekap Absensi sudah diperbaiki 2026-09-23.)
-9. **Sisa persiapan deploy:** isi konten publik (4.1 no. 9), pastikan `.env` produksi benar (no. 2, termasuk `WOS_PREVIEW_MODE` sesuai tahap), bersihkan paket upload (no. 8). Auto-deploy (GitHub Actions → FTP cPanel → migrate) sendiri **sudah live sejak 2026-09-23**, jadi langkah ini tinggal menyelesaikan sisanya sambil fitur di atas berjalan, bukan lagi prasyarat sebelum publik dibuka.
+9. **Sisa persiapan production (Bab 5):** isi konten publik (5.7 no. 9), pastikan `.env` produksi benar (5.6, termasuk `WOS_PREVIEW_MODE` sesuai tahap), pastikan seed data awal sudah dijalankan tepat sekali (5.5), bersihkan paket upload (5.7 no. 8 dan 5.10). Auto-deploy (GitHub Actions → FTPS cPanel → migrate) sendiri **sudah live sejak 2026-09-23**, jadi langkah ini tinggal menyelesaikan sisanya sambil fitur di atas berjalan, bukan lagi prasyarat sebelum publik dibuka.
 10. **Uji manual per halaman per role** (termasuk HP untuk absensi), khususnya modul yang baru selesai di atas.
 
 ---
 
-## 5. Ringkasan
+## 5. Production (Deploy & Operasional)
+
+Semua hal yang berkaitan dengan server production dikumpulkan di bab ini: alur deploy, apa yang otomatis dan apa yang manual, secrets, seeder, blocker, riwayat masalah beserta penyelesaiannya, dan panduan kalau deploy gagal. Isinya dicocokkan dengan `.github/workflows/deploy.yml`, kode aplikasi, riwayat git (HEAD `551cd65`, sama dengan `origin/main`, working tree bersih, push terakhir 2026-09-24 09:11 WIB), dan hasil run GitHub Actions #20 (hijau). Hal yang hanya ada di server dan tidak bisa dicek dari repo ditandai **(server)**. Setelah sistem dipakai operasional, ikuti juga aturan yang lebih ketat di **5.11**.
+
+### 5.1 Gambaran deploy
+
+```
+push ke main
+  → GitHub Actions (.github/workflows/deploy.yml, job "deploy", ±45–60 detik)
+      1. checkout
+      2. PHP 8.3 + composer install --no-dev   (hanya validasi composer.json; vendor TIDAK diupload)
+      3. Node 20 + npm ci + npm run build
+      4. FTPS: kode aplikasi → ~/wsm-office                      (secret FTP_APP_DIR)
+      5. FTPS: public/build  → ~/public_html/<domain>/build      (secret FTP_PUBLIC_DIR)
+      6. curl https://<APP_URL>/deploy-hook.php?token=…          → migrate --force + config/route/view cache
+```
+
+- **Server:** shared cPanel Rumahweb, tanpa SSH. Domain aplikasi `wos.whisnusantika.com`; document root `~/public_html/wos.whisnusantika.com`; project di `~/wsm-office` (di luar `public_html`).
+- **Upload:** `SamKirkland/FTP-Deploy-Action@v4.3.5`, `protocol: ftps`. Sinkronisasi memakai file state `.ftp-deploy-sync-state.json` di folder tujuan **(server)**: hanya file yang berubah yang dikirim, dan file yang dihapus dari repo ikut terhapus di server. Jangan hapus file state itu; kalau hilang, semua file diupload ulang (lama).
+- **Yang tidak ada di pipeline saat ini:** tes otomatis, patch `public/index.php`, dan pembersihan file dev. Semuanya ada di versi pertama (2026-09-22) yang dikosongkan lewat commit `reset` (2026-09-23 06:29), lalu diganti workflow sederhana sekarang. Akibatnya `php artisan test` harus dijalankan manual sebelum push (Bab 2.2), dan `public/index.php` di server diurus manual (5.7 no. 3).
+- **Riwayat versi workflow:** 2026-09-22 pipeline pertama (tes → build → patch `index.php` → `lftp` ke dua akun FTP) → 2026-09-23 `reset` → workflow sekarang (satu akun FTP, `FTP-Deploy-Action`) → 2026-09-23 `vendor/` dikeluarkan dari upload (5.8 no. 2) → 2026-09-24 `curl` hook kembali memverifikasi SSL (5.8 no. 3).
+
+### 5.2 Otomatis vs manual
+
+| Yang berubah                                                                                                  | Ikut deploy otomatis?    | Kalau perlu diubah                                                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kode aplikasi (`app/`, `config/`, `routes/`, `resources/`, `database/`, `bootstrap/`, `composer.json`/`lock`) | ✅                       | Push ke `main`                                                                                                                                     |
+| Aset hasil build (`public/build`)                                                                             | ✅                       | Push (build otomatis)                                                                                                                              |
+| Skema database (migrasi baru)                                                                                 | ✅ lewat deploy-hook     | Push                                                                                                                                               |
+| Cache config, route, view                                                                                     | ✅ lewat deploy-hook     | —                                                                                                                                                  |
+| `vendor/`                                                                                                     | ❌                       | Upload manual (zip → File Manager → Extract) **setiap `composer.json`/`composer.lock` berubah**. Kalau lupa, kode yang butuh paket baru error 500. |
+| File di `public/` selain `build/` (`index.php`, `.htaccess`, `robots.txt`, `favicon.ico`, gambar/aset statis) | ❌                       | Upload manual ke `~/public_html/<domain>/`                                                                                                         |
+| `.env` dan `storage/`                                                                                         | ❌                       | Edit manual di server. Perubahan `.env` baru berlaku setelah hook jalan lagi (5.6).                                                                |
+| `deploy-hook.php`                                                                                             | ❌ (hanya ada di server) | Edit manual di File Manager (5.4)                                                                                                                  |
+| Data seeder (akun asli, pengaturan kantor)                                                                    | ❌                       | Lihat 5.5                                                                                                                                          |
+
+`vendor/` di server harus selalu berasal dari `composer.lock` yang sama dengan yang ada di `main`. Pipeline menjalankan `composer install` hanya untuk memastikan `composer.json`/`composer.lock` valid; hasilnya dibuang.
+
+### 5.3 GitHub Secrets
+
+Settings → Secrets and variables → Actions → Repository secrets. Jangan menulis nilai secret di repo, README, atau chat.
+
+| Secret                         | Isi                                           | Catatan                                                                                                                                                                   |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FTP_HOST`                     | **Alamat IPv4 server FTP** (bukan hostname)   | Sengaja IP, lihat 5.8 no. 1. Kalau server pindah atau IP berubah, ganti (`nslookup ftp.whisnusantika.com`, ambil A record).                                               |
+| `FTP_USERNAME`, `FTP_PASSWORD` | Akun FTP cPanel khusus deploy                 | Dibuat di cPanel → FTP Accounts. Akun ini berakar di home cPanel, jadi dua path di bawah relatif dari home. Kalau password diganti, ganti di cPanel dulu, lalu di secret. |
+| `FTP_APP_DIR`                  | Folder project di server (`wsm-office`)       | Tujuan upload kode aplikasi.                                                                                                                                              |
+| `FTP_PUBLIC_DIR`               | Document root domain (`public_html/<domain>`) | Tujuan upload `public/build` (ke subfolder `build/`).                                                                                                                     |
+| `APP_URL`                      | Domain saja, **tanpa** `https://`             | Workflow menyusun `https://${APP_URL}/deploy-hook.php`.                                                                                                                   |
+| `DEPLOY_TOKEN`                 | Token acak panjang                            | Harus sama persis dengan `$expectedToken` di `deploy-hook.php` **(server)**.                                                                                              |
+
+### 5.4 Deploy hook
+
+Ada **dua** mekanisme di dunia nyata, dan hanya satu yang dipakai.
+
+**A. `deploy-hook.php` mandiri (dipakai workflow).** Ada di `~/public_html/<domain>/deploy-hook.php` **(server)**, ditulis manual 2026-09-23, **tidak ada di repo**. Dipanggil `GET ?token=…`. Token dibandingkan (`hash_equals`) dengan `$expectedToken` yang ditulis langsung di file. Kalau cocok: memuat `../../wsm-office/vendor/autoload.php` dan `bootstrap/app.php`, lalu menjalankan `migrate --force`, `config:cache`, `route:cache`, `view:cache`. Balasan teks `DEPLOY SELESAI`; kalau ada exception: HTTP 500 `ERROR: …`; token salah: HTTP 403.
+
+<details>
+<summary>Isi file (token dikosongkan; simpan salinannya di luar server)</summary>
+
+```php
+<?php
+// deploy-hook.php — taruh di public_html/wos.whisnusantika.com/deploy-hook.php
+// Di-trigger via HTTP oleh GitHub Actions setelah upload selesai.
+$expectedToken = ''; // isi string acak panjang, SAMA dengan secret DEPLOY_TOKEN
+
+if (!hash_equals($expectedToken, $_GET['token'] ?? '')) {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
+// Sesuaikan path kalau lokasi wsm-office berbeda
+$appPath = __DIR__ . '/../../wsm-office';
+
+require $appPath . '/vendor/autoload.php';
+
+$app = require_once $appPath . '/bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+header('Content-Type: text/plain');
+
+try {
+    $kernel->call('migrate', ['--force' => true]);
+    echo "migrate: OK\n" . $kernel->output();
+
+    $kernel->call('config:cache');
+    echo "config:cache: OK\n";
+
+    $kernel->call('route:cache');
+    echo "route:cache: OK\n";
+
+    $kernel->call('view:cache');
+    echo "view:cache: OK\n";
+
+    echo "DEPLOY SELESAI\n";
+} catch (\Throwable $e) {
+    http_response_code(500);
+    echo "ERROR: " . $e->getMessage() . "\n";
+}
+```
+
+</details>
+
+**B. `POST /system/deploy-hook` di dalam aplikasi (tidak dipakai saat ini).** `App\Http\Controllers\System\DeployHookController` + route `system.deploy-hook` di `routes/web.php`, peninggalan pipeline pertama (2026-09-22). Token dikirim lewat header `X-Deploy-Token` dan dibandingkan dengan `DEPLOY_HOOK_TOKEN` di `.env` server (`config/services.php` → `deploy_hook.token`); throttle 5 per menit; dikecualikan dari CSRF di `bootstrap/app.php`; selain tiga cache di atas juga menjalankan `event:cache`. Selama `DEPLOY_HOOK_TOKEN` tidak diisi, route ini selalu 403, jadi aman dibiarkan. Sebaiknya pilih satu: hapus route dan controller ini, atau pindahkan workflow ke sana supaya hook ada di repo dan bisa dites.
+
+**Catatan untuk hook A:**
+
+- **Token kosong = terbuka.** `hash_equals('', '')` bernilai benar, jadi kalau `$expectedToken` kosong di server, siapa pun bisa memicu `migrate`. Tambahkan pengaman: `if ($expectedToken === '' || !hash_equals($expectedToken, $_GET['token'] ?? ''))`. Versi yang dibagikan ke chat, repo, atau README wajib berisi token kosong; token asli hanya ada di server dan di secret.
+- **Token ada di URL**, jadi tercatat di access log server. Kalau ingin lebih rapi, pindah ke Hook B (header).
+- **`curl -sf` menyembunyikan isi balasan.** Untuk melihat pesan error hook, panggil manual: `curl -i "https://<domain>/deploy-hook.php?token=…"`.
+- **Ada `config:cache`** di dalamnya, lihat 5.6.
+
+### 5.5 Database dan seeder
+
+- **Migrasi** jalan otomatis di tiap deploy lewat hook (`migrate --force`). Migrasi hanya maju; tidak ada rollback otomatis.
+- **Seeder tidak dijalankan pipeline.** Sejak commit `17172d2` (2026-09-23), `DatabaseSeeder` hanya memanggil `OfficeSettingSeeder` dan `ProductionSeeder`. `DemoSeeder` dan `TestingAccountsSeeder` tetap ada untuk lokal dan tes, tetapi tidak ikut `db:seed` atau `migrate:fresh --seed` lagi.
+- **`ProductionSeeder`** membuat 11 akun asli: Owner (Ancha), Developer (Arga, Manage semua modul), dan 9 karyawan dari daftar kontak WhatsApp (role default `karyawan`, atasan Owner; nama "WSM ..." adalah label kontak, belum tentu nama asli). Plus satu memo pinned "Welcome WSM v1" yang menggantikan popup preview yang dimatikan lewat `WOS_PREVIEW_MODE=false`. Semua akun memakai satu password sementara (konstanta `TEMP_PASSWORD` di seeder) dengan `must_change_password = true`, jadi dipaksa ganti saat login pertama.
+- ⚠️ **Jalankan sekali saja.** Kedua seeder memakai `updateOrCreate` dengan nilai tetap. Komentar "aman dijalankan berulang" hanya benar untuk jumlah baris (tidak dobel), bukan untuk isinya. Menjalankan ulang `ProductionSeeder` mengembalikan password semua 11 akun ke password sementara, dan mengembalikan nama, role, divisi, jabatan, dan atasan ke nilai di seeder (menimpa penyesuaian Owner lewat halaman People). Menjalankan ulang `OfficeSettingSeeder` menimpa nama kantor, alamat, koordinat, radius, jam kerja, dan toleransi yang sudah diubah Owner di Pengaturan Kantor.
+- ⚠️ **Password sementara tertulis di repo** (dan tetap ada di riwayat git). Siapa pun yang punya akses repo tahu password awal semua akun, dan akun yang belum pernah login bisa diambil alih dengan email + password itu. Sebelum seeder dijalankan, ganti `TEMP_PASSWORD` (atau buat acak per akun dan bagikan terpisah), dan setelah itu pastikan tidak ada akun yang masih `must_change_password = true` lebih lama dari yang perlu.
+- **Status di production: tidak bisa diverifikasi dari repo** (hook tidak menjalankan seeder). Isi setelah dicek: `[ ]` `OfficeSettingSeeder` sudah dijalankan · `[ ]` `ProductionSeeder` sudah dijalankan.
+- **Cara menjalankan tanpa SSH** (hanya untuk pertama kali; pilih satu):
+    - **Impor SQL:** di lokal dengan database kosong jalankan `php artisan migrate:fresh --seed`, ekspor tabel yang dibutuhkan lewat phpMyAdmin lokal, impor ke phpMyAdmin server. Server harus masih kosong, kalau tidak ID akan bentrok.
+    - **Lewat hook sekali pakai:** tambahkan blok di bawah ini ke `deploy-hook.php` **(server)** tepat setelah blok `migrate`, buka sekali dengan `&seed=1`, lalu **hapus blok itu lagi**. Jangan pernah menaruh `seed=1` di workflow.
+
+```php
+if (($_GET['seed'] ?? '') === '1') {
+    $kernel->call('db:seed', ['--class' => 'ProductionSeeder', '--force' => true]);
+    echo "db:seed: OK\n" . $kernel->output();
+}
+```
+
+- **Jangan** menjalankan `migrate:fresh`/`migrate:refresh` di production (menghapus semua data), `db:seed` tanpa `--class`, atau `DemoSeeder`/`TestingAccountsSeeder`.
+
+### 5.6 `.env` produksi
+
+`.env` di server tidak ikut deploy (di-`.gitignore` dan di-`exclude` workflow). Nilai yang disarankan:
+
+| Kunci                      | Nilai production                        | Alasan                                   |
+| -------------------------- | --------------------------------------- | ---------------------------------------- |
+| `APP_ENV`, `APP_DEBUG`     | `production`, `false`                   | Jangan bocorkan stack trace              |
+| `APP_URL`                  | `https://<domain>`                      | Dipakai untuk URL absolut                |
+| `DB_*`                     | Database dan user khusus (bukan `root`) | Hak akses minimal                        |
+| `SESSION_SECURE_COOKIE`    | `true`                                  | Cookie sesi hanya lewat HTTPS            |
+| `QUEUE_CONNECTION`         | `sync`                                  | Server tanpa worker                      |
+| `WOS_PREVIEW_MODE`         | `false` saat dipakai operasional        | Mematikan Peringatan preview (4.2 no. 8) |
+| `LOG_LEVEL`, `LOG_CHANNEL` | `warning`, `daily`                      | Log tidak membengkak                     |
+| `DEPLOY_HOOK_TOKEN`        | Hanya kalau memakai Hook B (5.4)        | Kosong = route Hook B selalu 403         |
+
+- **Perubahan `.env` baru berlaku setelah hook jalan lagi.** Hook menjalankan `config:cache`, yang membekukan nilai `.env`. Cara memicunya: push commit apa pun (`git commit --allow-empty -m "trigger deploy"`), atau buka URL hook, atau hapus `~/wsm-office/bootstrap/cache/config.php`.
+- **Status:** menurut komentar `ProductionSeeder`, `WOS_PREVIEW_MODE=false` sudah dipakai di production. Nilai lain **(server)** belum terverifikasi.
+- `.env.example` belum memuat `WOS_PREVIEW_MODE`, `WOS_ENTRY_POPUPS`, dan `DEPLOY_HOOK_TOKEN`; tambahkan supaya `.env` baru tidak lupa.
+- ⚠️ **Tes otomatis ikut membaca `.env` lokal.** `phpunit.xml` mematikan `WOS_ENTRY_POPUPS` tetapi tidak mengunci `WOS_PREVIEW_MODE`. Kalau `.env` lokal berisi `WOS_PREVIEW_MODE=false` (meniru production), 4 tes `EntryPopupsTest` gagal (376 dari 380 lulus, dicek 2026-09-24). Perbaikan satu baris di `phpunit.xml`: `<env name="WOS_PREVIEW_MODE" value="true"/>`. Sebelum itu diperbaiki, jalankan `$env:WOS_PREVIEW_MODE='true'; php artisan test` (PowerShell) atau `WOS_PREVIEW_MODE=true php artisan test` (bash).
+
+### 5.7 Blocker deploy (wajib beres sebelum publik)
+
+Satu tabel untuk status sekaligus tindakan. Penjelasan blocker 4, 8, dan 9 ada di bawah tabel. Status dicek ulang terhadap kode pada 2026-09-24.
+
+| #   | Blocker                               | Apa artinya                                                                                                                                                                                                                                                                                                                                             | Tindakan                                                                                                                                                                                                                                                                                                                                                                                                                                               | Status                                                                                                                                                                                     |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Versi PHP**                         | Dulu: paket Symfony 8.1 di `vendor/` mewajibkan PHP ≥ 8.4.1, padahal hosting mentok di 8.3.                                                                                                                                                                                                                                                             | Selesai: `composer.json` memakai `config.platform.php = 8.3.0` dan `maatwebsite/excel ^4.0`; `composer.lock` berisi Symfony 7.4.x; `vendor/composer/platform_check.php` sekarang meminta PHP ≥ 8.3.0. 380 tes lulus di PHP 8.3.6 (dicek 2026-09-24). Karena `vendor/` diupload manual (5.2), pastikan isinya berasal dari `composer.lock` yang sama.                                                                                                   | ✅ **selesai**: dicek dari kode 2026-09-24, dan terbukti jalan di production sejak 2026-09-23                                                                                              |
+| 2   | **`.env` produksi**                   | `.env` lokal berbeda dari production (`APP_ENV=local`, `APP_DEBUG=true`, DB user `root`).                                                                                                                                                                                                                                                               | Buat `.env` produksi sesuai tabel di 5.6 (`APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://...`, user DB khusus, `SESSION_SECURE_COOKIE=true`, `QUEUE_CONNECTION=sync`, `WOS_PREVIEW_MODE=false` begitu dipakai operasional).                                                                                                                                                                                                                 | ⚠️ **sebagian**: `WOS_PREVIEW_MODE=false` sudah dipakai (menurut komentar `ProductionSeeder`); nilai lain **(server)** belum terverifikasi                                                 |
+| 3   | **Struktur folder cPanel**            | Kalau seluruh project ditaruh di `public_html`, `.env` dan `app/` bisa dibuka lewat URL (tidak ada `.htaccess` di root project).                                                                                                                                                                                                                        | Isi `public/` ke `~/public_html/<domain>`, sisanya di `~/wsm-office` (di luar `public_html`). Tiga path di `public/index.php` versi server (`maintenance.php`, `vendor/autoload.php`, `bootstrap/app.php`) harus menunjuk ke `~/wsm-office`; dari `public_html/<domain>` bentuknya `__DIR__.'/../../wsm-office/...'`, sama dengan `$appPath` di `deploy-hook.php`. `storage/` ikut di luar `public_html`, dan itu syarat agar file private tetap aman. | ✅ **berjalan, tetapi manual**: workflow saat ini tidak men-patch `index.php` (yang men-patch hanya pipeline pertama, 5.1). `index.php` server tidak ada di repo, simpan salinannya (5.10) |
+| 4   | **Aset Vite**                         | Halaman butuh file CSS/JS hasil "rakitan" Vite di `public/build/` (penjelasan di bawah).                                                                                                                                                                                                                                                                | Otomatis: workflow menjalankan `npm run build` dan mengupload `public/build` ke `~/public_html/<domain>/build`. `public/hot` dan `public/fonts-manifest.dev.json` di-`.gitignore`, jadi tidak ikut dari pipeline; sisa keduanya di server (upload manual awal) dihapus.                                                                                                                                                                                | ✅ **otomatis**: sudah live (2026-09-23)                                                                                                                                                   |
+| 5   | **File sensitif terbuka tanpa login** | Kontrak karyawan, dokumen legal, dan selfie absensi dulu disimpan di disk `public`.                                                                                                                                                                                                                                                                     | Dipindah ke disk private + route unduh yang mengecek modul/pemilik (catatan di bawah).                                                                                                                                                                                                                                                                                                                                                                 | ✅ **selesai (batch 1)**                                                                                                                                                                   |
+| 6   | **Password default "password"**       | `EmployeeImport` mengisi "password" jika kolom kosong. Akun itu ditandai `must_change_password`, jadi dipaksa mengganti password saat login pertama.                                                                                                                                                                                                    | Tidak ada; sudah dikerjakan bersama reset password IT. Akun dari `ProductionSeeder` juga `must_change_password`, tetapi password awalnya tertulis di repo (5.5).                                                                                                                                                                                                                                                                                       | ✅ **selesai** (dengan catatan di 5.5)                                                                                                                                                     |
+| 7   | **Database tanpa terminal**           | `migrate` tidak bisa dijalankan manual di server.                                                                                                                                                                                                                                                                                                       | `migrate` otomatis lewat deploy-hook. Seed data awal (`OfficeSettingSeeder`, `ProductionSeeder`) tidak otomatis: cara dan peringatannya di 5.5. **Jangan** jalankan `DemoSeeder` dan `TestingAccountsSeeder` di production.                                                                                                                                                                                                                            | ⚠️ **migrate otomatis ✅**; seed data awal **belum terverifikasi** sudah dijalankan (5.5)                                                                                                  |
+| 8   | **Bersihkan paket upload**            | File dev/pribadi tidak boleh ikut ke server. Workflow saat ini masih mengupload file dev yang ter-track git ke `~/wsm-office`: `AGENTS.md`, `CLAUDE.md`, `README.md`, `phpunit.xml`, `package.json`, `package-lock.json`, `vite.config.js`, `.editorconfig`, `.npmrc` (di luar `public_html`, jadi tidak bisa dibuka dari web, tetapi tidak perlu ada). | Tambahkan file-file itu ke `exclude` di step "Upload kode aplikasi ke ~/wsm-office", hapus manual yang sudah terlanjur ada di server (5.10), lalu ikuti daftar di bawah tabel.                                                                                                                                                                                                                                                                         | ⬜                                                                                                                                                                                         |
+| 9   | **Konten publik placeholder**         | Empat halaman publik masih berisi teks "Placeholder" atau teks generik.                                                                                                                                                                                                                                                                                 | Isi konten asli (tetap statis di Blade sesuai keputusan). Daftarnya di bawah tabel.                                                                                                                                                                                                                                                                                                                                                                    | ⬜                                                                                                                                                                                         |
+
+**Blocker 4 (Aset Vite) dalam bahasa sederhana:** browser tidak memakai kode CSS Tailwind dan JavaScript Alpine apa adanya; Vite "merakitnya" menjadi file jadi di folder `public/build/`. Server cPanel tanpa terminal tidak bisa menjalankan Vite, jadi rakitannya dibuat oleh GitHub Actions (`npm run build`) lalu folder hasilnya di-upload otomatis ke `public_html/<domain>/build`. `public/hot` adalah penanda "server dev Vite sedang jalan": kalau ikut ter-upload, Laravel mencari CSS/JS ke alamat localhost dan halaman tampil tanpa gaya. Tanpa `public/build`, halaman menampilkan error `Vite manifest not found`. Setiap ada perubahan tampilan (termasuk class Tailwind baru), cukup push ke `main`; build dan upload berjalan otomatis. Tes otomatis tidak butuh ini karena `tests/TestCase.php` mematikan Vite.
+
+**Blocker 8, yang jangan di-upload:**
+
+- `.git/` dan `node_modules/`
+- `.env` lokal (ganti dengan `.env` produksi; `.env.example` boleh)
+- `database/database.sqlite`
+- `storage/logs/laravel.log` (±2 MB, memuat path lokal `C:/Users/...`)
+- isi `storage/framework/views/` (cache Blade), bila ada
+- `public/hot` dan `public/fonts-manifest.dev.json`
+- `.phpunit.result.cache`
+- `AGENTS.md` dan `CLAUDE.md` (catatan repo)
+- `tests/`, `phpunit.xml`, `package.json`, `package-lock.json`, `vite.config.js`: tidak dipakai di server (hanya untuk tes dan build lokal), boleh dilewati
+
+Yang **tetap diupload:** `vendor/` (server tanpa Composer; **manual**, lihat 5.2) dan hasil `npm run build` (`public/build`, otomatis ke `public_html/<domain>/build`).
+
+**Blocker 9, teks yang perlu diganti:**
+
+- **Beranda:** teks pengantar dan label hero, tiga kartu "Yang kami kerjakan", dan kalimat penjelas "Ringkasan singkat layanan/keunggulan tim..." (masih generik).
+- **Tentang:** teks pengantar, Visi, Misi, dan timeline "Perjalanan Kami" (dua baris "Tahun —" / "Tonggak sejarah placeholder").
+- **Layanan:** kalimat pengantar dan empat deskripsi (Produksi Musik, Kampanye & Promosi, Arahan Kreatif, Manajemen Tim).
+- **Kontak:** alamat kantor, nomor telepon, dan alamat email.
+
+**Catatan blocker 5 (selesai):** kontrak karyawan, dokumen legal, dan selfie absensi tersimpan di `storage/app/private` dan tidak punya URL publik. Semuanya hanya bisa dibuka lewat route yang mewajibkan login + akses modul yang sama dengan halaman pemiliknya (`contracts`/`legal` level view; selfie: modul `people` dengan scope rekap, yaitu Owner/HRD semua orang, selain itu diri sendiri + bawahan). Kebutuhan `storage:link` hilang, jadi tidak perlu terminal di server. Tes: `PrivateFileAccessTest` (18 tes).
+
+**Yang perlu kamu lakukan di lokal sebelum deploy:** jalankan `php artisan files:privatize --dry-run` untuk melihat rencana, lalu `php artisan files:privatize` (memindahkan file lama dari disk publik ke private; path di database tidak berubah). Jika belum ada file lama, hasilnya 0 file dan tidak ada yang perlu dilakukan.
+
+### 5.8 Riwayat masalah dan penyelesaian
+
+| #   | Kapan                    | Gejala                                                                                                                               | Penyebab                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Penyelesaian                                                                                                                                                                                             |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 2026-09-23 sore → 09-24  | Step upload FTP gagal `AggregateError [ETIMEDOUT] (control socket)` di run #17–#19, dan run #20 pertama. Step gagal dalam ±2 detik.  | **Diduga bukan IP yang diblokir.** Dari lokal `Test-NetConnection <ip> -Port 21` berhasil; run #13–#16 hari yang sama sukses; stack trace menunjuk `internalConnectMultipleTimeout` (timer pemilihan alamat bawaan Node, ±250 ms per percobaan), bukan timeout koneksi sungguhan (yang butuh ±30 detik). Hostname FTP punya alamat IPv4 dan IPv6; handshake IPv4 dari runner di luar negeri ke Indonesia melewati batas itu, IPv6 tidak ada di runner (`ENETUNREACH`), jadi Node menyerah. Ini kesimpulan dari bukti tidak langsung; yang terbukti hanyalah penyembuhnya. | `FTP_HOST` diganti ke alamat IPv4 server, lalu re-run job yang gagal. Run #20 hijau (57 detik). Tidak perlu menghubungi Rumahweb.                                                                        |
+| 2   | 2026-09-23 09:02         | Run #12: upload `vendor/` lewat FTP memakan 8 menit 52 detik dan gagal.                                                              | Ribuan file kecil lewat FTP terlalu lambat.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `vendor/` dikeluarkan dari upload (`01aa801`) dan diupload manual (5.2).                                                                                                                                 |
+| 3   | 2026-09-23 09:20 → 09-24 | Step hook gagal dengan `curl` exit code 60 (verifikasi sertifikat SSL).                                                              | Sertifikat SSL domain tidak lolos verifikasi saat itu; penyebab pastinya tidak tercatat.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Sementara memakai `curl -k` (`d0e49c9`). Dicabut 2026-09-24 (`551cd65`); `curl -sf` tanpa `-k` lolos di run #20.                                                                                         |
+| 4   | 2026-09-22               | Upload FTPS lewat `FTP-Deploy-Action` gagal di koneksi data (komentar workflow lama menyebut regresi TLS Node, `nodejs/node#64402`). | Menurut komentar workflow lama: server (Pure-FTPd) mewajibkan TLS session reuse, yang tidak dilakukan library Node pada build Node yang dipaksa GitHub. Belum diverifikasi ulang.                                                                                                                                                                                                                                                                                                                                                                                         | Sempat pindah ke `lftp`. Setelah `reset` (2026-09-23) kembali ke `FTP-Deploy-Action` dan berjalan normal (#13–#16, #20). Kalau error TLS/`decode_error` muncul lagi, `lftp` adalah fallback (`0178356`). |
+
+**Pengingat dari log run:** GitHub menandai Node 20 sebagai deprecated (action dipaksa jalan di Node 24), dan label `ubuntu-latest` pindah ke Ubuntu 26 mulai 2026-10-19. Perhatikan run pertama sesudah tanggal itu; versi PHP, Node, dan tool di runner bisa berubah.
+
+### 5.9 Kalau deploy gagal, dan aturan rutin
+
+| Gejala di GitHub Actions                      | Artinya                                                | Tindakan                                                                                                                                                                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step upload gagal `ETIMEDOUT`, **±2 detik**   | Pemilihan alamat IPv4/IPv6 (5.8 no. 1)                 | Pastikan `FTP_HOST` berisi alamat IPv4, bukan hostname. Re-run.                                                                                                                                                                                                 |
+| Step upload gagal `ETIMEDOUT`, **±30 detik**  | Timeout sungguhan: server atau firewall tidak menjawab | Tes dari lokal: `Test-NetConnection <ip> -Port 21`. Cek `nslookup` (IP berubah?). Kalau lokal juga gagal, FTP server bermasalah. Kalau lokal berhasil, hubungi Rumahweb dan sertakan IP runner (tambah step `curl -s https://api.ipify.org` untuk mencetaknya). |
+| Step upload gagal `530 Login incorrect`       | Kredensial salah                                       | Cek `FTP_USERNAME`/`FTP_PASSWORD` dan password akun FTP di cPanel.                                                                                                                                                                                              |
+| Step hook gagal (`curl` exit 22, tanpa pesan) | Balasan HTTP 4xx/5xx dari hook                         | Panggil manual `curl -i "https://<domain>/deploy-hook.php?token=…"`. 403 = token beda dengan `DEPLOY_TOKEN`; 500 = baca pesan `ERROR:` (migrasi gagal, `vendor/` tidak cocok, dst.).                                                                            |
+| Step hook gagal `curl` exit 60                | Sertifikat SSL domain tidak terverifikasi              | Cek sertifikat di cPanel (AutoSSL). Jangan kembali ke `-k` kecuali darurat.                                                                                                                                                                                     |
+| Situs 500 setelah deploy hijau                | Biasanya `vendor/` tidak cocok dengan `composer.lock`  | Upload ulang `vendor/` (5.2). Cek `storage/logs/laravel.log` di server.                                                                                                                                                                                         |
+
+Aturan rutin:
+
+- **Jangan re-run run lama.** Re-run memakai commit lama dan menyinkronkan server ke isi commit itu, sehingga bisa menimpa deploy yang lebih baru. Untuk mengulang, re-run run **terbaru**, atau push commit baru. Run yang gagal di step pertama tidak mengubah apa pun di server; run berikutnya otomatis menyusul semua perubahan (berdasarkan file state).
+- **Cek run hijau** setelah tiap push: tiga step penting adalah upload kode, upload build, dan trigger hook.
+- **Sebelum push:** `php artisan test` (5.6 untuk catatan `WOS_PREVIEW_MODE`), karena pipeline tidak menjalankannya.
+- **Jangan** `migrate:fresh` di production, jangan menjalankan seeder ulang (5.5), jangan menghapus `.ftp-deploy-sync-state.json`.
+- **Rollback:** tidak ada mekanisme otomatis. Revert commit lalu push; migrasi tidak ikut mundur, jadi migrasi yang merusak harus dibetulkan dengan migrasi baru.
+
+### 5.10 Kondisi server yang terlihat (screenshot cPanel 2026-09-23)
+
+Dicatat dari screenshot File Manager, bukan dari repo. Konfirmasi ulang sebelum bertindak.
+
+- `~/wsm-office` berisi sisa upload manual awal yang tidak dibutuhkan: `.git`, `node_modules`, `tests`, `AGENTS.md`, `CLAUDE.md`, `.phpunit.result.cache`, `.env.example` (5.7 no. 8). Folder ini di luar `public_html` sehingga tidak bisa dibuka dari web.
+- `~/public_html/<domain>` berisi `hot` dan `fonts-manifest.dev.json` (file dev, hapus) di samping `index.php`, `deploy-hook.php`, `.htaccess`, `build/`, `robots.txt`, `favicon.ico`.
+- Izin file tampil `0666` dan folder `0777` di hampir semua item, termasuk `.env`. Periksa dan perketat (umumnya `0644` file dan `0755` folder, `.env` `0600` atau `0640`), lalu pastikan `storage/` dan `bootstrap/cache/` tetap bisa ditulis aplikasi.
+- Salinan `index.php` dan `deploy-hook.php` versi server tidak ada di repo. Simpan salinannya (misalnya di folder `docs/server/` tanpa token) supaya bisa dipulihkan kalau server berubah.
+
+### 5.11 Setelah dipakai operasional: pertimbangan yang lebih ketat
+
+Kodenya sudah disiapkan untuk operasional: akun asli lewat `ProductionSeeder`, popup preview dimatikan lewat `WOS_PREVIEW_MODE=false`, dan memo "Welcome WSM v1" menyatakan sistem dipakai untuk operasional harian. Tanggal mulai operasional resmi: ⬜ isi di sini. Sejak tanggal itu, data di production adalah **data asli** (absensi, cuti, lembur, payroll, kontrak, selfie, lokasi), jadi semua pertimbangan di bawah ini berlaku dan lebih ketat daripada masa preview/testing.
+
+**Data**
+
+- **Tidak ada lagi reset data.** `migrate:fresh`, `migrate:refresh`, `db:wipe`, `DemoSeeder`, dan `TestingAccountsSeeder` tidak boleh dijalankan di production (5.5). Data uji hanya di database lokal. Popup "data hanya untuk testing" (4.2 no. 8) sudah tidak berlaku begitu `WOS_PREVIEW_MODE=false`.
+- **Backup dulu sebelum push yang berisi migrasi baru**, terutama yang mengubah atau menghapus kolom atau tabel: ekspor database lewat cPanel (Backup atau phpMyAdmin Export) dan simpan salinannya di luar server. Jadwal backup otomatis dan uji pemulihannya belum tercatat di repo: ⬜ pastikan aktif dan pernah dicoba dipulihkan.
+- **Migrasi harus aman untuk data yang sudah ada.** Tambah kolom sebagai `nullable` atau dengan default. Jangan menghapus atau mengganti nama kolom dalam deploy yang sama dengan kode yang memakainya (pecah jadi dua deploy). Jangan `truncate`. Migrasi hanya maju dan tidak ada rollback otomatis (5.9).
+- **Import massal di production** (Karyawan, KPI, Project Budgeting, Work Tracker): coba dulu dengan file kecil. Import belum semuanya tercatat di Audit Log (Bab 4.2).
+
+**Deploy**
+
+- **Hindari deploy di jam sibuk**, terutama sekitar jam masuk dan pulang (lihat jam kerja di Pengaturan Kantor). Upload FTP tidak atomik: file diganti satu per satu selama ±1 menit, jadi request yang masuk saat itu bisa bertemu campuran kode lama dan baru.
+- **Tes wajib hijau sebelum push** (`php artisan test`, dengan `WOS_PREVIEW_MODE=true`, lihat 5.6). Pipeline tidak menjalankan tes, jadi ini aturan manual. Pertimbangan: tambahkan step tes sebagai gerbang di workflow (menambah waktu deploy dan butuh dependency dev).
+- **Cek singkat setelah tiap deploy:** run Actions hijau, lalu buka halaman login dan satu-dua halaman inti (absen, dashboard). Kalau ada yang aneh, revert commit lalu push (5.9).
+- **Perubahan manual** (`vendor/`, `index.php`, `deploy-hook.php`, `.env`) dilakukan di jam sepi dengan menyimpan salinan file lama dulu.
+- **Hindari edit kode langsung di server.** File yang diubah di server tidak ikut repo dan bisa berbeda dari file state deploy, sehingga sulit dilacak.
+
+**Keamanan dan privasi**
+
+- **Data pribadi asli:** `APP_DEBUG=false`, log tidak memuat data pribadi, file private tetap di `storage/app/private`, izin file diperketat (5.10).
+- **Password dan token:** pastikan tidak ada akun yang masih memakai password sementara (5.5); putar `DEPLOY_TOKEN` dan password FTP secara berkala dan setiap ada orang yang tidak lagi perlu akses; token hook jangan pernah kosong (5.4).
+- **Akses:** perubahan Dashboard Access dan role hanya oleh Owner dan tercatat di Audit Log; tinjau berkala siapa yang punya akses Manage.
+
+**Perubahan fitur**
+
+- **Fitur yang menyentuh uang atau kehadiran** (Payroll, potongan, lembur, KPI, Budget, Royalty): uji dengan tes otomatis dan cek manual pada salinan data sebelum rilis. Catat perubahan aturan hitungnya di README dan di System Change Log (Dashboard IT) supaya karyawan tahu.
+- **Perubahan alur harian karyawan** (App Mode): umumkan lewat memo atau Himbauan (slot popup, Bab 4.2 no. 8) sebelum atau saat rilis.
+
+---
+
+## 6. Ringkasan
 
 WSM-Office sudah berjalan utuh dan stabil secara teknis: 380 tes otomatis lulus dan menutup seluruh checklist manual A–K. Fitur inti harian dari prototype (absensi lengkap dengan geofence dan selfie, izin/cuti/lembur/koreksi dengan approval, Work Tracker, meeting, memo, KPI, kontrak, legal, audit) sudah ada, dan App Mode untuk semua karyawan sekarang memakai shell responsif yang sama di HP, tablet, dan desktop, ditambah rekrutmen, pusat Export/Import, dan panduan halaman yang tidak ada di prototype.
 
-Kesenjangan terbesar ada di **modul finansial** (Payroll, Budget, Royalty; Bab 4.2 no. 4–6) serta halaman publik dan form lamaran yang belum siap tayang (konten placeholder, belum ada upload CV/portofolio). Deploy production sudah **live sejak 2026-09-23** lewat pipeline otomatis (GitHub Actions → FTP cPanel → migrate); dari 9 blocker di Bab 4.1, yang masih terbuka sekarang tinggal `.env` produksi final (no. 2), seed data awal/akun pertama di production (no. 7), pembersihan paket upload (no. 8), dan konten publik (no. 9) — sisanya (versi PHP, struktur folder, aset Vite, file sensitif, password default) sudah terbukti beres dari deploy yang berjalan.
+Kesenjangan terbesar ada di **modul finansial** (Payroll, Budget, Royalty; Bab 4.2 no. 4–6) serta halaman publik dan form lamaran yang belum siap tayang (konten placeholder, belum ada upload CV/portofolio). Deploy production sudah **live sejak 2026-09-23** lewat pipeline otomatis (GitHub Actions → FTP cPanel → migrate); dari 9 blocker di Bab 5.7, yang masih terbuka sekarang tinggal `.env` produksi final (no. 2), seed data awal/akun pertama di production (no. 7), pembersihan paket upload (no. 8), dan konten publik (no. 9) — sisanya (versi PHP, struktur folder [masih manual], aset Vite, file sensitif, password default) sudah beres. Semua catatan production ada di Bab 5, termasuk peringatan bahwa seeder hanya boleh dijalankan sekali dan `vendor/` masih diupload manual. Karena sistem dipakai operasional, aturan yang lebih ketat (tanpa reset data, backup sebelum migrasi, migrasi aman, jam deploy) ada di 5.11.
 
 **Ringkas:** fungsional ±80% dari prototype (±90% untuk fitur harian, ±50% untuk finansial).
