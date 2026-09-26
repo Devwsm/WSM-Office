@@ -49,7 +49,12 @@ class MemoController extends Controller
             ->whereNull('read_by_management_at')
             ->update(['read_by_management_at' => now()]);
 
-        return view('dashboard.work.index', ['memos' => $memos]);
+        return view('dashboard.work.index', [
+            'memos' => $memos,
+            // 2026-09-26 — buat form "Kirim Reminder" (README #28) di
+            // atas listing ini; sama data yang dipakai create()/edit().
+            'employees' => User::query()->orderBy('name')->get(['id', 'name', 'division']),
+        ]);
     }
 
     public function create()

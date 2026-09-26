@@ -39,6 +39,90 @@
             &amp; Action Item</a>
     </div>
 
+    {{-- README #28 (Bab 4.2 no. 9) — padanan form "Send Reminder" di
+         secretary-console prototype v32: 1 submit -> WorkItem baru
+         (is_reminder, section "REMINDER / ADMIN") + Memo tertarget ke
+         1 karyawan sekaligus. Lihat WorkReminderController. --}}
+    @if (auth()->user()->canManageModule('work'))
+        <div class="card-wsm-white mb-5" x-data="{ open: false }">
+            <button type="button" class="flex w-full items-center justify-between text-left" @click="open = !open">
+                <div>
+                    <h3 class="text-[15px] font-black">Kirim Reminder</h3>
+                    <p class="text-[11px] text-muted">Assign 1 task ke 1 karyawan — otomatis masuk Work Tracker &amp;
+                        Info dari Owner orang itu.</p>
+                </div>
+                <span class="text-[11px] font-extrabold text-muted" x-text="open ? '− Tutup' : '+ Buka'"></span>
+            </button>
+
+            <form method="POST" action="{{ route('dashboard.work.reminder.store') }}" class="mt-4 grid gap-4"
+                x-show="open" x-cloak>
+                @csrf
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label-wsm mb-1.5">Karyawan</label>
+                        <select name="pic_employee_id" class="input-wsm" required>
+                            <option value="">— Pilih —</option>
+                            @foreach ($employees as $employee)
+                                <option value="{{ $employee->id }}" @selected(old('pic_employee_id') == $employee->id)>
+                                    {{ $employee->name }}@if ($employee->division)
+                                        · {{ $employee->division }}
+                                    @endif
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('pic_employee_id')
+                            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="field-label-wsm mb-1.5">Due Date</label>
+                        <input type="date" name="due_date" value="{{ old('due_date') }}" class="input-wsm">
+                        @error('due_date')
+                            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <label class="field-label-wsm mb-1.5">Pekerjaan / Reminder</label>
+                    <input type="text" name="title" value="{{ old('title') }}" class="input-wsm"
+                        placeholder="Contoh: Update tracker sebelum meeting" required>
+                    @error('title')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="field-label-wsm mb-1.5">Priority</label>
+                        <select name="priority" class="input-wsm" required>
+                            @foreach (\App\Models\WorkItem::PRIORITIES as $priority)
+                                <option value="{{ $priority }}" @selected(old('priority', 'Medium') === $priority)>
+                                    {{ $priority }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('priority')
+                            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="field-label-wsm mb-1.5">Catatan (opsional)</label>
+                        <input type="text" name="notes" value="{{ old('notes') }}" class="input-wsm"
+                            placeholder="Detail / output yang diharapkan">
+                        @error('notes')
+                            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" class="btn-wsm-black">Send Reminder</button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     @if ($memos->isEmpty())
         <div class="card-wsm-white text-center">
             <p class="text-xs text-muted">Belum ada memo atau MoM.</p>

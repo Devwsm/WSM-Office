@@ -47,6 +47,7 @@ use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\CalendarController as DashboardWorkCalendarController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
+use App\Http\Controllers\Dashboard\Work\WorkReminderController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
 use App\Http\Controllers\Owner\ContactMessageController;
 use App\Http\Controllers\Owner\DashboardAccessController;
@@ -327,6 +328,11 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         Route::delete('/{memo}', [MemoController::class, 'destroy'])->middleware('module:work,manage')->name('destroy');
         Route::post('/{memo}/toggle-aktif', [MemoController::class, 'toggleActive'])->middleware('module:work,manage')->name('toggleActive');
         Route::post('/{memo}/balas', [MemoController::class, 'reply'])->middleware(['module:work,manage', 'throttle:15,1'])->name('reply');
+
+        // --- 2026-09-26: Assign/Reminder dari dashboard (README #28) ---
+        // 1 form di dashboard/work/index -> WorkReminderController bikin
+        // WorkItem (is_reminder) + Memo tertarget sekaligus.
+        Route::post('/reminder', [WorkReminderController::class, 'store'])->middleware(['module:work,manage', 'throttle:10,1'])->name('reminder.store');
 
         // --- Timeline Calendar versi dashboard (2026-09-15) ---
         // Padanan "Shared Workload Calendar" App Mode
