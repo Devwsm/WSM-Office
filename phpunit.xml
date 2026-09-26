@@ -33,6 +33,11 @@
             yang sudah ada, biar 370 tes lama gak perlu tahu soal popup ini.
             EntryPopupsTest men-set WOS_ENTRY_POPUPS=true sendiri per-tes. -->
         <env name="WOS_ENTRY_POPUPS" value="false"/>
+        <!-- Dikunci true supaya nilai WOS_PREVIEW_MODE di .env lokal (mis. false,
+            meniru production) tidak ikut menentukan hasil tes. Tanpa ini,
+            EntryPopupsTest gagal 4 dari 4 saat .env lokal berisi
+            WOS_PREVIEW_MODE=false (README 5.6). -->
+        <env name="WOS_PREVIEW_MODE" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

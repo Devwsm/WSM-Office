@@ -30,7 +30,9 @@ jobs:
           npm ci
           npm run build
 
-      - name: Upload kode aplikasi ke ~/wsm-office
+      - name: Upload kode aplikasi ke ~/wsm-office (percobaan 1)
+        id: upload-app-1
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
@@ -49,8 +51,64 @@ jobs:
             **/vendor/**
             **/.env
             **/.env.example
+            **/AGENTS.md
+            **/CLAUDE.md
+            **/README.md
+            **/phpunit.xml
+            **/package.json
+            **/package-lock.json
+            **/vite.config.js
+            **/.editorconfig
+            **/.npmrc
 
-      - name: Upload hasil build ke public_html
+      # "Error: Timeout (control socket)" adalah bug flaky yang sudah lama dikenal
+      # di SamKirkland/FTP-Deploy-Action (lihat README 5.8 no. 1), gagal dalam
+      # hitungan detik lalu sukses kalau diulang. Retry otomatis di sini
+      # menggantikan re-run manual.
+      - name: Upload kode aplikasi ke ~/wsm-office (retry jika percobaan 1 gagal)
+        if: steps.upload-app-1.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./
+          server-dir: ${{ secrets.FTP_APP_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            **/storage/**
+            **/public/**
+            **/vendor/**
+            **/.env
+            **/.env.example
+            **/AGENTS.md
+            **/CLAUDE.md
+            **/README.md
+            **/phpunit.xml
+            **/package.json
+            **/package-lock.json
+            **/vite.config.js
+            **/.editorconfig
+            **/.npmrc
+
+      - name: Upload hasil build ke public_html (percobaan 1)
+        id: upload-build-1
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./public/build/
+          server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
+
+      - name: Upload hasil build ke public_html (retry jika percobaan 1 gagal)
+        if: steps.upload-build-1.outcome == 'failure'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
