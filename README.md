@@ -683,6 +683,16 @@ Alasan urutan: langkah 1 mengubah versi paket, jadi semua tes berikutnya harus j
 9. **Sisa persiapan production (Bab 5):** isi konten publik (5.7 no. 9), pastikan `.env` produksi benar (5.6, termasuk `WOS_PREVIEW_MODE` sesuai tahap), pastikan seed data awal sudah dijalankan tepat sekali (5.5), bersihkan paket upload (5.7 no. 8 dan 5.10). Auto-deploy (GitHub Actions → FTPS cPanel → migrate) sendiri **sudah live sejak 2026-09-23**, jadi langkah ini tinggal menyelesaikan sisanya sambil fitur di atas berjalan, bukan lagi prasyarat sebelum publik dibuka.
 10. **Uji manual per halaman per role** (termasuk HP untuk absensi), khususnya modul yang baru selesai di atas.
 
+### 4.5 Menunggu konfirmasi tim (2026-09-27)
+
+Bagian ini dihapus dan diganti kesimpulan singkat begitu masing-masing poin dieksekusi — jangan biarkan menumpuk.
+
+1. **Payroll — potongan "alpha" (hari kerja tanpa absensi/izin/cuti/lembur):** rencana kode `gaji ÷ hari kerja sebulan`. Perlu konfirmasi tim: aturan potongnya memang segini, atau ada toleransi dulu sebelum dipotong?
+2. **Payroll — siapa boleh buka-lagi status `finalized`:** Owner saja, atau HRD juga?
+3. **Project Budgeting — format laporan budget vs actual:** breakdown per apa (kategori pengeluaran? per bulan?) — prototype tidak ada di repo, butuh acuan dari tim.
+4. **Royalty Dashboard — alur waterfall recoupment:** butuh tim keuangan/royalti jelasin urutan potongnya (modal produksi balik dulu baru lagu itu untung) sebelum bisa dikodekan.
+5. **Cuti tumpang-tindih:** diblokir sistem (gak boleh ajukan 2x tanggal sama), atau dibiarkan dan atasan yang nolak manual saat approval?
+
 ---
 
 ## 5. Production (Deploy & Operasional)
