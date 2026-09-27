@@ -471,6 +471,9 @@
          Dashboard entry. Lihat employee/_team-moments.blade.php. --}}
     @include('employee._team-moments')
 
+    {{-- 2026-09-26 -- entry point Team Overview (README #40), khusus manajer/owner. --}}
+    @include('employee._team-overview')
+
     {{-- App Mode quick win (2026-09-09) — "Latest Attendance" langsung
          di Home (padanan historyCards(id,5) di prototype), lepas dari
          halaman Riwayat penuh (bottom-nav). Pakai partial yang sama

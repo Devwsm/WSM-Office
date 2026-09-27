@@ -45,6 +45,10 @@ return [
         'owner.employees.access.edit' => 'employee-access',
         'owner.office-settings.edit' => 'office-settings',
 
+        // --- Manajer (Team Overview, README #40) ---
+        'manajer.team.attendance' => 'team-attendance',
+        'manajer.team.work' => 'team-work',
+
         // --- Hub modul ---
         'dashboard.index' => 'module-hub',
 
@@ -978,6 +982,38 @@ return [
                 'Perlu diketahui' => [
                     'Baris error dilewati begitu saja. Perbaiki di file lalu upload ulang kalau baris itu ingin ikut masuk.',
                     'Kalau tidak ada baris valid, tombol konfirmasi tidak tersedia. Perbaiki file lalu upload ulang.',
+                ],
+            ],
+        ],
+
+        // --- Manajer (Team Overview, README #40) ---
+        'team-attendance' => [
+            'title' => 'Absensi Tim',
+            'summary' => 'Snapshot absensi hari ini untuk tim kamu — siapa yang belum absen, lagi cuti, atau lembur.',
+            'sections' => [
+                'Yang tampil' => [
+                    ['Ringkasan atas', 'total anggota tim, sudah absen, belum absen, cuti/izin, dan lembur — semua untuk hari ini saja.'],
+                    ['Tabel', 'status tiap orang, jam masuk, dan apakah lemburnya disetujui hari ini.'],
+                ],
+                'Perlu diketahui' => [
+                    'Halaman ini snapshot hari ini saja, tidak bisa pilih tanggal lain atau koreksi jam. Untuk rekap sebulan penuh dan koreksi, pakai "Kelola Tim" (Rekap Absensi).',
+                    'Yang tampil adalah dirimu sendiri + seluruh bawahan turunan (bukan cuma bawahan langsung). Owner melihat semua karyawan.',
+                ],
+            ],
+        ],
+
+        'team-work' => [
+            'title' => 'Progress Kerja Tim',
+            'summary' => 'Task aktif (belum Done) tiap anggota tim dari Work Tracker, diurutkan yang paling perlu di-follow-up.',
+            'sections' => [
+                'Yang tampil' => [
+                    ['Badge merah "N overdue"', 'jumlah task yang sudah lewat due date, sesuai fokus KELEWAT di Work Tracker.'],
+                    ['Badge abu "N task aktif"', 'total task yang belum Done.'],
+                    ['Daftar task per orang', 'judul, project, dan badge fokus (sama seperti di board Work Tracker).'],
+                ],
+                'Perlu diketahui' => [
+                    'Halaman ini cuma untuk dilihat. Untuk mengubah task, pindah ke Work Tracker (butuh akses modul work).',
+                    'Urutan otomatis: yang overdue-nya paling banyak muncul paling atas.',
                 ],
             ],
         ],

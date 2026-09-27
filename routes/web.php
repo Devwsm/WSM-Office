@@ -49,6 +49,8 @@ use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
 use App\Http\Controllers\Dashboard\Work\WorkReminderController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
+use App\Http\Controllers\Manajer\TeamAttendanceController;
+use App\Http\Controllers\Manajer\TeamWorkController;
 use App\Http\Controllers\Owner\ContactMessageController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
@@ -162,7 +164,13 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix
 Route::middleware(['auth', 'role:manajer,owner', 'dashboard.unlocked'])->prefix('manajer')->name('manajer.')->group(function () {
     // Approval izin/cuti & lembur ada di grup 'approval.leave.'/'approval.overtime.'
     // (prefix /persetujuan) di bawah, bareng Owner — bukan di sini.
-    // TODO Fase 1: team-overview
+
+    // --- 2026-09-26: Team Overview (README #40), dipecah 2 halaman (keputusan
+    // Arga) biar gak menuh-menuhin 1 halaman pas karyawan & task makin banyak.
+    Route::prefix('tim')->name('team.')->group(function () {
+        Route::get('/absensi', [TeamAttendanceController::class, 'index'])->name('attendance');
+        Route::get('/pekerjaan', [TeamWorkController::class, 'index'])->name('work');
+    });
 });
 
 // --- Owner & Developer ---
