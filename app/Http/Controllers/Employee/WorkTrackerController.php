@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Request;
  * terpisah yang belum digarap, supaya gak nyampur sama quick win Team
  * Moments/Paid Leave yang murni read-only dari data yang udah ada.
  *
- * "Weekly Rhythm" (`WEEKLY_RHYTHM` konstanta di bawah) — hari & fokus
+ * "Weekly Rhythm" (`OfficeSetting::weeklyRhythm()`) — hari & fokus
  * kerja per hari SENGAJA hardcoded (prototype punya UI Owner buat ubah
  * ini per hari, WSM-Office belum ada tempat nyimpennya di DB). TAPI
  * jam kerjanya (2026-09-14, fix "belum pakai data asli") SEKARANG
@@ -62,20 +62,6 @@ use Illuminate\Support\Facades\Request;
  */
 class WorkTrackerController extends Controller
 {
-    /**
-     * Padanan V19_DEFAULT_RHYTHM di prototype — fokus & mode kerja per
-     * hari (Minggu=0 s.d. Sabtu=6, cuma Senin-Jumat yang diisi). Jam
-     * kerja WFO-nya DIISI DINAMIS di calendar() dari OfficeSetting asli
-     * (lihat komentar class), bukan angka statis di sini.
-     */
-    private const WEEKLY_RHYTHM = [
-        1 => ['day' => 'Senin', 'focus' => 'Alignment & Planning', 'mode' => 'WFO'],
-        2 => ['day' => 'Selasa', 'focus' => 'Production & Decision', 'mode' => 'WFO'],
-        3 => ['day' => 'Rabu', 'focus' => 'Delivery & Execution', 'mode' => 'WFO'],
-        4 => ['day' => 'Kamis', 'focus' => 'Outreach & Development', 'mode' => 'WFH'],
-        5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH'],
-    ];
-
     /** Palet warna & kontras teks project sekarang dipusatkan di Project::nextPaletteColor()/colorFor()/contrastTextFor() — lihat catatan class di atas. */
 
     /**
@@ -101,12 +87,10 @@ class WorkTrackerController extends Controller
         // Fix (2026-09-14) — jam kerja WFO diambil dari OfficeSetting
         // ASLI (bukan hardcoded), biar sinkron sama Pengaturan Kantor.
         $office = OfficeSetting::current();
-        $officeHours = Carbon::parse($office->work_start_time)->format('H:i') . '–' .
-            Carbon::parse($office->normal_end_time)->format('H:i');
-        $weeklyRhythm = collect(self::WEEKLY_RHYTHM)->map(fn(array $r) => [
-            ...$r,
-            'hours' => $r['mode'] === 'WFO' ? $officeHours : 'Flexible / remote',
-        ])->all();
+        // 2026-09-28 — rhythm (fokus/mode/jam per hari) dibaca dari
+        // OfficeSetting::weeklyRhythm(), diubah lewat Weekly Rhythm
+        // Settings di Timeline Calendar — tidak ada lagi salinan hardcode.
+        $weeklyRhythm = $office->weeklyRhythm();
 
         // Grid 6 baris x 7 kolom (42 sel), mulai dari hari Minggu SEBELUM
         // tanggal 1 — persis pola `start=new Date(y,m,1-first.getDay())`

@@ -29,10 +29,8 @@ use Illuminate\Support\Carbon;
  * kelewat sejak Fase 0 (bukan pernah dihapus, dari awal emang belum
  * ada di CEO Dashboard walau datanya udah tersedia lewat model lain):
  * hero "Check Your Team Space", strip Weekly Rhythm 5 hari (Senin-
- * Jumat, logikanya DIDUPLIKASI dari
- * Employee\WorkTrackerController::WEEKLY_RHYTHM — konvensi codebase
- * ini controller self-contained, gak sharing lewat trait, lihat
- * README §arsitektur), card Upcoming Birthday & Work Anniversary
+ * Jumat, datanya dari OfficeSetting::weeklyRhythm() — 2026-09-28
+ * tidak lagi salinan hardcode per controller), card Upcoming Birthday & Work Anniversary
  * (window 60 hari, padanan card "Team Moments" tapi versi Owner —
  * beda dari `Employee\HomeController::$teamMoments` yang window-nya
  * 45 hari & di-cap 6 baris, di sini SENGAJA gak di-cap & 60 hari biar
@@ -43,20 +41,6 @@ use Illuminate\Support\Carbon;
  */
 class DashboardController extends Controller
 {
-    /**
-     * Padanan V19_DEFAULT_RHYTHM di prototype — sama persis isinya
-     * dengan Employee\WorkTrackerController::WEEKLY_RHYTHM (lihat
-     * catatan duplikasi di sana). Jam kerja WFO diisi dinamis dari
-     * OfficeSetting::current() di index(), bukan hardcoded di sini.
-     */
-    private const WEEKLY_RHYTHM = [
-        1 => ['day' => 'Senin', 'focus' => 'Alignment & Planning', 'mode' => 'WFO'],
-        2 => ['day' => 'Selasa', 'focus' => 'Production & Decision', 'mode' => 'WFO'],
-        3 => ['day' => 'Rabu', 'focus' => 'Delivery & Execution', 'mode' => 'WFO'],
-        4 => ['day' => 'Kamis', 'focus' => 'Outreach & Development', 'mode' => 'WFH'],
-        5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH'],
-    ];
-
     public function index()
     {
         $today = Carbon::today()->toDateString();
@@ -82,12 +66,10 @@ class DashboardController extends Controller
         // Weekly Rhythm — jam kerja WFO ambil dari OfficeSetting asli,
         // sama pola kayak Employee\WorkTrackerController::calendar().
         $office = OfficeSetting::current();
-        $officeHours = Carbon::parse($office->work_start_time)->format('H:i') . '–' .
-            Carbon::parse($office->normal_end_time)->format('H:i');
-        $weeklyRhythm = collect(self::WEEKLY_RHYTHM)->map(fn(array $r) => [
-            ...$r,
-            'hours' => $r['mode'] === 'WFO' ? $officeHours : 'Flexible / remote',
-        ])->all();
+        // 2026-09-28 — rhythm (fokus/mode/jam per hari) dibaca dari
+        // OfficeSetting::weeklyRhythm(), diubah lewat Weekly Rhythm
+        // Settings di Timeline Calendar — tidak ada lagi salinan hardcode.
+        $weeklyRhythm = $office->weeklyRhythm();
 
         // Upcoming Birthday & Work Anniversary — semua karyawan
         // (termasuk Owner sendiri, prototype juga tidak exclude

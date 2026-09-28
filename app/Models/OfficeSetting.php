@@ -38,9 +38,60 @@ use Illuminate\Support\Carbon;
     'ceo_accent_color',
     'work_accent_color',
     'shortage_deduction_rate',
+    'weekly_rhythm',
 ])]
 class OfficeSetting extends Model
 {
+    /**
+     * Padanan V19_DEFAULT_RHYTHM di prototype — fokus & mode kerja per
+     * hari (Senin=1 s.d. Jumat=5). Ini cuma DEFAULT: nilai yang dipakai
+     * kalender/dashboard adalah `weekly_rhythm` yang tersimpan di DB
+     * (diubah lewat "Weekly Rhythm Settings" di Timeline Calendar),
+     * lihat weeklyRhythm().
+     */
+    public const DEFAULT_WEEKLY_RHYTHM = [
+        1 => ['day' => 'Senin', 'focus' => 'Alignment & Planning', 'mode' => 'WFO', 'hours' => ''],
+        2 => ['day' => 'Selasa', 'focus' => 'Production & Decision', 'mode' => 'WFO', 'hours' => ''],
+        3 => ['day' => 'Rabu', 'focus' => 'Delivery & Execution', 'mode' => 'WFO', 'hours' => ''],
+        4 => ['day' => 'Kamis', 'focus' => 'Outreach & Development', 'mode' => 'WFH', 'hours' => ''],
+        5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH', 'hours' => ''],
+    ];
+
+    public const RHYTHM_MODES = ['WFO', 'WFH', 'Flexible'];
+
+    /**
+     * Weekly Rhythm final, siap tampil — key = nomor hari (1=Senin..5=Jumat,
+     * sama dengan Carbon::dayOfWeek), isi: day, focus, mode, hours.
+     * `hours` kosong diisi otomatis: WFO -> jam window kerja normal dari
+     * pengaturan kantor ini (bukan angka statis), selain itu
+     * "Flexible / remote". Kalau diisi manual, teks manual yang dipakai
+     * (sama seperti kolom "Hours / Note" di prototype).
+     */
+    public function weeklyRhythm(): array
+    {
+        $officeHours = Carbon::parse($this->work_start_time)->format('H:i') . '–' .
+            Carbon::parse($this->normal_end_time)->format('H:i');
+        $stored = is_array($this->weekly_rhythm) ? $this->weekly_rhythm : [];
+
+        $result = [];
+        foreach (self::DEFAULT_WEEKLY_RHYTHM as $dow => $default) {
+            $row = is_array($stored[$dow] ?? null) ? $stored[$dow] : [];
+            $mode = in_array($row['mode'] ?? null, self::RHYTHM_MODES, true) ? $row['mode'] : $default['mode'];
+            $focus = trim((string) ($row['focus'] ?? '')) ?: $default['focus'];
+            $hours = trim((string) ($row['hours'] ?? ''));
+
+            $result[$dow] = [
+                'day' => $default['day'],
+                'focus' => $focus,
+                'mode' => $mode,
+                'hours' => $hours !== '' ? $hours : ($mode === 'WFO' ? $officeHours : 'Flexible / remote'),
+                'hours_custom' => $hours,
+            ];
+        }
+
+        return $result;
+    }
+
     protected function casts(): array
     {
         return [
@@ -49,6 +100,7 @@ class OfficeSetting extends Model
             'geo_attendance_enabled' => 'boolean',
             'enforce_radius' => 'boolean',
             'shortage_deduction_rate' => 'float',
+            'weekly_rhythm' => 'array',
         ];
     }
 

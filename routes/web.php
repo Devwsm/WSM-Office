@@ -350,6 +350,9 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         // loncat ke route employee.* App Mode. Lihat catatan lengkap di
         // Dashboard\Work\CalendarController.
         Route::get('/kalender', [DashboardWorkCalendarController::class, 'index'])->middleware('module:work,view')->name('calendar');
+        // 2026-09-28 — Weekly Rhythm Settings (padanan prototype), disimpan di office_settings.weekly_rhythm.
+        Route::patch('/kalender/rhythm', [DashboardWorkCalendarController::class, 'updateRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.update');
+        Route::post('/kalender/rhythm/reset', [DashboardWorkCalendarController::class, 'resetRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.reset');
 
         // --- Fase 9 lanjutan: Work Tracker board (audit ronde 6, 2026-09-09) ---
         // Sub-halaman lain di modul 'work' (Memo Forum di atas cuma
