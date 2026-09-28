@@ -264,6 +264,54 @@ class WorkControlTest extends TestCase
             ->assertOk()->assertSee('Album Q3')->assertDontSee('wtProjectForm', false)->assertDontSee('wt-project-modal', false);
     }
 
+    public function test_work_control_sidebar_and_tabs_follow_prototype_order(): void
+    {
+        // Urutan prototype: Projects, Work Tracker, Timeline Calendar, MoM / Meeting, Memo Forum.
+        $urls = [
+            route('dashboard.work.projects.index'),
+            route('dashboard.work.tracker.index'),
+            route('dashboard.work.calendar'),
+            route('dashboard.work.meetings.index'),
+            route('dashboard.work.index'),
+        ];
+        $inOrder = function (string $html) use ($urls): void {
+            $pos = array_map(fn($u) => strpos($html, 'href="' . $u . '"'), $urls);
+            $this->assertNotContains(false, $pos, 'Semua menu Work Control harus ada.');
+            $sorted = $pos;
+            sort($sorted);
+            $this->assertSame($sorted, $pos, 'Urutan menu Work Control harus sama dengan prototype.');
+        };
+
+        // Sidebar = kemunculan pertama tiap link di halaman (sidebar ada sebelum konten).
+        $inOrder($this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))->getContent());
+        // Tab bar (partial) berurutan sama.
+        $inOrder(view('dashboard.work._tabs', ['active' => 'none'])->render());
+    }
+
+    public function test_every_work_control_page_has_the_shared_tab_bar(): void
+    {
+        $aldora = $this->actingAs($this->p['aldora']);
+
+        foreach (['dashboard.work.projects.index', 'dashboard.work.tracker.index', 'dashboard.work.calendar', 'dashboard.work.meetings.index', 'dashboard.work.index'] as $route) {
+            $aldora->get(route($route))->assertOk()->assertSee('aria-label="Work Control"', false);
+        }
+    }
+
+    public function test_modals_stay_hidden_until_alpine_boots_so_they_do_not_flash_on_page_load(): void
+    {
+        // Tanpa aturan [x-cloak] global, overlay modal (fixed inset-0) tampil sebentar sebelum
+        // Alpine siap lalu hilang: modal "berkedip" tiap Projects / Work Tracker dibuka.
+        $css = file_get_contents(resource_path('css/app.css'));
+        $this->assertMatchesRegularExpression('/\[x-cloak\]\s*\{[^}]*display:\s*none\s*!important/i', $css);
+
+        $project = $this->project();
+        $this->item(['project_id' => $project->id]);
+        $aldora = $this->actingAs($this->p['aldora']);
+
+        $aldora->get(route('dashboard.work.tracker.index'))->assertOk()->assertSee('x-show="taskModalOpen" x-cloak', false);
+        $aldora->get(route('dashboard.work.projects.index'))->assertOk()->assertSee('x-show="open" x-cloak', false);
+    }
+
     public function test_inline_note_can_be_saved_by_manager_only(): void
     {
         $item = $this->item();

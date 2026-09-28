@@ -26,7 +26,7 @@
         };
     @endphp
 
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3.5">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3.5">
         <div>
             <a href="{{ route('dashboard.work.index') }}" class="text-[11px] font-extrabold text-muted">← Work Control</a>
             <h2 class="mt-2 text-3xl font-black leading-[0.98] tracking-tight sm:text-[36px]">Projects</h2>
@@ -34,9 +34,11 @@
         </div>
         @if ($canManage)
             <button type="button" onclick="window.dispatchEvent(new CustomEvent('wt-project-modal', { detail: null }))"
-                class="btn-wsm-black">+ Add New Project</button>
+                class="btn-wsm-black inline-flex items-center justify-center">+ Add New Project</button>
         @endif
     </div>
+
+    @include('dashboard.work._tabs', ['active' => 'projects'])
 
     <div class="mb-4 flex items-center justify-between">
         <h3 class="text-sm font-black">All Projects</h3>

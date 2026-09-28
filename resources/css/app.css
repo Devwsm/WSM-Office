@@ -367,3 +367,13 @@
         padding-bottom: 2.5rem;
     }
 }
+
+/*
+ * Alpine `x-cloak`: sembunyikan elemen SAMPAI Alpine selesai inisialisasi.
+ * Tanpa aturan ini, atribut x-cloak di view (modal Projects/Work Tracker,
+ * overlay sidebar, inbox, dst.) tidak berefek: overlay fixed inset-0 sempat
+ * tampil di awal halaman lalu hilang — modal "berkedip" saat halaman dibuka.
+ */
+[x-cloak] {
+    display: none !important;
+}

@@ -184,28 +184,17 @@
                     module:work tapi ditaruh di grup ini biar nyambung
                     visual sama prototype), MoM/Meeting.
 
-                    Urutan (2026-09-15) SENGAJA disamain persis sama tab
-                    bar "Work Control" di dalam tiap halamannya
-                    (dashboard/work/{index,tracker/index,calendar,meetings/index}.blade.php):
-                    MoM & Memo -> Work Tracker -> Timeline Calendar ->
-                    Rapat & Action Item — sebelumnya beda urutan (Work
-                    Tracker taruh paling atas di sidebar, padahal tab
-                    bar-nya taruh MoM & Memo duluan), bikin bingung pas
-                    dibandingin. --}}
+                    Urutan (2026-09-28) SENGAJA disamain persis sama prototype
+                    (Projects, Work Tracker, Timeline Calendar, MoM / Meeting,
+                    Memo Forum) dan sama tab bar "Work Control" di tiap
+                    halamannya — tab bar-nya satu sumber di
+                    dashboard/work/_tabs.blade.php. Kalau ubah urutan di
+                    salah satu, ubah di dua-duanya. (Sebelumnya 2026-09-15:
+                    Memo Forum paling atas, mengikuti tab bar lama.) --}}
                 @if ($u->canViewModule('work'))
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
                         style="background-color:#e2e9ff">{{ $sectionNo }} · WORK CONTROL</p>
-                    <a href="{{ route('dashboard.work.index') }}"
-                        class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit']) ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--work-accent)' => request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit'])])>
-                        <span><span class="mr-1.5 inline-block w-4 text-center">✦</span>Memo Forum</span>
-                        @php $workUnreadBadge = $u->canManageModule('work') ? \App\Models\MemoThreadMessage::unreadForManagementCount() : 0; @endphp
-                        @if ($workUnreadBadge > 0)
-                            <span
-                                class="ml-2 rounded-full bg-[#a83d35] px-2 py-0.5 text-[10px] font-black text-white">{{ $workUnreadBadge }}</span>
-                        @endif
-                    </a>
                     {{-- 2026-09-28 — menu Projects terpisah (padanan "+ Projects" prototype):
                         daftar + tambah/edit project (modal). Isi task per project ada di Work Tracker. --}}
                     <a href="{{ route('dashboard.work.projects.index') }}"
@@ -234,6 +223,16 @@
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.meetings.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.meetings.*')])>
                         <span class="mr-1.5 inline-block w-4 text-center">≡</span>Rapat &amp; Action Item
+                    </a>
+                    <a href="{{ route('dashboard.work.index') }}"
+                        class="flex items-center justify-between rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit']) ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs(['dashboard.work.index', 'dashboard.work.create', 'dashboard.work.edit'])])>
+                        <span><span class="mr-1.5 inline-block w-4 text-center">✦</span>Memo Forum</span>
+                        @php $workUnreadBadge = $u->canManageModule('work') ? \App\Models\MemoThreadMessage::unreadForManagementCount() : 0; @endphp
+                        @if ($workUnreadBadge > 0)
+                            <span
+                                class="ml-2 rounded-full bg-[#a83d35] px-2 py-0.5 text-[10px] font-black text-white">{{ $workUnreadBadge }}</span>
+                        @endif
                     </a>
                 @endif
 

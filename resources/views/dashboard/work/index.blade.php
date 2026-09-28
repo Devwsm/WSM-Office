@@ -25,19 +25,7 @@
          2026-09-15) — sekarang 4 sub-halaman: MoM & Memo (ini), Work
          Tracker (board kanban Project/Task), Timeline Calendar (month
          grid deadline tim), Rapat & Action Item (MoM terstruktur). --}}
-    <div class="mb-5 flex flex-wrap gap-2">
-        <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
-            style="background-color: var(--work-accent)">MoM &amp; Memo</span>
-        <a href="{{ route('dashboard.work.tracker.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
-            Tracker</a>
-        <a href="{{ route('dashboard.work.calendar') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Timeline
-            Calendar</a>
-        <a href="{{ route('dashboard.work.meetings.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Rapat
-            &amp; Action Item</a>
-    </div>
+    @include('dashboard.work._tabs', ['active' => 'memo'])
 
     {{-- README #28 (Bab 4.2 no. 9) — padanan form "Send Reminder" di
          secretary-console prototype v32: 1 submit -> WorkItem baru

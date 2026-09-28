@@ -32,19 +32,7 @@
 
     {{-- Tab "Work Control" — sama pola kayak dashboard/work/index.blade.php,
          MoM & Memo, dan Rapat & Action Item, cuma tab aktifnya beda. --}}
-    <div class="mb-5 flex flex-wrap gap-2">
-        <a href="{{ route('dashboard.work.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">MoM
-            &amp; Memo</a>
-        <a href="{{ route('dashboard.work.tracker.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Work
-            Tracker</a>
-        <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
-            style="background-color: var(--work-accent)">Timeline Calendar</span>
-        <a href="{{ route('dashboard.work.meetings.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Rapat
-            &amp; Action Item</a>
-    </div>
+    @include('dashboard.work._tabs', ['active' => 'calendar'])
 
     <div class="card-wsm-white">
         <div class="mb-3.5 flex flex-wrap items-center justify-between gap-3">

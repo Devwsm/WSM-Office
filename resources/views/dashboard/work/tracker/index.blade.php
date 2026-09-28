@@ -66,7 +66,7 @@
 
     <div x-data="{ taskModalOpen: false }" @wt-open-task-modal.window="taskModalOpen = true"
         @keydown.escape.window="taskModalOpen = false">
-        <div class="mb-5 flex flex-wrap items-end justify-between gap-3.5">
+        <div class="mb-5 flex flex-wrap items-center justify-between gap-3.5">
             <div>
                 <a href="{{ route('dashboard.work.index') }}" class="text-[11px] font-extrabold text-muted">← Work
                     Control</a>
@@ -75,30 +75,17 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('dashboard.work.projects.index') }}"
-                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[11px] font-extrabold text-ink">Kelola
-                    Projects</a>
+                    class="btn-wsm-white inline-flex items-center justify-center">Kelola Projects</a>
                 @if ($canManage)
                     {{-- Task wajib masuk project: belum ada project -> jangan buka form, arahkan buat project. --}}
                     <button type="button"
                         onclick="{{ $projects->isEmpty() ? 'wtNeedProject()' : "wtOpenAddTask('" . $selectedProjectId . "', '')" }}"
-                        class="btn-wsm-black">+ Tambah Task</button>
+                        class="btn-wsm-black inline-flex items-center justify-center">+ Tambah Task</button>
                 @endif
             </div>
         </div>
 
-        <div class="mb-5 flex flex-wrap gap-2">
-            <a href="{{ route('dashboard.work.index') }}"
-                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">MoM
-                &amp; Memo</a>
-            <span class="rounded-2xl px-3.5 py-2 text-[11px] font-extrabold text-white"
-                style="background-color: var(--work-accent)">Work Tracker</span>
-            <a href="{{ route('dashboard.work.calendar') }}"
-                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Timeline
-                Calendar</a>
-            <a href="{{ route('dashboard.work.meetings.index') }}"
-                class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Rapat
-                &amp; Action Item</a>
-        </div>
+        @include('dashboard.work._tabs', ['active' => 'tracker'])
 
         {{-- Ringkasan --}}
         <div class="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
@@ -241,7 +228,7 @@
                                                         [$fbg, $ftx] = $focusColors($focus);
                                                     @endphp
                                                     <tr
-                                                        class="border-t border-line align-top {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
+                                                        class="border-t border-line align-middle {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
                                                         <td data-label="No" class="wt-no px-3 py-2.5 font-bold text-muted">
                                                             {{ $item->item_no }}</td>
                                                         <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
@@ -279,9 +266,9 @@
                                                         </td>
                                                         <td data-label="Note" class="wt-note px-3 py-2.5">
                                                             @if ($canManage)
-                                                                <textarea rows="2" placeholder="Tambah note / blocker..." data-orig="{{ $item->notes }}"
+                                                                <textarea rows="1" placeholder="Tambah note / blocker..." data-orig="{{ $item->notes }}"
                                                                     onblur="wtSaveNote({{ $item->id }}, this)"
-                                                                    class="w-full resize-y rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-[11px] hover:border-line focus:border-line focus:bg-white">{{ $item->notes }}</textarea>
+                                                                    class="wt-note-input block w-full resize-y rounded-lg border border-transparent bg-transparent px-1.5 py-1.5 text-[11px] leading-snug hover:border-line focus:border-line focus:bg-white">{{ $item->notes }}</textarea>
                                                             @else
                                                                 {{ $item->notes ?: '-' }}
                                                             @endif
@@ -462,6 +449,12 @@
 
         .wt-no-inline {
             display: none;
+        }
+
+        /* Note 1 baris supaya baris item sejajar dengan select Progress; tumbuh otomatis kalau isinya panjang. */
+        .wt-note-input {
+            min-height: 2rem;
+            field-sizing: content;
         }
 
         @container (max-width: 1100px)
