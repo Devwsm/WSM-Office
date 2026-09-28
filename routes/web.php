@@ -355,6 +355,10 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         // Sub-halaman lain di modul 'work' (Memo Forum di atas cuma
         // salah satu tab). 'view' bisa lihat board, 'manage' baru bisa
         // drag-drop/CRUD — sama pola gate view/manage kayak MemoController.
+        // Menu sidebar "Projects" (2026-09-28) — daftar project + modal tambah.
+        // CRUD-nya tetap pakai route tracker.projects.* di bawah.
+        Route::get('/proyek', [WorkTrackerBoardController::class, 'projects'])->middleware('module:work,view')->name('projects.index');
+
         Route::prefix('tracker')->name('tracker.')->group(function () {
             Route::get('/', [WorkTrackerBoardController::class, 'index'])->middleware('module:work,view')->name('index');
             Route::post('/proyek', [WorkTrackerBoardController::class, 'storeProject'])->middleware('module:work,manage')->name('projects.store');
@@ -364,6 +368,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
             Route::patch('/task/{item}', [WorkTrackerBoardController::class, 'updateItem'])->middleware('module:work,manage')->name('items.update');
             Route::delete('/task/{item}', [WorkTrackerBoardController::class, 'destroyItem'])->middleware('module:work,manage')->name('items.destroy');
             Route::patch('/task/{item}/progress', [WorkTrackerBoardController::class, 'updateProgress'])->middleware('module:work,manage')->name('items.progress');
+            Route::patch('/task/{item}/note', [WorkTrackerBoardController::class, 'updateNote'])->middleware('module:work,manage')->name('items.note');
         });
 
         // --- Fase 9 lanjutan: MoM terstruktur (Meeting + action item) ---

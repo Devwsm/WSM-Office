@@ -212,21 +212,68 @@ class WorkControlTest extends TestCase
     // Work Tracker (G6–G10)
     // =====================================================================
 
-    public function test_tracker_board_groups_tasks_by_progress_and_filters_by_project(): void
+    public function test_tracker_groups_tasks_per_project_and_section_and_filters(): void
     {
         $a = $this->project(['name' => 'Album Q3']);
         $b = $this->project(['name' => 'Merch Drop']);
-        $this->item(['project_id' => $a->id, 'title' => 'Task A', 'progress' => 'Pending']);
-        $this->item(['project_id' => $a->id, 'title' => 'Task A2', 'progress' => 'Done', 'item_no' => 2]);
-        $this->item(['project_id' => $b->id, 'title' => 'Task B', 'progress' => 'Pending']);
+        $this->item(['project_id' => $a->id, 'title' => 'Task A', 'section' => 'CONTRACT', 'progress' => 'Pending']);
+        $this->item(['project_id' => $a->id, 'title' => 'Task A2', 'section' => 'SONG', 'progress' => 'Done', 'item_no' => 2]);
+        $this->item(['project_id' => $b->id, 'title' => 'Task B', 'section' => 'CONTRACT', 'progress' => 'Pending']);
+        $this->item(['project_id' => null, 'title' => 'Task Lepas', 'section' => '', 'progress' => 'Pending']);
 
         $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.tracker.index'))
             ->assertOk()
-            ->assertViewHas('columns', fn($c) => $c['Pending']->count() === 2 && $c['Done']->count() === 1 && $c->keys()->all() === WorkItem::PROGRESS_OPTIONS);
+            ->assertSee('Task A2')
+            ->assertViewHas('cards', function ($cards) use ($a) {
+                $first = $cards->firstWhere(fn($c) => $c['project']?->id === $a->id);
+
+                return $cards->count() === 3 // 2 project + kartu "Tanpa Project"
+                    && $first['total'] === 2 && $first['done'] === 1 && $first['pct'] === 50
+                    && $first['sections']->pluck('name')->all() === ['CONTRACT', 'SONG'];
+            })
+            ->assertViewHas('stats', fn($s) => $s['done'] === 1);
 
         $this->get(route('dashboard.work.tracker.index', ['project_id' => $b->id]))
-            ->assertViewHas('columns', fn($c) => $c->flatten()->pluck('title')->all() === ['Task B'])
+            ->assertViewHas('cards', fn($c) => $c->count() === 1 && $c[0]['sections'][0]['rows']->pluck('title')->all() === ['Task B'])
             ->assertViewHas('selectedProjectId', $b->id);
+
+        // Section yang sudah ada dikirim ke form task, per project, tidak ikut terfilter.
+        $this->get(route('dashboard.work.tracker.index', ['project_id' => $a->id, 'progress' => 'Done']))
+            ->assertViewHas('sectionsByProject', fn($m) => $m[$a->id] === ['CONTRACT', 'SONG'] && $m[$b->id] === ['CONTRACT'] && $m[0] === []);
+
+        // Filter progress: progres project tetap dihitung dari SEMUA item.
+        $this->get(route('dashboard.work.tracker.index', ['project_id' => $a->id, 'progress' => 'Done']))
+            ->assertViewHas('cards', fn($c) => $c[0]['shown'] === 1 && $c[0]['pct'] === 50);
+    }
+
+    public function test_projects_page_lists_projects_with_progress_and_add_modal(): void
+    {
+        $a = $this->project(['name' => 'Album Q3']);
+        $this->item(['project_id' => $a->id, 'progress' => 'Done']);
+        $this->item(['project_id' => $a->id, 'title' => 'Lain', 'item_no' => 2, 'progress' => 'Pending']);
+
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.projects.index'))
+            ->assertOk()
+            ->assertSee('Album Q3')
+            ->assertSee('wtProjectForm', false)
+            ->assertSee('wt-project-modal', false)
+            ->assertViewHas('projects', fn($p) => $p[0]->items_total === 2 && $p[0]->items_done === 1);
+
+        // View-only: bisa lihat daftar, tanpa tombol/modal tambah.
+        $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.projects.index'))
+            ->assertOk()->assertSee('Album Q3')->assertDontSee('wtProjectForm', false)->assertDontSee('wt-project-modal', false);
+    }
+
+    public function test_inline_note_can_be_saved_by_manager_only(): void
+    {
+        $item = $this->item();
+
+        $this->actingAs($this->p['gepeng'])->patch(route('dashboard.work.tracker.items.note', $item), ['notes' => 'x'])->assertForbidden();
+
+        $this->actingAs($this->p['aldora'])
+            ->patch(route('dashboard.work.tracker.items.note', $item), ['notes' => 'Sudah kirim revisi'], ['Accept' => 'application/json'])
+            ->assertOk()->assertJson(['ok' => true]);
+        $this->assertSame('Sudah kirim revisi', $item->fresh()->notes);
     }
 
     public function test_view_only_user_cannot_change_projects_or_tasks(): void

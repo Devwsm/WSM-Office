@@ -45,32 +45,110 @@ use Illuminate\Validation\Rule;
  */
 class WorkTrackerBoardController extends Controller
 {
+    /**
+     * Work Tracker = task PER PROJECT (2026-09-28): kartu project ->
+     * accordion section -> tabel item, meniru `trackerBoardMarkup()`
+     * prototype v31. Menggantikan board kanban lama (keputusan Fase 9)
+     * karena tim komplain cara list project & isinya beda dari prototype.
+     */
     public function index(Request $request)
     {
         $projects = Project::query()->orderBy('name')->get();
+        $employees = User::query()->orderBy('name')->get(['id', 'name']);
 
         $selectedProjectId = $request->integer('project_id') ?: null;
+        $selectedPic = $request->integer('pic') ?: null;
+        $selectedProgress = in_array($request->query('progress'), WorkItem::PROGRESS_OPTIONS, true)
+            ? $request->query('progress')
+            : null;
 
-        $items = WorkItem::query()
-            ->with(['project', 'pic'])
-            ->when($selectedProjectId, fn($q) => $q->where('project_id', $selectedProjectId))
-            ->orderBy('due_date')
-            ->orderBy('item_no')
-            ->get()
-            ->groupBy('progress');
+        $all = WorkItem::query()->with('pic')->orderBy('due_date')->orderBy('item_no')->get();
 
-        $columns = collect(WorkItem::PROGRESS_OPTIONS)->mapWithKeys(
-            fn(string $status) => [$status => $items->get($status, collect())]
-        );
+        $stats = [
+            'today' => $all->filter(fn(WorkItem $i) => $i->computedFocus() === 'HARI INI')->count(),
+            'overdue' => $all->filter(fn(WorkItem $i) => $i->isOverdue())->count(),
+            'follow_up' => $all->where('progress', 'Follow Up')->count(),
+            'done' => $all->where('progress', 'Done')->count(),
+        ];
 
-        $employees = User::query()->orderBy('name')->get(['id', 'name']);
+        $totals = $all->groupBy(fn(WorkItem $i) => $i->project_id ?? 0);
+
+        // Section yang sudah ada per project (key 0 = tanpa project) — dipakai
+        // dropdown Section di form Tambah/Edit Task. Dari SEMUA item, bukan
+        // yang lolos filter, biar section tidak hilang dari form saat difilter.
+        $sectionsByProject = $totals->map(
+            fn($rows) => $rows->sortBy('id')->pluck('section')->filter(fn($s) => $s !== '')->unique()->values()->all()
+        )->all();
+
+        $visible = $all
+            ->when($selectedProjectId, fn($c) => $c->where('project_id', $selectedProjectId))
+            ->when($selectedPic, fn($c) => $c->where('pic_employee_id', $selectedPic))
+            ->when($selectedProgress, fn($c) => $c->where('progress', $selectedProgress))
+            ->groupBy(fn(WorkItem $i) => $i->project_id ?? 0);
+
+        $cards = $projects
+            ->when($selectedProjectId, fn($c) => $c->where('id', $selectedProjectId))
+            ->map(fn(Project $p) => $this->buildCard($p, $totals->get($p->id, collect()), $visible->get($p->id, collect())))
+            ->values();
+
+        // Task tanpa project — kartu sendiri, cuma muncul kalau ada isinya.
+        if (! $selectedProjectId && $visible->has(0)) {
+            $cards->push($this->buildCard(null, $totals->get(0, collect()), $visible->get(0)));
+        }
 
         return view('dashboard.work.tracker.index', [
             'projects' => $projects,
-            'columns' => $columns,
+            'cards' => $cards,
+            'stats' => $stats,
             'employees' => $employees,
+            'sectionsByProject' => $sectionsByProject,
             'selectedProjectId' => $selectedProjectId,
+            'selectedPic' => $selectedPic,
+            'selectedProgress' => $selectedProgress,
         ]);
+    }
+
+    /**
+     * Halaman menu "Projects" (sidebar Work Control) — daftar project +
+     * tombol "Add New Project" yang buka MODAL (bukan split screen).
+     */
+    public function projects()
+    {
+        $projects = Project::query()
+            ->with('lead:id,name')
+            ->withCount([
+                'workItems as items_total',
+                'workItems as items_done' => fn($q) => $q->where('progress', 'Done'),
+            ])
+            ->orderBy('name')
+            ->get();
+
+        return view('dashboard.work.projects.index', [
+            'projects' => $projects,
+            'employees' => User::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    /** Susun 1 kartu project: progres (dari SEMUA item) + section (dari item yang lolos filter). */
+    private function buildCard(?Project $project, $allItems, $visibleItems): array
+    {
+        $total = $allItems->count();
+        $done = $allItems->where('progress', 'Done')->count();
+
+        $sections = $visibleItems
+            ->groupBy(fn(WorkItem $i) => $i->section !== '' ? $i->section : 'TANPA SECTION')
+            ->map(fn($rows, $name) => ['name' => $name, 'rows' => $rows, 'order' => $rows->min('id')])
+            ->sortBy('order')
+            ->values();
+
+        return [
+            'project' => $project,
+            'total' => $total,
+            'done' => $done,
+            'pct' => $total ? (int) round($done / $total * 100) : 0,
+            'shown' => $visibleItems->count(),
+            'sections' => $sections,
+        ];
     }
 
     // --- Project CRUD (modal "Kelola Projects" di board) ---
@@ -151,6 +229,20 @@ class WorkTrackerBoardController extends Controller
         ]);
 
         $item->update($data);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back();
+    }
+
+    /** Simpan note inline dari tabel tracker (blur textarea) — fetch JSON. */
+    public function updateNote(Request $request, WorkItem $item)
+    {
+        $data = $request->validate(['notes' => ['nullable', 'string', 'max:5000']]);
+
+        $item->update(['notes' => $data['notes'] ?? null]);
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true]);

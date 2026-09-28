@@ -143,7 +143,7 @@ class PageGuideTest extends TestCase
             ->assertSee('id="page-guide-dialog"', false)
             ->assertSee('role="dialog"', false)
             ->assertSee('Work Tracker')
-            ->assertSee('Papan kanban semua task lintas project dan PIC')
+            ->assertSee('Task per project, dikelompokkan per section')
             ->assertSee('Kelola Projects')
             ->assertSee('Mengerti, tutup');
     }

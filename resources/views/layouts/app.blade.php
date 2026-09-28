@@ -206,6 +206,13 @@
                                 class="ml-2 rounded-full bg-[#a83d35] px-2 py-0.5 text-[10px] font-black text-white">{{ $workUnreadBadge }}</span>
                         @endif
                     </a>
+                    {{-- 2026-09-28 — menu Projects terpisah (padanan "+ Projects" prototype):
+                        daftar + tambah/edit project (modal). Isi task per project ada di Work Tracker. --}}
+                    <a href="{{ route('dashboard.work.projects.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.projects.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.projects.*')])>
+                        <span class="mr-1.5 inline-block w-4 text-center">+</span>Projects
+                    </a>
                     <a href="{{ route('dashboard.work.tracker.index') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.work.tracker.*') ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--work-accent)' => request()->routeIs('dashboard.work.tracker.*')])>

@@ -56,6 +56,7 @@ return [
         'dashboard.work.index' => 'memo-forum',
         'dashboard.work.create' => 'memo-form',
         'dashboard.work.edit' => 'memo-form',
+        'dashboard.work.projects.*' => 'work-projects',
         'dashboard.work.tracker.*' => 'work-tracker',
         'dashboard.work.calendar' => 'timeline-calendar',
         'dashboard.work.meetings.index' => 'meetings',
@@ -326,26 +327,51 @@ return [
             ],
         ],
 
-        'work-tracker' => [
-            'title' => 'Work Tracker',
-            'summary' => 'Papan kanban semua task lintas project dan PIC, dikelompokkan menurut progress kerja.',
+        'work-projects' => [
+            'title' => 'Projects',
+            'summary' => 'Daftar project master: progress, priority, status, dan jumlah item. Task-nya dikerjakan di Work Tracker.',
             'access' => 'work',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['Filter Project', 'tampilkan task satu project saja, atau Semua Project.'],
-                    ['Geser kartu', 'pindahkan kartu ke kolom lain untuk mengubah progress task (akses Manage).'],
-                    ['+ Tambah Task', 'isi judul, project, section, PIC, due date, progress, priority, link, dan notes.'],
-                    ['Menu titik tiga di kartu', 'Edit atau Hapus task.'],
-                    ['Kelola Projects', 'tambah, ubah, atau hapus project (nama, warna, tanggal mulai/selesai, priority, status, lead, tracker URL, progress recap).'],
+                    ['+ Add New Project', 'buka jendela (modal) untuk mengisi nama, tanggal mulai/selesai, priority, status, warna, lead, link tracker, dan progress recap.'],
+                    ['Edit', 'ubah data project lewat jendela yang sama.'],
+                    ['Open Work Tracker', 'lompat ke Work Tracker yang sudah difilter ke project itu.'],
+                    ['Hapus', 'hapus project. Task-nya tidak ikut terhapus.'],
                 ],
                 'Arti tampilan' => [
-                    ['Kolom', 'Pending, On Development, Follow Up, Confirmed, Done, dan Postpone.'],
-                    ['Badge fokus di kartu', 'HARI INI, BESOK, MINGGU INI, KELEWAT, SELESAI, dan sebagainya. Dihitung otomatis dari due date, tidak bisa digeser manual.'],
-                    ['Warna project', 'tiap project punya warna yang sama di board dan di Timeline Calendar.'],
+                    ['Progress', 'persentase item berstatus Done dari seluruh item project.'],
+                    ['Warna project', 'warna yang sama dipakai di Work Tracker dan Timeline Calendar.'],
                 ],
                 'Perlu diketahui' => [
                     'Menghapus project tidak menghapus task-nya. Task dipindah menjadi "Tanpa Project".',
-                    'Akses View hanya bisa melihat board. Menggeser, menambah, mengubah, dan menghapus butuh Manage.',
+                    'Akses View hanya bisa melihat daftar. Menambah, mengubah, dan menghapus butuh Manage.',
+                ],
+            ],
+        ],
+
+        'work-tracker' => [
+            'title' => 'Work Tracker',
+            'summary' => 'Task per project, dikelompokkan per section dalam bentuk tabel.',
+            'access' => 'work',
+            'sections' => [
+                'Yang bisa dilakukan' => [
+                    ['Filter', 'tampilkan satu project, satu PIC, atau satu progress saja. Expand All / Collapse All membuka atau menutup semua section.'],
+                    ['Progress', 'ubah langsung lewat pilihan di kolom Progress (akses Manage), tersimpan otomatis.'],
+                    ['Note', 'ketik di kolom Note, tersimpan otomatis saat kamu klik di luar kolom.'],
+                    ['+ di judul section', 'tambah item baru langsung ke section itu.'],
+                    ['+ Tambah Task', 'isi judul, project, section (pilih dari section yang sudah ada di project itu, atau "+ Section baru"), PIC, due date, progress, priority, link, dan notes.'],
+                    ['Edit / Hapus', 'tombol di ujung kanan tiap baris.'],
+                    ['Kelola Projects', 'menuju menu Projects untuk menambah atau mengubah project.'],
+                ],
+                'Arti tampilan' => [
+                    ['Kartu project', 'nama project, jumlah item, dan progress (item Done dibagi seluruh item project).'],
+                    ['Section', 'pengelompokan item di dalam project (mis. CONTRACT, SONG). Klik judulnya untuk membuka/menutup.'],
+                    ['Badge fokus', 'HARI INI, BESOK, MINGGU INI, KELEWAT, SELESAI, dan sebagainya. Dihitung otomatis dari due date.'],
+                ],
+                'Perlu diketahui' => [
+                    'Semua project dan section tertutup saat halaman dibuka. Klik judulnya untuk membuka, atau pakai Expand All.',
+                    'Task tanpa project muncul di kartu "Tanpa Project" paling bawah.',
+                    'Akses View hanya bisa melihat tabel. Mengubah progress/note, menambah, dan menghapus butuh Manage.',
                     'Untuk memasukkan banyak task dari Excel, pakai Export & Import, kartu Work Tracker.',
                 ],
             ],
