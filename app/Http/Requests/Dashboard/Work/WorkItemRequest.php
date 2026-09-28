@@ -29,8 +29,8 @@ class WorkItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => ['nullable', 'exists:projects,id'],
-            'section' => ['nullable', 'string', 'max:80'],
+            'project_id' => ['required', 'exists:projects,id'],
+            'section' => ['required', 'string', 'max:80'],
             'title' => ['required', 'string', 'max:255'],
             'due_date' => ['nullable', 'date'],
             'pic_employee_id' => ['nullable', 'exists:users,id'],
@@ -40,6 +40,21 @@ class WorkItemRequest extends FormRequest
             'notes' => ['nullable', 'string'],
             'link' => ['nullable', 'url', 'max:255'],
             'is_reminder' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    /**
+     * 2026-09-28 — task WAJIB punya project & section (3 lapis: project >
+     * section > item). Form cuma menawarkan yang sudah ada (atau buat
+     * section baru), jadi kalau sampai kosong berarti request akal-akalan
+     * / form basi — tolak, jangan diam-diam bikin task "Tanpa Project".
+     */
+    public function messages(): array
+    {
+        return [
+            'project_id.required' => 'Pilih project dulu. Belum ada project? Buat dulu di menu Projects.',
+            'project_id.exists' => 'Project yang dipilih tidak ditemukan.',
+            'section.required' => 'Pilih section, atau buat section baru untuk project ini.',
         ];
     }
 }

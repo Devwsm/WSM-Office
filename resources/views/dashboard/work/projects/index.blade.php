@@ -55,7 +55,7 @@
                     ->filter()
                     ->implode(' – ');
             @endphp
-            <article class="rounded-3xl border border-line bg-white p-4">
+            <article class="flex flex-col rounded-3xl border border-line bg-white p-4">
                 <div class="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                     <div class="min-w-0">
                         <p class="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-widest text-muted">
@@ -63,9 +63,11 @@
                                 style="background:{{ $project->color }}"></span>Project
                         </p>
                         <h4 class="mt-0.5 wrap-break-word text-lg font-black leading-tight">{{ $project->name }}</h4>
-                        @if ($project->progress_recap)
-                            <p class="mt-1 line-clamp-2 text-xs text-muted">{{ $project->progress_recap }}</p>
-                        @endif
+                        {{-- Selalu tampil (2 baris dicadangkan) supaya semua kartu setinggi & sejajar,
+                            baik yang punya Progress Recap maupun yang belum. --}}
+                        <p
+                            class="mt-1 line-clamp-2 min-h-8 text-xs {{ $project->progress_recap ? 'text-muted' : 'italic text-[#b0aaa0]' }}">
+                            {{ $project->progress_recap ?: 'Belum ada progress recap.' }}</p>
                     </div>
                     <div class="flex flex-none flex-wrap gap-1 sm:justify-end">
                         <span class="{{ $priorityClass($project->priority) }}">{{ $project->priority }}</span>
@@ -93,7 +95,7 @@
                     <span class="text-sm font-black">{{ $pct }}%</span>
                 </div>
 
-                <div class="mt-3 flex flex-wrap gap-1.5">
+                <div class="mt-auto flex flex-wrap gap-1.5 pt-3">
                     @if ($canManage)
                         <button type="button" data-project="{{ $project->toJson() }}"
                             onclick="window.dispatchEvent(new CustomEvent('wt-project-modal', { detail: JSON.parse(this.dataset.project) }))"

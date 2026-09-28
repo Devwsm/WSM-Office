@@ -359,7 +359,7 @@ return [
                     ['Progress', 'ubah langsung lewat pilihan di kolom Progress (akses Manage), tersimpan otomatis.'],
                     ['Note', 'ketik di kolom Note, tersimpan otomatis saat kamu klik di luar kolom.'],
                     ['+ di judul section', 'tambah item baru langsung ke section itu.'],
-                    ['+ Tambah Task', 'isi judul, project, section (pilih dari section yang sudah ada di project itu, atau "+ Section baru"), PIC, due date, progress, priority, link, dan notes.'],
+                    ['+ Tambah Task', 'pilih project (harus sudah ada) dan section yang sudah ada di project itu, atau pilih "+ Section baru". Project yang belum punya section langsung diminta membuat section pertamanya. Lalu isi PIC, due date, progress, priority, link, dan notes.'],
                     ['Edit / Hapus', 'tombol di ujung kanan tiap baris.'],
                     ['Kelola Projects', 'menuju menu Projects untuk menambah atau mengubah project.'],
                 ],
@@ -369,7 +369,8 @@ return [
                     ['Badge fokus', 'HARI INI, BESOK, MINGGU INI, KELEWAT, SELESAI, dan sebagainya. Dihitung otomatis dari due date.'],
                 ],
                 'Perlu diketahui' => [
-                    'Semua project dan section tertutup saat halaman dibuka. Klik judulnya untuk membuka, atau pakai Expand All.',
+                    'Semua project dan section tertutup saat halaman dibuka. Menutup project ikut menutup semua section di dalamnya.',
+                    'Task wajib masuk project dan section. Kalau belum ada project, tombol + Tambah Task mengarahkan ke menu Projects. Task lama tanpa project tampil di kartu "Tanpa Project" — buka Edit dan pilih project supaya rapi.',
                     'Task tanpa project muncul di kartu "Tanpa Project" paling bawah.',
                     'Akses View hanya bisa melihat tabel. Mengubah progress/note, menambah, dan menghapus butuh Manage.',
                     'Untuk memasukkan banyak task dari Excel, pakai Export & Import, kartu Work Tracker.',

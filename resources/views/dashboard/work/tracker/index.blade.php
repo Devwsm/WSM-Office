@@ -78,8 +78,10 @@
                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[11px] font-extrabold text-ink">Kelola
                     Projects</a>
                 @if ($canManage)
-                    <button type="button" onclick="wtOpenAddTask('{{ $selectedProjectId }}', '')" class="btn-wsm-black">+
-                        Tambah Task</button>
+                    {{-- Task wajib masuk project: belum ada project -> jangan buka form, arahkan buat project. --}}
+                    <button type="button"
+                        onclick="{{ $projects->isEmpty() ? 'wtNeedProject()' : "wtOpenAddTask('" . $selectedProjectId . "', '')" }}"
+                        class="btn-wsm-black">+ Tambah Task</button>
                 @endif
             </div>
         </div>
@@ -148,7 +150,7 @@
                 @endphp
                 <article class="overflow-hidden rounded-3xl border border-line bg-[#fbf8f2]"
                     data-wt-card="{{ $cardKey }}">
-                    <details class="group" data-wt-key="{{ $cardKey }}"
+                    <details class="wt-card group" data-wt-key="{{ $cardKey }}"
                         @if ($selectedProjectId) open @endif>
                         <summary
                             class="flex cursor-pointer list-none flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
@@ -206,7 +208,7 @@
                                             <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
                                         </span>
                                         <span class="flex items-center gap-2">
-                                            @if ($canManage)
+                                            @if ($canManage && $project)
                                                 <button type="button" title="Tambah item di section ini"
                                                     onclick="event.preventDefault();event.stopPropagation();wtOpenAddTask('{{ $project?->id }}', @js($section['name'] === 'TANPA SECTION' ? '' : $section['name']))"
                                                     class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black">+</button>
@@ -242,8 +244,9 @@
                                                         class="border-t border-line align-top {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
                                                         <td data-label="No" class="wt-no px-3 py-2.5 font-bold text-muted">
                                                             {{ $item->item_no }}</td>
-                                                        <td class="wt-span2 wt-title px-3 py-2.5 font-black leading-snug">
-                                                            {{ $item->title }}</td>
+                                                        <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
+                                                                class="wt-no-inline">#{{ $item->item_no }}</span>{{ $item->title }}
+                                                        </td>
                                                         <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
                                                             {{ $item->due_date?->format('d/m/Y') ?? '-' }}</td>
                                                         <td data-label="Focus" class="px-3 py-2.5">
@@ -274,7 +277,7 @@
                                                                     class="inline-flex rounded-lg px-2 py-1 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">{{ $item->progress }}</span>
                                                             @endif
                                                         </td>
-                                                        <td data-label="Note" class="wt-span2 px-3 py-2.5">
+                                                        <td data-label="Note" class="wt-note px-3 py-2.5">
                                                             @if ($canManage)
                                                                 <textarea rows="2" placeholder="Tambah note / blocker..." data-orig="{{ $item->notes }}"
                                                                     onblur="wtSaveNote({{ $item->id }}, this)"
@@ -292,7 +295,7 @@
                                                                 -
                                                             @endif
                                                         </td>
-                                                        <td class="wt-span2 wt-actions px-3 py-2.5">
+                                                        <td class="wt-actions px-3 py-2.5">
                                                             @if ($canManage)
                                                                 <div class="flex gap-1">
                                                                     <button type="button"
@@ -338,7 +341,7 @@
             @endforelse
         </div>
 
-        @if ($canManage)
+        @if ($canManage && $projects->isNotEmpty())
             {{-- Modal Tambah/Edit Task --}}
             <div x-show="taskModalOpen" x-cloak
                 class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
@@ -353,30 +356,31 @@
                         class="grid gap-3">
                         @csrf
                         <span id="wtTaskFormMethod"></span>
-                        <div class="grid gap-1">
+                        <div class="grid content-start gap-1">
                             <label class="text-[10px] font-extrabold uppercase text-muted">Item / Pekerjaan</label>
                             <input name="title" id="wtTaskTitle" required
                                 class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div class="grid gap-1">
+                        <div class="grid items-start gap-3 sm:grid-cols-2">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Project</label>
-                                <select name="project_id" id="wtTaskProject" onchange="wtRebuildSections('')"
+                                <select name="project_id" id="wtTaskProject" required onchange="wtRebuildSections('')"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
-                                    <option value="">Tanpa Project</option>
+                                    <option value="" disabled selected>Pilih project…</option>
                                     @foreach ($projects as $project)
                                         <option value="{{ $project->id }}">{{ $project->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="grid gap-1">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Section</label>
-                                <select id="wtTaskSectionSelect" onchange="wtSectionChanged()"
+                                <select id="wtTaskSectionSelect" required onchange="wtSectionChanged()"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm"></select>
-                                {{-- Nilai yang dikirim tetap `section`; muncul sebagai input teks hanya saat pilih "+ Section baru". --}}
+                                {{-- Nilai yang dikirim tetap `section`; input teks cuma muncul saat harus membuat section baru. --}}
                                 <input name="section" id="wtTaskSection" list="wtSectionSuggestions" autocomplete="off"
-                                    placeholder="Nama section baru"
+                                    maxlength="80" placeholder="Nama section baru (mis. CONTRACT)"
                                     class="hidden rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
+                                <p id="wtSectionHint" class="hidden text-[10px] font-bold text-[#8a5a00]"></p>
                                 <datalist id="wtSectionSuggestions">
                                     @foreach (\App\Models\WorkItem::SECTION_SUGGESTIONS as $section)
                                         <option value="{{ $section }}"></option>
@@ -384,8 +388,8 @@
                                 </datalist>
                             </div>
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div class="grid gap-1">
+                        <div class="grid items-start gap-3 sm:grid-cols-2">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">PIC</label>
                                 <select name="pic_employee_id" id="wtTaskPic"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
@@ -395,14 +399,14 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="grid gap-1">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Date / Due</label>
                                 <input type="date" name="due_date" id="wtTaskDue"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                             </div>
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
-                            <div class="grid gap-1">
+                        <div class="grid items-start gap-3 sm:grid-cols-2">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Progress</label>
                                 <select name="progress" id="wtTaskProgress"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
@@ -411,7 +415,7 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="grid gap-1">
+                            <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Priority</label>
                                 <select name="priority" id="wtTaskPriority"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
@@ -422,12 +426,12 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="grid gap-1">
+                        <div class="grid content-start gap-1">
                             <label class="text-[10px] font-extrabold uppercase text-muted">Link (opsional)</label>
                             <input name="link" id="wtTaskLink" placeholder="https://..."
                                 class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                         </div>
-                        <div class="grid gap-1">
+                        <div class="grid content-start gap-1">
                             <label class="text-[10px] font-extrabold uppercase text-muted">Note / Progress Recap</label>
                             <textarea name="notes" id="wtTaskNotes" rows="2"
                                 placeholder="Apa update terakhir, blocker, atau next action?"
@@ -449,13 +453,18 @@
             display: none;
         }
 
-        /* Tabel item responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-               lebar layar — sidebar dashboard makan ~260px, jadi media query biasa meleset. */
+        /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
+               lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+               tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
 
-        @container (max-width: 860px)
+        .wt-no-inline {
+            display: none;
+        }
+
+        @container (max-width: 1100px)
 
             {
             .wt-table thead {
@@ -470,15 +479,15 @@
 
             .wt-table tr {
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 2px 12px;
-                padding: 10px 6px;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 4px 12px;
+                padding: 12px 6px;
             }
 
             .wt-table td {
                 display: block;
-                padding: 4px 8px !important;
                 min-width: 0;
+                padding: 4px 8px !important;
             }
 
             .wt-table td[data-label]::before {
@@ -492,12 +501,45 @@
                 color: #8b867e;
             }
 
-            .wt-table .wt-span2 {
+            .wt-table td.wt-no {
+                display: none;
+            }
+
+            .wt-table .wt-no-inline {
+                display: inline-flex;
+                margin-right: 6px;
+                padding: 1px 6px;
+                border-radius: 999px;
+                background: #ece7dd;
+                font-size: 9px;
+                font-weight: 800;
+                color: #6b665e;
+                vertical-align: 1px;
+            }
+
+            .wt-table .wt-title,
+            .wt-table .wt-actions {
                 grid-column: 1 / -1;
             }
 
             .wt-table .wt-title {
                 font-size: 13px;
+            }
+
+            .wt-table .wt-note {
+                grid-column: span 3;
+            }
+        }
+
+        @container (max-width: 640px)
+
+            {
+            .wt-table tr {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .wt-table .wt-note {
+                grid-column: 1 / -1;
             }
         }
     </style>
@@ -525,7 +567,7 @@
                 window.location.reload();
             }).catch(() => {
                 select.disabled = false;
-                alert('Gagal update progress, coba lagi.');
+                wtError('Gagal update progress, coba lagi.');
             });
         }
 
@@ -551,8 +593,29 @@
                 setTimeout(() => el.classList.remove('border-[#27c84d]'), 900);
             }).catch(() => {
                 el.classList.remove('opacity-60');
-                alert('Note gagal disimpan, coba lagi.');
+                wtError('Note gagal disimpan, coba lagi.');
             });
+        }
+
+        function wtError(message) {
+            if (window.WsmAlert) WsmAlert.error(message);
+            else alert(message);
+        }
+
+        // Belum ada project -> form task tidak dibuka; arahkan buat project dulu.
+        function wtNeedProject() {
+            const go = () => window.location.href = "{{ route('dashboard.work.projects.index') }}";
+            if (window.WsmAlert) {
+                WsmAlert.confirm({
+                    title: 'Belum ada project',
+                    text: 'Task harus masuk ke sebuah project. Buat project dulu di menu Projects.',
+                    confirmText: 'Buat Project',
+                    cancelText: 'Nanti',
+                    icon: 'info',
+                }).then((r) => r.isConfirmed && go());
+            } else if (confirm('Belum ada project. Buat project dulu di menu Projects?')) {
+                go();
+            }
         }
 
         // --- Buka/tutup semua. Default SEMUA TERTUTUP tiap halaman dibuka. ---
@@ -598,37 +661,80 @@
                 s: document.getElementById('wtTaskSection').value,
             });
         });
-        document.querySelectorAll('form[data-confirm]').forEach((f) => f.addEventListener('submit', () =>
-        wtRememberOpen()));
+        // Form hapus: ingat state hanya setelah dikonfirmasi (submit kedua dari alerts.js), bukan saat dibatalkan.
+        document.querySelectorAll('form[data-confirm]').forEach((f) => f.addEventListener('submit', () => {
+            if (f.dataset.confirmed === '1') wtRememberOpen();
+        }));
 
-        // --- Dropdown Section di form task: isi = section yang sudah ada di project terpilih ---
+        // 3 lapis: menutup project ikut menutup semua section di dalamnya.
+        document.querySelectorAll('details.wt-card').forEach((card) => card.addEventListener('toggle', () => {
+            if (!card.open) card.querySelectorAll('details.wt-section').forEach((s) => s.open = false);
+        }));
+
+        // --- Dropdown Section di form task: HANYA section yang sudah ada di project terpilih,
+        // atau buat baru. Belum ada section sama sekali -> langsung minta buat section baru. ---
         const wtSections = @json($sectionsByProject);
+        const wtOnlyProject = @json($projects->count() === 1 ? $projects->first()->id : null);
 
         function wtRebuildSections(selected) {
-            const pid = document.getElementById('wtTaskProject').value || 0;
-            const list = wtSections[pid] || [];
+            const pid = document.getElementById('wtTaskProject').value;
             const sel = document.getElementById('wtTaskSectionSelect');
             const input = document.getElementById('wtTaskSection');
-            const opt = (value, label) => {
+            const hint = document.getElementById('wtSectionHint');
+            const list = pid ? (wtSections[pid] || []) : [];
+            const opt = (value, label, disabled = false) => {
                 const o = document.createElement('option');
                 o.value = value;
                 o.textContent = label;
+                o.disabled = disabled;
                 return o;
+            };
+            const useInput = (on, value = '') => {
+                input.classList.toggle('hidden', !on);
+                input.required = on;
+                input.value = value;
             };
 
             sel.innerHTML = '';
-            sel.appendChild(opt('', '— Tanpa section —'));
+            hint.classList.add('hidden');
+            sel.classList.remove('hidden');
+
+            if (!pid) {
+                // belum pilih project
+                sel.appendChild(opt('', 'Pilih project dulu', true));
+                sel.value = '';
+                sel.disabled = true;
+                sel.required = false;
+                useInput(false);
+                return;
+            }
+
+            if (list.length === 0) {
+                // project belum punya section -> wajib buat baru
+                sel.classList.add('hidden');
+                sel.disabled = true;
+                sel.required = false;
+                hint.textContent = 'Project ini belum punya section. Buat section pertamanya.';
+                hint.classList.remove('hidden');
+                useInput(true, selected || '');
+                return;
+            }
+
+            sel.disabled = false;
+            sel.required = true;
+            sel.appendChild(opt('', 'Pilih section…', true));
             list.forEach((name) => sel.appendChild(opt(name, name)));
             sel.appendChild(opt('__new__', '+ Section baru…'));
 
-            if (selected && !list.includes(selected)) {
+            if (selected && list.includes(selected)) {
+                sel.value = selected;
+                useInput(false, selected);
+            } else if (selected) {
                 sel.value = '__new__';
-                input.classList.remove('hidden');
-                input.value = selected;
+                useInput(true, selected);
             } else {
-                sel.value = selected || '';
-                input.classList.add('hidden');
-                input.value = selected || '';
+                sel.value = '';
+                useInput(false);
             }
         }
 
@@ -637,10 +743,12 @@
             const input = document.getElementById('wtTaskSection');
             if (sel.value === '__new__') {
                 input.classList.remove('hidden');
+                input.required = true;
                 input.value = '';
                 input.focus();
             } else {
                 input.classList.add('hidden');
+                input.required = false;
                 input.value = sel.value;
             }
         }
@@ -652,7 +760,7 @@
             form.reset();
             form.action = "{{ route('dashboard.work.tracker.items.store') }}";
             document.getElementById('wtTaskFormMethod').innerHTML = '';
-            document.getElementById('wtTaskProject').value = projectId || '';
+            document.getElementById('wtTaskProject').value = projectId || wtOnlyProject || '';
             wtRebuildSections(section || '');
             window.dispatchEvent(new CustomEvent('wt-open-task-modal'));
         }

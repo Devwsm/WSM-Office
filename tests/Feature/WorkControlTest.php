@@ -385,7 +385,7 @@ class WorkControlTest extends TestCase
         $this->assertSame('2026-09-25', $items[0]->due_date->toDateString());
         $this->assertSame($this->p['gepeng']->id, $items[0]->pic_employee_id);
 
-        $aldora->patch(route('dashboard.work.tracker.items.update', $items[0]), ['title' => 'Judul revisi', 'progress' => 'Follow Up', 'priority' => 'Low'])
+        $aldora->patch(route('dashboard.work.tracker.items.update', $items[0]), ['title' => 'Judul revisi', 'project_id' => $project->id, 'section' => 'Pre-production', 'progress' => 'Follow Up', 'priority' => 'Low'])
             ->assertSessionHas('status', 'Task diperbarui.');
         $this->assertSame('Judul revisi', $items[0]->fresh()->title);
         $this->assertSame('Follow Up', $items[0]->fresh()->progress);
@@ -394,25 +394,54 @@ class WorkControlTest extends TestCase
         $this->assertDatabaseCount('work_items', 1);
     }
 
-    public function test_task_without_a_section_can_be_created(): void
+    public function test_task_must_have_an_existing_project_and_a_section(): void
     {
-        // Form Task tidak mewajibkan section (kosong dikirim browser sebagai null) — dulu error 500
-        // karena kolom `section` NOT NULL.
-        $this->actingAs($this->p['aldora'])->post(route('dashboard.work.tracker.items.store'), [
-            'title' => 'Tanpa section',
-            'section' => '',
-            'progress' => 'Pending',
-            'priority' => 'Medium',
-        ])->assertRedirect()->assertSessionHas('status', 'Task ditambahkan.');
+        // 2026-09-28: 3 lapis project > section > item. Form cuma menawarkan project & section
+        // yang sudah ada (atau section baru), jadi task tanpa keduanya ditolak — bukan dibuat
+        // diam-diam sebagai "Tanpa Project" hasil salah pencet.
+        $aldora = $this->actingAs($this->p['aldora']);
+        $project = $this->project();
+        $base = ['title' => 'Tanpa induk', 'progress' => 'Pending', 'priority' => 'Medium'];
 
-        $this->assertSame('Tanpa section', WorkItem::sole()->title);
+        $aldora->post(route('dashboard.work.tracker.items.store'), $base + ['section' => 'CONTRACT'])
+            ->assertSessionHasErrors('project_id');
+        $aldora->post(route('dashboard.work.tracker.items.store'), $base + ['project_id' => $project->id, 'section' => ''])
+            ->assertSessionHasErrors('section');
+        $this->assertDatabaseCount('work_items', 0);
+
+        $aldora->post(route('dashboard.work.tracker.items.store'), $base + ['project_id' => $project->id, 'section' => 'CONTRACT'])
+            ->assertSessionHas('status', 'Task ditambahkan.');
+        $this->assertSame('CONTRACT', WorkItem::sole()->section);
+    }
+
+    public function test_tracker_without_projects_blocks_add_task_and_points_to_projects(): void
+    {
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))
+            ->assertOk()
+            ->assertSee('wtNeedProject()', false)
+            ->assertDontSee('id="wtTaskForm"', false)
+            ->assertSee(route('dashboard.work.projects.index'), false);
+    }
+
+    public function test_tracker_task_form_only_offers_existing_projects_and_sections(): void
+    {
+        $a = $this->project(['name' => 'Album Q3']);
+        $this->item(['project_id' => $a->id, 'section' => 'CONTRACT']);
+
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))
+            ->assertOk()
+            ->assertSee('id="wtTaskForm"', false)
+            ->assertDontSee('Tanpa Project</option>', false)
+            ->assertSee('Pilih project…')
+            ->assertViewHas('sectionsByProject', fn($m) => $m[$a->id] === ['CONTRACT']);
     }
 
     public function test_task_validation(): void
     {
         $aldora = $this->actingAs($this->p['aldora']);
+        $project = $this->project();
         $store = fn(array $o) => $aldora->post(route('dashboard.work.tracker.items.store'), array_merge(
-            ['title' => 'T', 'progress' => 'Pending', 'priority' => 'Low'],
+            ['title' => 'T', 'project_id' => $project->id, 'section' => 'S', 'progress' => 'Pending', 'priority' => 'Low'],
             $o
         ));
 
@@ -421,6 +450,7 @@ class WorkControlTest extends TestCase
         $store(['priority' => 'Kritis'])->assertSessionHasErrors('priority');
         $store(['link' => 'javascript:alert(1)'])->assertSessionHasErrors('link');
         $store(['link' => 'bukan-url'])->assertSessionHasErrors('link');
+        $store(['project_id' => null])->assertSessionHasErrors('project_id');
         $store(['project_id' => 9999])->assertSessionHasErrors('project_id');
         $store(['pic_employee_id' => 9999])->assertSessionHasErrors('pic_employee_id');
         $store(['due_date' => 'besok'])->assertSessionHasErrors('due_date');
