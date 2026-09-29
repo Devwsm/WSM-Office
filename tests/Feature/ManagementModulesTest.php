@@ -43,7 +43,7 @@ class ManagementModulesTest extends TestCase
         parent::setUp();
 
         $this->freezeWorkday();
-        $this->officeSetting(['shortage_deduction_rate' => 25000]);
+        $this->officeSetting();
         $this->disk = Storage::fake('local');
         Storage::fake('public');
         $this->p = $this->company();
@@ -254,8 +254,9 @@ class ManagementModulesTest extends TestCase
         $this->assertSame('draft', $aldora->status);
         $this->assertEquals(6000000, $aldora->base_salary);
         $this->assertEquals(40000, $aldora->overtime_amount);      // 1 lembur disetujui × 40.000
-        $this->assertEquals(100000, $aldora->shortage_deduction);  // 4 blok × 25.000
-        $this->assertEquals(5940000, $aldora->total);
+        $this->assertEquals(136363.64, $aldora->shortage_deduction); // 4 blok × 1 jam × (6.000.000 ÷ 22 ÷ 8 jam)
+        $this->assertEquals(0, $aldora->absence_deduction);
+        $this->assertEquals(5903636.36, $aldora->total);
         $this->assertSame($this->p['manajer']->id, $aldora->generated_by);
 
         $gepeng = PayrollRecord::where('user_id', $this->p['gepeng']->id)->firstOrFail();

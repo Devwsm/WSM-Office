@@ -253,7 +253,7 @@ return [
                     ['Jam Mulai dan Jam Selesai', 'jam selesai juga dipakai untuk menutup otomatis sesi karyawan yang lupa absen pulang (jika tidak punya lembur disetujui).'],
                     ['Toleransi Telat', 'batas menit keterlambatan sebelum status jadi Terlambat.'],
                     ['Minimal Menit Kerja/Hari', 'kurang dari ini masuk status Kurang Jam Kerja dan dihitung per blok 60 menit di rekap bulanan.'],
-                    ['Rate Potongan Kurang Jam', 'rupiah per blok 60 menit, dipakai Payroll untuk menghitung potongan otomatis.'],
+                    ['Pembagi Hari Kerja Payroll', 'jumlah hari kerja sebulan (bawaan 22) untuk tarif harian: gaji pokok dibagi pembagi ini. Potongan hari absen dan potongan kurang jam di Payroll dihitung dari tarif ini, jadi tidak ada tarif rupiah yang perlu diisi.'],
                 ],
                 'Warna Aksen' => [
                     'Mengubah warna menu Dashboard/Owner dan menu Work Control di sidebar.',
@@ -486,6 +486,7 @@ return [
                     ['Lihat lokasi', 'membuka titik lokasi absen masuk atau pulang di Google Maps, lengkap dengan jaraknya dari kantor.'],
                     ['Lihat selfie', 'thumbnail foto absen masuk dan pulang (kalau ada).'],
                     ['Koreksi jam absen', 'ubah jam masuk dan/atau pulang. Alasan koreksi wajib diisi dan bisa dilihat karyawan. Tombolnya hanya tampil untuk akses Manage pada modul People.'],
+                    ['Tandai Absen', 'menandai satu tanggal sebagai tidak masuk tanpa keterangan (keterangan wajib). Hanya hari yang ditandai ini yang dipotong Payroll. Tidak bisa untuk tanggal masa depan, tanggal yang ada catatan masuknya, atau tanggal yang tercakup izin/cuti/sakit disetujui. Bisa dibatalkan selama payroll bulan itu belum difinalisasi.'],
                 ],
                 'Perlu diketahui' => [
                     'Setelah dikoreksi, kartu menampilkan siapa yang mengoreksi, kapan, dan alasannya.',
@@ -637,7 +638,7 @@ return [
                 ],
                 'Perlu diketahui' => [
                     'Generate ulang hanya menyentuh payroll berstatus draft. Yang sudah final atau dibayar dilewati dan tidak ditimpa.',
-                    'Kalau muncul peringatan Rate Potongan Kurang Jam masih Rp 0, isi dulu di Pengaturan Kantor, atau potongan kurang jam akan bernilai nol.',
+                    'Potongan dihitung dari gaji: hari yang ditandai Absen dan kekurangan jam kerja. Hari tanpa masuk yang tidak ditandai Absen tidak dipotong.',
                     'Slip gaji PDF bisa diunduh lewat Export & Import, kartu Payroll.',
                 ],
             ],
@@ -651,17 +652,20 @@ return [
                 'Rincian perhitungan' => [
                     ['Gaji Pokok', 'dari data karyawan.'],
                     ['Lembur', 'jumlah lembur disetujui dikali flat rate lembur karyawan.'],
-                    ['Potongan Kurang Jam', 'jumlah blok kurang jam kerja dikali rate di Pengaturan Kantor. Sisa menit yang belum genap satu blok dibawa ke bulan berikutnya.'],
+                    ['Potongan Kurang Jam', 'jumlah blok kurang jam kerja dikali tarif per blok (gaji dibagi pembagi hari, dibagi jam kerja per hari). Sisa menit yang belum genap satu blok tidak dipotong bulan itu.'],
+                    ['Potongan Hari Absen', 'jumlah hari yang ditandai Absen dikali tarif harian (gaji dibagi pembagi hari). Penanda dibuat di Riwayat Absensi karyawan.'],
                     ['Penyesuaian Lain', 'angka manual, boleh minus.'],
+                    ['Total', 'hasil semua komponen di atas, dan tidak pernah di bawah Rp 0.'],
                 ],
                 'Yang bisa dilakukan (akses Manage)' => [
                     ['Simpan Penyesuaian', 'isi Penyesuaian Lain dan catatan. Hanya bisa saat masih draft.'],
                     ['Finalisasi', 'mengunci payroll. Setelah itu tidak bisa digenerate ulang atau diedit.'],
                     ['Tandai Sudah Dibayar', 'muncul setelah difinalisasi. Setelah ditandai, riwayatnya permanen tanpa aksi lanjutan.'],
                     ['Hapus Draft', 'menghapus payroll yang masih draft.'],
+                    ['Buka Kembali Jadi Draft', 'khusus Owner, hanya untuk payroll berstatus Final. Alasan wajib diisi dan tercatat di Audit Log. Payroll yang sudah Dibayar tidak bisa dibuka; koreksinya lewat Penyesuaian Lain di bulan berikutnya.'],
                 ],
                 'Perlu diketahui' => [
-                    'Alur status satu arah: draft, lalu finalized, lalu paid.',
+                    'Alur status: draft, lalu finalized, lalu paid. Payroll Final bisa dibuka kembali jadi draft oleh Owner.',
                     'Generate, penyesuaian, finalisasi, pembayaran, dan hapus draft semuanya tercatat di Audit Log.',
                 ],
             ],

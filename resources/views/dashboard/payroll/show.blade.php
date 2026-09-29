@@ -51,10 +51,24 @@
                         Potongan Kurang Jam
                         <span class="block text-[11px]">{{ $shortage['blocks'] }} blok (sisa
                             {{ $shortage['remainder_minutes'] }} menit dibawa bulan depan) ×
-                            {{ \App\Models\PayrollRecord::formatRupiah($shortageRate) }}</span>
+                            {{ \App\Models\PayrollRecord::formatRupiah($ratePerBlock) }} per blok</span>
                     </span>
                     <strong
                         class="text-[#a83d35]">-{{ \App\Models\PayrollRecord::formatRupiah($payroll->shortage_deduction) }}</strong>
+                </div>
+                <div class="flex items-center justify-between border-b border-[#eee8df] pb-2.5">
+                    <span class="text-muted">
+                        Potongan Hari Absen
+                        <span class="block text-[11px]">{{ $payroll->absent_days }} hari ×
+                            {{ \App\Models\PayrollRecord::formatRupiah($payroll->absent_days > 0 ? $payroll->absence_deduction / $payroll->absent_days : 0) }}
+                            (gaji ÷ {{ $divisor }} hari)</span>
+                        @if (count($absentDates) > 0)
+                            <span
+                                class="block text-[11px]">{{ collect($absentDates)->map(fn($d) => \Illuminate\Support\Carbon::parse($d)->translatedFormat('d M'))->implode(', ') }}</span>
+                        @endif
+                    </span>
+                    <strong
+                        class="text-[#a83d35]">-{{ \App\Models\PayrollRecord::formatRupiah($payroll->absence_deduction) }}</strong>
                 </div>
                 <div class="flex items-center justify-between border-b border-[#eee8df] pb-2.5">
                     <span class="text-muted">Penyesuaian Lain</span>
@@ -64,6 +78,13 @@
                     <span class="text-sm font-extrabold">Total</span>
                     <strong class="text-lg">{{ \App\Models\PayrollRecord::formatRupiah($payroll->total) }}</strong>
                 </div>
+                <p class="text-[11px] text-muted">Total tidak pernah di bawah Rp 0.</p>
+                @if ($payroll->reopen_reason)
+                    <p class="mt-1 rounded-wsm border border-[#f2c94c] bg-[#fff8e1] p-3 text-xs">
+                        <strong>Pernah dibuka kembali</strong> oleh {{ $payroll->reopener?->name ?? '-' }}
+                        ({{ $payroll->reopened_at?->translatedFormat('d M Y, H:i') }}): {{ $payroll->reopen_reason }}
+                    </p>
+                @endif
                 @if ($payroll->notes)
                     <p class="mt-2 rounded-wsm border border-line bg-[#faf8f3] p-3 text-xs">{{ $payroll->notes }}</p>
                 @endif
@@ -125,6 +146,23 @@
                                 @csrf
                                 <button type="submit" class="btn-wsm-black w-full">Tandai Sudah Dibayar</button>
                             </form>
+                            @if (auth()->user()->isOwner())
+                                <form method="POST" action="{{ route('dashboard.payroll.reopen', $payroll) }}"
+                                    class="grid gap-2 border-t border-line pt-2.5"
+                                    data-confirm="Payroll {{ $payroll->user->name }} periode {{ $payroll->periodLabel() }} kembali jadi draft dan bisa digenerate ulang. Alasan tercatat di Audit Log."
+                                    data-confirm-title="Buka kembali payroll final?" data-confirm-button="Ya, buka kembali"
+                                    data-confirm-danger="1">
+                                    @csrf
+                                    <label class="text-[11px] font-bold text-muted">Buka kembali (khusus Owner) — alasan
+                                        wajib</label>
+                                    <textarea name="reopen_reason" rows="2" minlength="5" maxlength="500" required class="input-wsm"
+                                        placeholder="Mis. salah tandai absen tanggal 12">{{ old('reopen_reason') }}</textarea>
+                                    @error('reopen_reason')
+                                        <p class="text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                                    @enderror
+                                    <button type="submit" class="btn-wsm-red w-full">Buka Kembali Jadi Draft</button>
+                                </form>
+                            @endif
                         @else
                             <p class="text-xs text-muted">Payroll ini sudah dibayar — histori permanen, gak ada aksi
                                 lanjutan.</p>

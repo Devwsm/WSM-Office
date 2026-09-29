@@ -34,7 +34,7 @@ class PayrollExport extends BaseExport
 
     public function headings(): array
     {
-        return ['Karyawan', 'Periode', 'Gaji Pokok', 'Lembur', 'Potongan Kurang Jam', 'Penyesuaian Lain', 'Total', 'Status'];
+        return ['Karyawan', 'Periode', 'Gaji Pokok', 'Lembur', 'Potongan Kurang Jam', 'Hari Absen', 'Potongan Hari Absen', 'Penyesuaian Lain', 'Total', 'Status'];
     }
 
     public function map($row): array
@@ -45,6 +45,8 @@ class PayrollExport extends BaseExport
             $row->base_salary,
             $row->overtime_amount,
             $row->shortage_deduction,
+            $row->absent_days,
+            $row->absence_deduction,
             $row->other_adjustment,
             $row->total,
             $row->statusLabel(),

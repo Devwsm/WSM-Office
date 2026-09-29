@@ -23,11 +23,17 @@ use Illuminate\Support\Carbon;
     'base_salary',
     'overtime_amount',
     'shortage_deduction',
+    'absent_days',
+    'absence_deduction',
+    'work_days_divisor',
     'other_adjustment',
     'total',
     'status',
     'notes',
     'generated_by',
+    'reopened_by',
+    'reopened_at',
+    'reopen_reason',
 ])]
 class PayrollRecord extends Model
 {
@@ -39,6 +45,9 @@ class PayrollRecord extends Model
             'base_salary' => 'float',
             'overtime_amount' => 'float',
             'shortage_deduction' => 'float',
+            'absent_days' => 'integer',
+            'absence_deduction' => 'float',
+            'reopened_at' => 'datetime',
             'other_adjustment' => 'float',
             'total' => 'float',
         ];
@@ -54,16 +63,24 @@ class PayrollRecord extends Model
         return $this->belongsTo(User::class, 'generated_by');
     }
 
+    public function reopener(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reopened_by');
+    }
+
     /** Hitung ulang `total` dari komponen-komponennya — dipanggil controller sebelum save, BUKAN otomatis lewat event (biar generate payroll tetap 1 langkah eksplisit, bukan efek samping). */
     public function recalculateTotal(): float
     {
-        $this->total = round(
+        // Gaji tidak pernah minus (aturan payroll 2026-09-29, sama `Math.max(0, …)` prototype):
+        // dipatok 0 SETELAH semua komponen dihitung, termasuk penyesuaian manual.
+        $this->total = max(0.0, round(
             (float) $this->base_salary
                 + (float) $this->overtime_amount
                 - (float) $this->shortage_deduction
+                - (float) ($this->absence_deduction ?? 0)
                 + (float) ($this->other_adjustment ?? 0),
             2
-        );
+        ));
 
         return $this->total;
     }

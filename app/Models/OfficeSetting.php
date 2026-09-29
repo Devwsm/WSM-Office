@@ -39,6 +39,7 @@ use Illuminate\Support\Carbon;
     'work_accent_color',
     'shortage_deduction_rate',
     'shortage_block_minutes',
+    'payroll_work_days_divisor',
     'auto_close_enabled',
     'weekly_rhythm',
 ])]
@@ -103,6 +104,7 @@ class OfficeSetting extends Model
             'enforce_radius' => 'boolean',
             'shortage_deduction_rate' => 'float',
             'shortage_block_minutes' => 'integer',
+            'payroll_work_days_divisor' => 'integer',
             'auto_close_enabled' => 'boolean',
             'weekly_rhythm' => 'array',
         ];
@@ -131,6 +133,7 @@ class OfficeSetting extends Model
             'work_accent_color' => '#3558f4',
             'shortage_deduction_rate' => 0,
             'shortage_block_minutes' => 60,
+            'payroll_work_days_divisor' => 22,
             'auto_close_enabled' => true,
         ]);
     }
@@ -141,6 +144,14 @@ class OfficeSetting extends Model
         $minutes = (int) ($this->shortage_block_minutes ?? 60);
 
         return $minutes > 0 ? $minutes : 60;
+    }
+
+    /** Pembagi hari kerja sebulan buat tarif harian payroll (gaji ÷ pembagi); kosong/nol jatuh ke 22. */
+    public function payrollWorkDaysDivisor(): int
+    {
+        $divisor = (int) ($this->payroll_work_days_divisor ?? 22);
+
+        return $divisor > 0 ? $divisor : 22;
     }
 
     /** Jam mulai window kerja normal hari ini, sebagai Carbon (buat dipasangin ke tanggal tertentu). */

@@ -132,13 +132,18 @@
                     @enderror
                 </div>
                 <div>
-                    <label class="mb-1 block text-[11px] font-bold text-muted">Rate Potongan Kurang Jam (Rp / blok)</label>
-                    <input type="number" name="shortage_deduction_rate"
-                        value="{{ old('shortage_deduction_rate', $setting->shortage_deduction_rate) }}" min="0"
-                        step="1000" class="input-wsm" required>
-                    <p class="mt-1 text-[11px] text-muted">Dipakai Payroll (Fase 12) buat hitung potongan otomatis
-                        dari akumulasi blok "Kurang Jam Kerja" bulanan tiap karyawan — belum ada acuan pasti dari
-                        prototype, jadi rate rupiahnya Owner yang tentukan di sini.</p>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Pembagi Hari Kerja Payroll (hari /
+                        bulan)</label>
+                    <input type="number" name="payroll_work_days_divisor"
+                        value="{{ old('payroll_work_days_divisor', $setting->payrollWorkDaysDivisor()) }}" min="1"
+                        max="31" class="input-wsm" required>
+                    <p class="mt-1 text-[11px] text-muted">Tarif harian = gaji pokok ÷ pembagi ini (bawaan 22).
+                        Potongan hari absen = 1 tarif harian per hari yang ditandai Absen. Potongan kurang jam =
+                        tarif harian ÷ jam kerja per hari × jam yang terpotong (per blok di atas). Tidak ada tarif
+                        rupiah yang perlu diisi.</p>
+                    @error('payroll_work_days_divisor')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
         </div>

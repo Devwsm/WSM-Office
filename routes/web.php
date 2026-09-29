@@ -29,6 +29,7 @@
 use App\Http\Controllers\Approval\AttendanceCorrectionRequestController as ApprovalAttendanceCorrectionRequestController;
 use App\Http\Controllers\Approval\LeaveRequestController as ApprovalLeaveRequestController;
 use App\Http\Controllers\Approval\OvertimeRequestController as ApprovalOvertimeRequestController;
+use App\Http\Controllers\Attendance\AbsenceController;
 use App\Http\Controllers\Attendance\RecapController;
 use App\Http\Controllers\Dashboard\Budget\BudgetController;
 use App\Http\Controllers\Dashboard\Contracts\ContractController;
@@ -264,6 +265,9 @@ Route::middleware(['auth', 'module:people,view', 'dashboard.unlocked'])->prefix(
 });
 Route::middleware(['auth', 'module:people,manage', 'dashboard.unlocked'])->prefix('absensi')->name('attendance.recap.')->group(function () {
     Route::post('/{attendance}/koreksi', [RecapController::class, 'correct'])->name('correct');
+    // Penanda "Absen (A)" manual — satu-satunya hari yang dipotong Payroll (aturan payroll 2026-09-29).
+    Route::post('/{user}/absen', [AbsenceController::class, 'store'])->name('absence.store');
+    Route::delete('/absen/{absence}', [AbsenceController::class, 'destroy'])->name('absence.destroy');
 });
 
 // --- Persetujuan Izin/Cuti (Fase 5) — permission bukan role, 2026-09-09 ---
@@ -432,6 +436,8 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         Route::patch('/{payroll}', [PayrollController::class, 'update'])->middleware('module:payroll,manage')->name('update');
         Route::post('/{payroll}/finalisasi', [PayrollController::class, 'finalize'])->middleware('module:payroll,manage')->name('finalize');
         Route::post('/{payroll}/tandai-dibayar', [PayrollController::class, 'markPaid'])->middleware('module:payroll,manage')->name('mark-paid');
+        // Buka kembali payroll Final — Owner saja (dijaga ReopenPayrollRequest), alasan wajib.
+        Route::post('/{payroll}/buka-kembali', [PayrollController::class, 'reopen'])->middleware('module:payroll,manage')->name('reopen');
         Route::delete('/{payroll}', [PayrollController::class, 'destroy'])->middleware('module:payroll,manage')->name('destroy');
     });
 

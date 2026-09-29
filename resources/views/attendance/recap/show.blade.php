@@ -48,6 +48,59 @@
         </div>
     @endif
 
+    {{-- Penanda Absen (A) — cuma hari yang ditandai di sini yang dipotong Payroll. --}}
+    <div class="mb-4">
+        <p class="mb-2 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Hari Absen (Dipotong Payroll)</p>
+        <div class="grid gap-2">
+            @forelse ($absences as $absence)
+                <div class="flex items-center justify-between gap-3 rounded-2xl border border-[#f1c7c2] bg-[#fff0ee] p-3.5">
+                    <div class="min-w-0">
+                        <strong class="block text-xs">{{ $absence->date->translatedFormat('l, d M Y') }}</strong>
+                        <span class="text-[11px] text-muted">{{ $absence->note }} · ditandai
+                            {{ $absence->marker?->name ?? '-' }}</span>
+                    </div>
+                    @if (auth()->user()->canManageModule('people'))
+                        <form method="POST" action="{{ route('attendance.recap.absence.destroy', $absence) }}"
+                            data-confirm="Penanda Absen tanggal {{ $absence->date->translatedFormat('d M Y') }} dibatalkan, hari itu tidak lagi dipotong."
+                            data-confirm-title="Batalkan penanda absen?" data-confirm-button="Ya, batalkan">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                class="rounded-xl bg-white px-3 py-1.5 text-[10px] font-extrabold text-[#9b392f]">Batalkan</button>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <div class="rounded-2xl border border-line bg-white p-3.5 text-xs text-muted">Tidak ada hari yang
+                    ditandai Absen bulan ini. Hari tanpa masuk yang tidak ditandai tidak dipotong.</div>
+            @endforelse
+        </div>
+
+        @if (auth()->user()->canManageModule('people'))
+            <form method="POST" action="{{ route('attendance.recap.absence.store', $employee) }}"
+                class="mt-2 grid gap-2 rounded-2xl border border-line bg-white p-3.5 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+                @csrf
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Tanggal</label>
+                    <input type="date" name="date" value="{{ old('date') }}" max="{{ now()->toDateString() }}"
+                        class="input-wsm text-xs!" required>
+                    @error('date')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Keterangan (wajib)</label>
+                    <input type="text" name="note" value="{{ old('note') }}" maxlength="255"
+                        placeholder="Mis. tidak masuk tanpa kabar" class="input-wsm text-xs!" required>
+                    @error('note')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+                <button type="submit" class="btn-wsm-black py-2.5! text-xs!">Tandai Absen</button>
+            </form>
+        @endif
+    </div>
+
     @if ($rows->isEmpty())
         <div class="card-wsm-white text-center">
             <p class="text-xs text-muted">Tidak ada data absensi di bulan ini.</p>

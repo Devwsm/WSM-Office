@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Attendance;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Attendance\CorrectAttendanceRequest;
 use App\Models\Attendance;
+use App\Models\AttendanceAbsence;
 use App\Models\LeaveRequest;
 use App\Models\OfficeSetting;
 use App\Models\User;
@@ -135,12 +136,20 @@ class RecapController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
+        $absences = AttendanceAbsence::query()
+            ->with('marker')
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$period->copy()->startOfMonth()->toDateString(), $period->copy()->endOfMonth()->toDateString()])
+            ->orderBy('date')
+            ->get();
+
         $setting = OfficeSetting::current();
 
         return view('attendance.recap.show', [
             'employee' => $user,
             'rows' => $rows,
             'leaves' => $leaves,
+            'absences' => $absences,
             'setting' => $setting,
             'currentMonth' => $month,
             'prevMonth' => $period->copy()->subMonth()->format('Y-m'),

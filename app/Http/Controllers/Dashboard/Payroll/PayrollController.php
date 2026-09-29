@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Dashboard\Payroll;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Payroll\GeneratePayrollRequest;
+use App\Http\Requests\Dashboard\Payroll\ReopenPayrollRequest;
 use App\Http\Requests\Dashboard\Payroll\UpdatePayrollRecordRequest;
-use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\OfficeSetting;
-use App\Models\OvertimeRequest;
 use App\Models\PayrollRecord;
 use App\Models\User;
+use App\Support\PayrollCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -35,19 +35,21 @@ use Illuminate\Support\Facades\Auth;
  * terbaru), diedit (other_adjustment/notes), atau dihapus. Sekali
  * `finalized`, angka-angka itu terkunci permanen sebagai histori.
  *
- * Komponen perhitungan (semua di `generate()`):
+ * Komponen perhitungan — SEMUA aturan ada di `App\Support\PayrollCalculator`
+ * (aturan payroll 2026-09-29, mengikuti prototype v32 versi v18):
  * - `base_salary` = salinan `users.salary_base` saat digenerate
- * - `overtime_amount` = jumlah `OvertimeRequest` status `disetujui`
- *   di periode itu × `users.flat_overtime_rate` (bukan per jam durasi,
- *   kebijakan v18 — lihat catatan `OvertimeRequest`)
- * - `shortage_deduction` = `Attendance::monthlyShortageBlocks()`
- *   (Fase 7) blocks × `OfficeSetting::shortage_deduction_rate` (field
- *   baru Fase 12, lihat migration `add_shortage_deduction_rate_to_office_settings`
- *   — rate ini gak ada acuan dari prototype, jadi Owner yang tentukan
- *   sendiri lewat Pengaturan Kantor)
+ * - `overtime_amount` = jumlah TANGGAL lembur `disetujui` × `flat_overtime_rate`
+ * - `shortage_deduction` = blok kurang jam × jam per blok × tarif per jam
+ *   (gaji ÷ pembagi hari ÷ jam kerja/hari) — tarif rupiah tidak diinput lagi
+ * - `absence_deduction` = hari yang ditandai Absen × tarif harian
  * - `other_adjustment` + `notes` = manual, gak disentuh `generate()`
  *   kalau record-nya udah ada (biar penyesuaian gak ketimpa tiap
  *   regenerate)
+ * - `total` dipatok minimal 0 (lihat `PayrollRecord::recalculateTotal()`)
+ *
+ * Buka kembali payroll Final (`reopen()`): hanya Owner, hanya status
+ * Final (bukan Dibayar), wajib alasan, tercatat di Audit Log. Hasilnya
+ * balik ke draft supaya bisa digenerate ulang/disesuaikan lalu difinalisasi lagi.
  *
  * Karyawan tanpa `salary_base` terisi SENGAJA dilewati dari daftar
  * generate — bukan dianggap gaji Rp 0. Gate 'view'/'manage' modul
@@ -57,11 +59,8 @@ use Illuminate\Support\Facades\Auth;
  * markPaid/destroy dicatat ke AuditLog::record() (payroll = data
  * finansial, aksi paling sensitif buat modul Audit Log).
  *
- * Quick win (2026-09-13) — index() sekarang ngirim `shortageRate` ke
- * view biar form Generate bisa nunjukin warning eksplisit kalau
- * `shortage_deduction_rate` masih 0 (Owner belum pernah isi di
- * Pengaturan Kantor). Sebelumnya generate pertama kali BAKAL nol-in
- * semua potongan kurang jam kerja tanpa Owner sadar.
+ * Catatan 2026-09-29: warning "rate potongan masih Rp 0" dihapus karena
+ * rate itu tidak ada lagi (potongan diturunkan dari gaji).
  * ---------------------------------------------------------------------
  */
 class PayrollController extends Controller
@@ -83,7 +82,6 @@ class PayrollController extends Controller
         $eligibleEmployees = User::query()->whereNotNull('salary_base')->orderBy('name')->get(['id', 'name']);
         $notYetGeneratedCount = $eligibleEmployees->pluck('id')->diff($generatedUserIds)->count();
         $missingSalaryCount = User::query()->whereNull('salary_base')->count();
-        $shortageRate = (float) (OfficeSetting::current()->shortage_deduction_rate ?? 0);
 
         return view('dashboard.payroll.index', [
             'period' => $period,
@@ -92,7 +90,6 @@ class PayrollController extends Controller
             'notYetGeneratedCount' => $notYetGeneratedCount,
             'missingSalaryCount' => $missingSalaryCount,
             'eligibleEmployees' => $eligibleEmployees,
-            'shortageRate' => $shortageRate,
         ]);
     }
 
@@ -113,8 +110,6 @@ class PayrollController extends Controller
             ->get();
 
         $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('!Y-m', $period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('!Y-m', $period)->endOfMonth()->toDateString();
 
         $generated = 0;
         $skippedLocked = 0;
@@ -131,18 +126,14 @@ class PayrollController extends Controller
                 continue;
             }
 
-            $overtimeCount = OvertimeRequest::query()
-                ->where('user_id', $employee->id)
-                ->where('status', 'disetujui')
-                ->whereBetween('date', [$start, $end])
-                ->distinct()
-                ->count('date'); // per TANGGAL, bukan per baris: dua pengajuan di tanggal sama tidak dibayar dobel
-
-            $shortage = Attendance::monthlyShortageBlocks($employee->id, $period, $setting);
+            $calc = PayrollCalculator::calculate($employee, $period, $setting);
 
             $record->base_salary = $employee->salary_base;
-            $record->overtime_amount = $overtimeCount * (float) ($employee->flat_overtime_rate ?? 0);
-            $record->shortage_deduction = $shortage['blocks'] * (float) ($setting->shortage_deduction_rate ?? 0);
+            $record->overtime_amount = $calc['overtime_amount'];
+            $record->shortage_deduction = $calc['shortage_deduction'];
+            $record->absent_days = $calc['absent_days'];
+            $record->absence_deduction = $calc['absence_deduction'];
+            $record->work_days_divisor = $calc['divisor'];
             $record->status = 'draft';
             $record->generated_by = Auth::id();
             $record->recalculateTotal();
@@ -167,23 +158,35 @@ class PayrollController extends Controller
     {
         $payroll->load(['user', 'generator']);
 
-        $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('!Y-m', $payroll->period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('!Y-m', $payroll->period)->endOfMonth()->toDateString();
+        return view('dashboard.payroll.show', $this->breakdown($payroll));
+    }
 
-        $shortage = Attendance::monthlyShortageBlocks($payroll->user_id, $payroll->period, $setting);
-        $overtimeCount = OvertimeRequest::query()
-            ->where('user_id', $payroll->user_id)
-            ->where('status', 'disetujui')
-            ->whereBetween('date', [$start, $end])
-            ->count();
+    /**
+     * Data rincian buat halaman detail & slip PDF. Angka rupiah SELALU dari record
+     * (yang terkunci saat final); yang dihitung ulang cuma penjelasnya (jumlah blok,
+     * daftar tanggal absen, jumlah lembur).
+     *
+     * @return array<string,mixed>
+     */
+    public static function breakdownFor(PayrollRecord $payroll): array
+    {
+        $calc = PayrollCalculator::calculate($payroll->user, $payroll->period);
+        $blocks = $calc['shortage']['blocks'];
 
-        return view('dashboard.payroll.show', [
+        return [
             'payroll' => $payroll,
-            'shortage' => $shortage,
-            'overtimeCount' => $overtimeCount,
-            'shortageRate' => (float) $setting->shortage_deduction_rate,
-        ]);
+            'shortage' => $calc['shortage'],
+            'overtimeCount' => $calc['overtime_count'],
+            'absentDates' => $calc['absent_dates'],
+            'divisor' => $payroll->work_days_divisor ?? $calc['divisor'],
+            // Tarif per blok diturunkan dari angka yang TERSIMPAN, jadi selalu konsisten dengan total.
+            'ratePerBlock' => $blocks > 0 ? round((float) $payroll->shortage_deduction / $blocks, 2) : 0.0,
+        ];
+    }
+
+    private function breakdown(PayrollRecord $payroll): array
+    {
+        return self::breakdownFor($payroll);
     }
 
     /** Sesuaikan other_adjustment/notes manual — cuma boleh selagi masih draft. */
@@ -232,6 +235,37 @@ class PayrollController extends Controller
         AuditLog::record('Payroll ditandai dibayar', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) ditandai dibayar oleh {$actor->name}.", $actor);
 
         return back()->with('status', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) ditandai sudah dibayar.");
+    }
+
+    /**
+     * Buka kembali payroll Final jadi draft. Hanya Owner (dijaga ReopenPayrollRequest),
+     * hanya status Final — yang sudah Dibayar tidak dibuka (koreksinya lewat
+     * penyesuaian di bulan berikutnya). Wajib alasan; tercatat di Audit Log.
+     */
+    public function reopen(ReopenPayrollRequest $request, PayrollRecord $payroll)
+    {
+        if ($payroll->status === 'paid') {
+            return back()->with('error', 'Payroll yang sudah dibayar tidak bisa dibuka kembali. Koreksi lewat penyesuaian di bulan berikutnya.');
+        }
+
+        if ($payroll->status !== 'finalized') {
+            return back()->with('error', 'Cuma payroll berstatus final yang bisa dibuka kembali.');
+        }
+
+        /** @var User $actor */
+        $actor = Auth::user();
+        $reason = $request->validated()['reopen_reason'];
+
+        $payroll->update([
+            'status' => 'draft',
+            'reopened_by' => $actor->id,
+            'reopened_at' => now(),
+            'reopen_reason' => $reason,
+        ]);
+
+        AuditLog::record('Payroll final dibuka kembali', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) dibuka kembali jadi draft oleh {$actor->name}. Alasan: {$reason}", $actor);
+
+        return redirect()->route('dashboard.payroll.show', $payroll)->with('status', "Payroll {$payroll->user->name} ({$payroll->periodLabel()}) dibuka kembali jadi draft. Generate ulang atau sesuaikan, lalu finalisasi lagi.");
     }
 
     /** Cuma record draft yang boleh dihapus — final/paid adalah histori permanen. */

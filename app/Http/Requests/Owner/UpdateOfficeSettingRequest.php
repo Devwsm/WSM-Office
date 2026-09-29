@@ -45,8 +45,10 @@ class UpdateOfficeSettingRequest extends FormRequest
             // mengirim field ini, dan itu tidak boleh mengubah nilai yang tersimpan.
             'shortage_block_minutes' => ['sometimes', 'required', 'integer', 'min:15', 'max:240'],
             'auto_close_enabled' => ['sometimes', 'boolean'],
-            // Fase 12 — rate potongan Payroll per blok 60 menit shortage.
-            'shortage_deduction_rate' => ['required', 'numeric', 'min:0'],
+            // Aturan payroll (2026-09-29): pembagi hari buat tarif harian (gaji ÷ pembagi).
+            // Tarif potongan kurang jam TIDAK lagi diinput (`shortage_deduction_rate` sudah
+            // tidak dipakai) — diturunkan dari gaji: gaji ÷ pembagi ÷ jam kerja per hari.
+            'payroll_work_days_divisor' => ['sometimes', 'required', 'integer', 'min:1', 'max:31'],
             // Fase 16 — warna aksen sidebar (padanan pengaturan warna
             // CEO Dashboard/Work Control v18). Validasi hex 6-digit
             // ketat (#RRGGBB) — dipakai langsung sebagai CSS custom

@@ -375,7 +375,7 @@ class OwnerAreaTest extends TestCase
             'normal_end_time' => '18:00',
             'late_tolerance_minutes' => 10,
             'required_work_minutes' => 420,
-            'shortage_deduction_rate' => 25000,
+            'payroll_work_days_divisor' => 24,
             'ceo_accent_color' => '#111111',
             'work_accent_color' => '#3558f4',
         ], $overrides);
@@ -393,7 +393,7 @@ class OwnerAreaTest extends TestCase
         $this->assertSame(300, (int) $setting->radius_meters);
         $this->assertSame('09:00:00', $setting->work_start_time);
         $this->assertSame('18:00:00', $setting->normal_end_time);
-        $this->assertEquals(25000, $setting->shortage_deduction_rate);
+        $this->assertSame(24, $setting->payrollWorkDaysDivisor());
         $this->assertTrue($setting->geo_attendance_enabled);
         $this->assertSame(1, OfficeSetting::count(), 'Harus tetap satu baris (singleton).');
         $this->assertDatabaseHas('audit_logs', ['action' => 'Pengaturan kantor diubah']);
@@ -431,7 +431,8 @@ class OwnerAreaTest extends TestCase
         $patch(['late_tolerance_minutes' => 121])->assertSessionHasErrors('late_tolerance_minutes');
         $patch(['required_work_minutes' => 59])->assertSessionHasErrors('required_work_minutes');
         $patch(['required_work_minutes' => 961])->assertSessionHasErrors('required_work_minutes');
-        $patch(['shortage_deduction_rate' => -1])->assertSessionHasErrors('shortage_deduction_rate');
+        $patch(['payroll_work_days_divisor' => 0])->assertSessionHasErrors('payroll_work_days_divisor');
+        $patch(['payroll_work_days_divisor' => 32])->assertSessionHasErrors('payroll_work_days_divisor');
         $patch(['ceo_accent_color' => 'merah'])->assertSessionHasErrors('ceo_accent_color');
         $patch(['work_accent_color' => '#12345'])->assertSessionHasErrors('work_accent_color');
     }

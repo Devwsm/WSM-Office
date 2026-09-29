@@ -58,7 +58,7 @@ class OfficeAttendanceRulesTest extends TestCase
             'normal_end_time' => '20:00',
             'late_tolerance_minutes' => 15,
             'required_work_minutes' => 480,
-            'shortage_deduction_rate' => 0,
+            'payroll_work_days_divisor' => 22,
             'ceo_accent_color' => '#111111',
             'work_accent_color' => '#3558f4',
         ], $overrides);

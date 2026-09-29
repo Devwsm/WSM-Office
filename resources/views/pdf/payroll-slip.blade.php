@@ -51,10 +51,21 @@
                     Potongan Kurang Jam
                     <span style="display:block;color:#6b6459;font-size:9px;">
                         {{ $shortage['blocks'] }} blok (sisa {{ $shortage['remainder_minutes'] }} menit dibawa
-                        bulan depan) × {{ \App\Models\PayrollRecord::formatRupiah($shortageRate) }}
+                        bulan depan) × {{ \App\Models\PayrollRecord::formatRupiah($ratePerBlock) }} per blok
                     </span>
                 </td>
                 <td>-{{ \App\Models\PayrollRecord::formatRupiah($payroll->shortage_deduction) }}</td>
+            </tr>
+            <tr>
+                <td>
+                    Potongan Hari Absen
+                    <span style="display:block;color:#6b6459;font-size:9px;">
+                        {{ $payroll->absent_days }} hari ×
+                        {{ \App\Models\PayrollRecord::formatRupiah($payroll->absent_days > 0 ? $payroll->absence_deduction / $payroll->absent_days : 0) }}
+                        (gaji ÷ {{ $divisor }} hari)
+                    </span>
+                </td>
+                <td>-{{ \App\Models\PayrollRecord::formatRupiah($payroll->absence_deduction) }}</td>
             </tr>
             <tr>
                 <td>Penyesuaian Lain</td>

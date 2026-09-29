@@ -16,11 +16,9 @@ use App\Exports\ProjectBudgetExport;
 use App\Exports\RoyaltyEntryExport;
 use App\Exports\WorkItemExport;
 use App\Http\Controllers\Controller;
-use App\Models\Attendance;
 use App\Models\JobOpening;
 use App\Models\Meeting;
-use App\Models\OfficeSetting;
-use App\Models\OvertimeRequest;
+use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Models\PayrollRecord;
 use App\Models\Project;
 use App\Models\User;
@@ -303,25 +301,9 @@ class ExportController extends Controller
 
         $payroll = PayrollRecord::with(['user', 'generator'])->findOrFail($request->integer('payroll_id'));
 
-        $setting = OfficeSetting::current();
-        $start = Carbon::createFromFormat('!Y-m', $payroll->period)->startOfMonth()->toDateString();
-        $end = Carbon::createFromFormat('!Y-m', $payroll->period)->endOfMonth()->toDateString();
-
-        $shortage = Attendance::monthlyShortageBlocks($payroll->user_id, $payroll->period, $setting);
-        $overtimeCount = OvertimeRequest::query()
-            ->where('user_id', $payroll->user_id)
-            ->where('status', 'disetujui')
-            ->whereBetween('date', [$start, $end])
-            ->count();
-
         $filename = Str::slug("slip-gaji-{$payroll->user->name}-{$payroll->period}") . '.pdf';
 
-        return Pdf::loadView('pdf.payroll-slip', [
-            'payroll' => $payroll,
-            'shortage' => $shortage,
-            'overtimeCount' => $overtimeCount,
-            'shortageRate' => (float) $setting->shortage_deduction_rate,
-        ])->download($filename);
+        return Pdf::loadView('pdf.payroll-slip', PayrollController::breakdownFor($payroll))->download($filename);
     }
 
     private function meetingsPicker(Request $request): View
