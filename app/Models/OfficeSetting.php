@@ -38,6 +38,8 @@ use Illuminate\Support\Carbon;
     'ceo_accent_color',
     'work_accent_color',
     'shortage_deduction_rate',
+    'shortage_block_minutes',
+    'auto_close_enabled',
     'weekly_rhythm',
 ])]
 class OfficeSetting extends Model
@@ -100,6 +102,8 @@ class OfficeSetting extends Model
             'geo_attendance_enabled' => 'boolean',
             'enforce_radius' => 'boolean',
             'shortage_deduction_rate' => 'float',
+            'shortage_block_minutes' => 'integer',
+            'auto_close_enabled' => 'boolean',
             'weekly_rhythm' => 'array',
         ];
     }
@@ -126,7 +130,17 @@ class OfficeSetting extends Model
             'ceo_accent_color' => '#111111',
             'work_accent_color' => '#3558f4',
             'shortage_deduction_rate' => 0,
+            'shortage_block_minutes' => 60,
+            'auto_close_enabled' => true,
         ]);
+    }
+
+    /** Ukuran satu blok "Kurang Jam Kerja" (menit); nilai kosong/nol jatuh ke 60 agar tidak pernah membagi dengan nol. */
+    public function shortageBlockMinutes(): int
+    {
+        $minutes = (int) ($this->shortage_block_minutes ?? 60);
+
+        return $minutes > 0 ? $minutes : 60;
     }
 
     /** Jam mulai window kerja normal hari ini, sebagai Carbon (buat dipasangin ke tanggal tertentu). */

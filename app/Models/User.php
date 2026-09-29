@@ -38,12 +38,44 @@ use Illuminate\Support\Carbon;
     'salary_base',
     'target_hours_per_day',
     'flat_overtime_rate',
+    'work_team',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
+
+    /**
+     * Tim kerja (padanan V22_WORK_TEAMS di prototype) — dipakai untuk
+     * membatasi project mana yang terlihat di kalender bersama karyawan.
+     */
+    public const WORK_TEAMS = [
+        'management' => 'Management Team',
+        'marketing' => 'Marketing Team',
+        'ga' => 'GA / Operations',
+        'creative' => 'Creative Team',
+        'finance' => 'Finance Team',
+        'legal' => 'Legal Team',
+        'hr' => 'HR / People',
+        'other' => 'Other',
+    ];
+
+    /**
+     * Tebakan tim dari teks divisi + jabatan kalau `work_team` belum diisi
+     * (padanan inferWorkTeamV22). Urutan penting: yang pertama cocok menang.
+     * Kata pendek (pr, hr) dikunci dengan batas kata supaya "product" atau
+     * "program" tidak salah masuk Marketing/HR seperti di regex prototype.
+     */
+    private const WORK_TEAM_PATTERNS = [
+        'marketing' => '/marketing|social media|communication|\\bpr\\b|community/',
+        'ga' => '/general affairs|housekeeping|driver|operations|tour|production coordinator/',
+        'creative' => '/creative|visual|video|content|copywriter/',
+        'finance' => '/finance|account|treasury|tax|royalty/',
+        'legal' => '/legal|contract|business affairs|copyright/',
+        'hr' => '/\\bhr\\b|people|talent acquisition|culture/',
+        'management' => '/management|chief|ceo|coo|general manager|office manager|secretary|admin|executive|commissioner|director/',
+    ];
 
     protected function casts(): array
     {
@@ -59,6 +91,43 @@ class User extends Authenticatable
             'target_hours_per_day' => 'integer',
             'flat_overtime_rate' => 'float',
         ];
+    }
+
+    /**
+     * Tim kerja efektif: pilihan eksplisit di form karyawan, kalau kosong
+     * ditebak dari divisi/jabatan (Owner selalu Management), dan terakhir
+     * 'other'.
+     */
+    public function workTeam(): string
+    {
+        if ($this->work_team && isset(self::WORK_TEAMS[$this->work_team])) {
+            return $this->work_team;
+        }
+
+        if ($this->role === 'owner') {
+            return 'management';
+        }
+
+        $text = mb_strtolower(trim(($this->division ?? '') . ' ' . ($this->job_title ?? '')));
+
+        foreach (self::WORK_TEAM_PATTERNS as $team => $pattern) {
+            if ($text !== '' && preg_match($pattern, $text)) {
+                return $team;
+            }
+        }
+
+        return 'other';
+    }
+
+    public function workTeamLabel(): string
+    {
+        return self::WORK_TEAMS[$this->workTeam()];
+    }
+
+    /** Owner dan Developer melihat semua project (sama seperti akses dashboard mereka). */
+    public function seesAllWork(): bool
+    {
+        return in_array($this->role, ['owner', 'developer'], true);
     }
 
     /** Atasan langsung user ini (null kalau langsung di bawah Owner). */

@@ -33,7 +33,7 @@
             <div>
                 <strong class="stat-wsm-value">{{ $shortage['blocks'] }} blok</strong>
                 <p class="stat-wsm-note mt-1">
-                    ({{ $shortage['total_shortage_minutes'] }} menit, dipotong per blok 60 menit
+                    ({{ $shortage['total_shortage_minutes'] }} menit, dipotong per blok {{ $blockMinutes }} menit
                     @if ($shortage['remainder_minutes'] > 0)
                         — sisa {{ $shortage['remainder_minutes'] }} menit belum genap 1 blok
                     @endif

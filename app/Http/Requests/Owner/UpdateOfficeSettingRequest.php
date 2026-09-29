@@ -40,6 +40,11 @@ class UpdateOfficeSettingRequest extends FormRequest
             'normal_end_time' => ['required', 'date_format:H:i'],
             'late_tolerance_minutes' => ['required', 'integer', 'min:0', 'max:120'],
             'required_work_minutes' => ['required', 'integer', 'min:60', 'max:960'],
+            // 2026-09-29 — aturan absensi yang dulu tertanam di kode.
+            // `sometimes`: form lama (halaman yang masih terbuka saat deploy) tidak
+            // mengirim field ini, dan itu tidak boleh mengubah nilai yang tersimpan.
+            'shortage_block_minutes' => ['sometimes', 'required', 'integer', 'min:15', 'max:240'],
+            'auto_close_enabled' => ['sometimes', 'boolean'],
             // Fase 12 — rate potongan Payroll per blok 60 menit shortage.
             'shortage_deduction_rate' => ['required', 'numeric', 'min:0'],
             // Fase 16 — warna aksen sidebar (padanan pengaturan warna

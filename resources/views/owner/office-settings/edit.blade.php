@@ -90,9 +90,19 @@
                             required>
                     </div>
                 </div>
-                <p class="text-[11px] text-muted">Kalau karyawan lupa checkout & gak punya Lembur disetujui, sistem
-                    otomatis nutup sesi kerja tanggal itu di jam selesai ini (bukan real-time — kepicu pas ada
-                    aktivitas absen/riwayat berikutnya, hosting shared gak punya cron custom).</p>
+                <label class="flex items-center gap-2.5 rounded-wsm border border-line bg-[#faf8f3] p-3.5">
+                    <input type="hidden" name="auto_close_enabled" value="0">
+                    <input type="checkbox" name="auto_close_enabled" value="1" @checked(old('auto_close_enabled', $setting->auto_close_enabled))
+                        class="h-4 w-4">
+                    <span class="text-xs">
+                        <strong class="block">Tutup otomatis sesi yang lupa pulang</strong>
+                        <span class="text-muted">Kalau aktif dan karyawan lupa checkout & gak punya Lembur
+                            disetujui, sistem nutup sesi kerja tanggal itu di jam selesai di atas (bukan real-time —
+                            kepicu pas ada aktivitas absen/riwayat berikutnya, hosting shared gak punya cron
+                            custom). Kalau dimatikan, sesi itu tetap terbuka sebagai "Lupa Absen Pulang" dan
+                            karyawan mengajukan koreksi presensi.</span>
+                    </span>
+                </label>
                 <div>
                     <label class="mb-1 block text-[11px] font-bold text-muted">Toleransi Telat (menit)</label>
                     <input type="number" name="late_tolerance_minutes"
@@ -105,12 +115,24 @@
                         value="{{ old('required_work_minutes', $setting->required_work_minutes) }}" min="60"
                         max="960" class="input-wsm" required>
                     <p class="mt-1 text-[11px] text-muted">Kurang dari ini (dihitung dari jam kerja yang udah diklem
-                        ke window normal) masuk status "Kurang Jam Kerja" & diakumulasi per blok 60 menit di rekap
-                        bulanan.</p>
+                        ke window normal) masuk status "Kurang Jam Kerja" & diakumulasi per blok (ukurannya diatur di
+                        bawah) di rekap bulanan.</p>
                 </div>
                 <div>
-                    <label class="mb-1 block text-[11px] font-bold text-muted">Rate Potongan Kurang Jam (Rp / blok
-                        60 menit)</label>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Ukuran Satu Blok Kurang Jam
+                        (menit)</label>
+                    <input type="number" name="shortage_block_minutes"
+                        value="{{ old('shortage_block_minutes', $setting->shortage_block_minutes) }}" min="15"
+                        max="240" class="input-wsm" required>
+                    <p class="mt-1 text-[11px] text-muted">Kekurangan jam kerja dalam sebulan dijumlahkan lalu
+                        dipotong per blok ini. Sisa di bawah satu blok tidak dipotong bulan itu. Contoh: blok 60
+                        menit dan kurang total 150 menit = 2 blok dipotong, sisa 30 menit.</p>
+                    @error('shortage_block_minutes')
+                        <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="mb-1 block text-[11px] font-bold text-muted">Rate Potongan Kurang Jam (Rp / blok)</label>
                     <input type="number" name="shortage_deduction_rate"
                         value="{{ old('shortage_deduction_rate', $setting->shortage_deduction_rate) }}" min="0"
                         step="1000" class="input-wsm" required>

@@ -77,6 +77,23 @@
     </div>
 
     <div>
+        <label class="field-label-wsm mb-1.5">Tim Kerja</label>
+        <select name="work_team" class="input-wsm">
+            <option value="">Otomatis (ditebak dari divisi &amp; jabatan)</option>
+            @foreach (\App\Models\User::WORK_TEAMS as $key => $label)
+                <option value="{{ $key }}" @selected(old('work_team', $employee->work_team ?? '') === $key)>{{ $label }}
+                </option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-[11px] text-muted">Dipakai untuk menentukan project mana yang terlihat di kalender
+            bersama. Kalau dibiarkan otomatis dan divisi/jabatan tidak cocok dengan tim mana pun, karyawan
+            dianggap "Other".</p>
+        @error('work_team')
+            <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div>
         <label class="field-label-wsm mb-1.5">Tanggal Bergabung</label>
         <input type="date" name="join_date"
             value="{{ old('join_date', optional($employee?->join_date)->format('Y-m-d')) }}" class="input-wsm">

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,12 +28,31 @@ use Illuminate\Support\Str;
     'tracker_url',
     'progress_recap',
     'created_by',
+    'visibility',
 ])]
 class Project extends Model
 {
     public const PRIORITIES = ['Low', 'Medium', 'High'];
 
     public const STATUSES = ['On Development', 'Follow Up', 'Done', 'Postpone', 'Pending', 'Confirmed'];
+
+    /**
+     * Siapa yang boleh melihat project di kalender bersama karyawan
+     * (padanan V22_VISIBILITY). 'all' = semua karyawan, nama tim = hanya
+     * tim itu, 'assigned' = hanya Lead dan PIC task-nya. Lead project dan
+     * PIC task selalu tetap melihat; Owner dan Developer melihat semua.
+     */
+    public const VISIBILITIES = [
+        'all' => 'Semua karyawan',
+        'management' => 'Management Team',
+        'marketing' => 'Marketing Team',
+        'ga' => 'GA / Operations',
+        'creative' => 'Creative Team',
+        'finance' => 'Finance Team',
+        'legal' => 'Legal Team',
+        'hr' => 'HR / People',
+        'assigned' => 'Hanya Lead & PIC',
+    ];
 
     protected function casts(): array
     {
@@ -84,6 +104,26 @@ class Project extends Model
         }
 
         return $slug;
+    }
+
+    public function visibilityLabel(): string
+    {
+        return self::VISIBILITIES[$this->visibility ?? 'all'] ?? self::VISIBILITIES['all'];
+    }
+
+    /** Project yang boleh dilihat $user di kalender bersama (lihat VISIBILITIES). */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->seesAllWork()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $w) use ($user) {
+            $w->whereNull('visibility')
+                ->orWhere('visibility', 'all')
+                ->orWhere('lead_employee_id', $user->id)
+                ->orWhere('visibility', $user->workTeam());
+        });
     }
 
     public function lead(): BelongsTo

@@ -211,7 +211,8 @@ class Attendance extends Model
 
     /**
      * Fase 7 — akumulasi shortage SEBULAN buat 1 user, dipotong per
-     * BLOK 60 menit (sisa menit di bawah 60 dibawa/nggak dipotong bulan
+     * BLOK (default 60 menit, bisa diubah di Pengaturan Kantor:
+     * `shortage_block_minutes`) (sisa menit di bawah satu blok dibawa/nggak dipotong bulan
      * ini, sesuai kebijakan v18: "sisa menit di bawah satu blok
      * dibawa ke perhitungan bulan berikutnya" — di sini kita simpan
      * `remainder_minutes` biar pemanggil (mis. Payroll di Fase 12)
@@ -246,8 +247,9 @@ class Attendance extends Model
             return $row->shortageMinutes($overtimeApproved, $setting);
         });
 
-        $blocks = intdiv($totalShortage, 60);
-        $remainder = $totalShortage % 60;
+        $blockMinutes = $setting->shortageBlockMinutes();
+        $blocks = intdiv($totalShortage, $blockMinutes);
+        $remainder = $totalShortage % $blockMinutes;
 
         return [
             'total_shortage_minutes' => $totalShortage,

@@ -38,6 +38,15 @@ class ProjectRequest extends FormRequest
             'lead_employee_id' => ['nullable', 'exists:users,id'],
             'tracker_url' => ['nullable', 'url', 'max:255'],
             'progress_recap' => ['nullable', 'string'],
+            'visibility' => ['required', Rule::in(array_keys(Project::VISIBILITIES))],
         ];
+    }
+
+    /** Form lama / import yang tidak mengirim visibility dianggap 'all' (perilaku sebelumnya). */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('visibility')) {
+            $this->merge(['visibility' => 'all']);
+        }
     }
 }

@@ -333,7 +333,7 @@ return [
             'access' => 'work',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['+ Add New Project', 'buka jendela (modal) untuk mengisi nama, tanggal mulai/selesai, priority, status, warna, lead, link tracker, dan progress recap.'],
+                    ['+ Add New Project', 'buka jendela (modal) untuk mengisi nama, tanggal mulai/selesai, priority, status, warna, lead, visibility, link tracker, dan progress recap.'],
                     ['Edit', 'ubah data project lewat jendela yang sama.'],
                     ['Open Work Tracker', 'lompat ke Work Tracker yang sudah difilter ke project itu.'],
                     ['Hapus', 'hapus project. Task-nya tidak ikut terhapus.'],
@@ -341,8 +341,10 @@ return [
                 'Arti tampilan' => [
                     ['Progress', 'persentase item berstatus Done dari seluruh item project.'],
                     ['Warna project', 'warna yang sama dipakai di Work Tracker dan Timeline Calendar.'],
+                    ['Terlihat: ...', 'project ini dibatasi. Hanya tim itu (atau Lead dan PIC task-nya) yang melihatnya di kalender bersama karyawan.'],
                 ],
                 'Perlu diketahui' => [
+                    'Visibility hanya membatasi kalender bersama di halaman karyawan. Halaman dashboard ini tetap menampilkan semua project bagi yang punya akses Work. Tim tiap karyawan diatur di Karyawan → Edit → Tim Kerja.',
                     'Menghapus project tidak menghapus task-nya. Task dipindah menjadi "Tanpa Project".',
                     'Akses View hanya bisa melihat daftar. Menambah, mengubah, dan menghapus butuh Manage.',
                 ],

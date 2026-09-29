@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
 /**
@@ -99,7 +100,15 @@ class WorkTrackerController extends Controller
         $gridStart = $firstOfMonth->copy()->subDays($firstOfMonth->dayOfWeek);
 
         $rangeEnd = $gridStart->copy()->addDays(41);
+        // 2026-09-29 — pembatasan project per tim (Project::$visibility).
+        // Prototype membiarkan kalender bersama terbuka penuh; di sini
+        // project yang dibatasi ikut disembunyikan supaya pengaturannya
+        // benar-benar berguna. Task milik sendiri selalu tetap tampil.
+        /** @var User $viewer */
+        $viewer = Auth::user();
+
         $itemsByDate = WorkItem::query()
+            ->visibleTo($viewer)
             ->whereBetween('due_date', [$gridStart->toDateString(), $rangeEnd->toDateString()])
             ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
             ->when($picFilter, fn($q) => $q->where('pic_employee_id', $picFilter))
@@ -128,9 +137,9 @@ class WorkTrackerController extends Controller
             });
         });
 
-        $projects = Project::query()->orderBy('name')->get(['id', 'name', 'color']);
+        $projects = Project::query()->visibleTo($viewer)->orderBy('name')->get(['id', 'name', 'color']);
         $picOptions = User::query()
-            ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
+            ->whereIn('id', WorkItem::query()->visibleTo($viewer)->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
             ->orderBy('name')
             ->get(['id', 'name']);
 

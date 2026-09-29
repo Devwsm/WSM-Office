@@ -85,6 +85,9 @@
                         <span class="rounded-full bg-[#f2f0eb] px-2 py-1">Lead: {{ $project->lead->name }}</span>
                     @endif
                     <span class="rounded-full bg-[#f2f0eb] px-2 py-1">{{ $project->items_total }} item</span>
+                    @if (($project->visibility ?? 'all') !== 'all')
+                        <span class="rounded-full bg-[#ffe9b8] px-2 py-1 text-[#6b4d00]">Terlihat: {{ $project->visibilityLabel() }}</span>
+                    @endif
                 </div>
 
                 <div class="mt-3 flex items-center gap-2.5">

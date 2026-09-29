@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -79,6 +80,30 @@ class WorkItem extends Model
             'due_date' => 'date',
             'is_reminder' => 'boolean',
         ];
+    }
+
+    /**
+     * Task yang boleh dilihat $user di kalender bersama karyawan: task
+     * tanpa project, task di project yang terlihat olehnya (lihat
+     * Project::scopeVisibleTo), atau task yang dia sendiri PIC-nya
+     * (kolom PIC utama, atau namanya tertulis di PIC tambahan).
+     * Dengan begitu pembatasan project tidak pernah menyembunyikan task
+     * milik sendiri.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->seesAllWork()) {
+            return $query;
+        }
+
+        $nameLike = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $user->name) . '%';
+
+        return $query->where(function (Builder $w) use ($user, $nameLike) {
+            $w->whereNull('project_id')
+                ->orWhereIn('project_id', Project::query()->visibleTo($user)->select('projects.id'))
+                ->orWhere('pic_employee_id', $user->id)
+                ->orWhere('additional_pic', 'like', $nameLike);
+        });
     }
 
     public function project(): BelongsTo

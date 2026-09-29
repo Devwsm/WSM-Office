@@ -102,6 +102,21 @@
                 </div>
             </div>
             <div class="grid gap-1">
+                <label class="text-[10px] font-extrabold uppercase text-muted">Visibility</label>
+                <select name="visibility" id="wtProjectVisibility"
+                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
+                    @foreach (\App\Models\Project::VISIBILITIES as $key => $label)
+                        <option value="{{ $key }}" @selected(old('visibility', 'all') === $key)>{{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+                <span class="text-[11px] text-muted">Menentukan siapa yang melihat project ini di kalender bersama
+                    karyawan. Lead project dan PIC task tetap melihat; Owner dan Developer melihat semua.</span>
+                @error('visibility')
+                    <span class="text-xs font-semibold text-[#a83d35]">{{ $message }}</span>
+                @enderror
+            </div>
+            <div class="grid gap-1">
                 <label class="text-[10px] font-extrabold uppercase text-muted">Tracker / Folder Link</label>
                 <input name="tracker_url" id="wtProjectTrackerUrl" value="{{ old('tracker_url') }}"
                     placeholder="Google Drive / Sheet / Folder link"
@@ -148,6 +163,7 @@
         $('wtProjectColor').value = color;
         $('wtProjectColorHex').value = color;
         $('wtProjectLead').value = p.lead_employee_id || '';
+        $('wtProjectVisibility').value = p.visibility || 'all';
         $('wtProjectTrackerUrl').value = p.tracker_url || '';
         $('wtProjectRecap').value = p.progress_recap || '';
     }

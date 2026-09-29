@@ -47,6 +47,13 @@ class AttendanceReconciler
      */
     public function reconcile(int $userId): void
     {
+        // 2026-09-29 — saklar di Pengaturan Kantor. Kalau dimatikan, sesi
+        // yang lupa pulang dibiarkan terbuka (tampil "Lupa Absen Pulang")
+        // dan dibereskan lewat pengajuan koreksi presensi.
+        if (! OfficeSetting::current()->auto_close_enabled) {
+            return;
+        }
+
         $today = Carbon::today();
 
         $openSessions = Attendance::query()

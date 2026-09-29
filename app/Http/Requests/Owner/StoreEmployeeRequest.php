@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Owner;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,6 +35,7 @@ class StoreEmployeeRequest extends FormRequest
             'manager_id' => ['nullable', 'exists:users,id'],
             'division' => ['nullable', 'string', 'max:100'],
             'job_title' => ['nullable', 'string', 'max:100'],
+            'work_team' => ['nullable', Rule::in(array_keys(User::WORK_TEAMS))],
             'join_date' => ['nullable', 'date'],
             'annual_leave_entitlement' => ['nullable', 'integer', 'min:0', 'max:60'],
             'birth_date' => ['nullable', 'date', 'before:today'],

@@ -177,6 +177,7 @@ class AttendanceController extends Controller
             'nextMonth' => $period->copy()->addMonth()->format('Y-m'),
             'isCurrentMonth' => $period->isSameMonth(Carbon::now()),
             'shortage' => $shortage,
+            'blockMinutes' => $setting->shortageBlockMinutes(),
         ]);
     }
 
