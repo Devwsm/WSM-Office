@@ -112,6 +112,33 @@ Alpine.data("workingHoursToday", (config) => ({
     },
 }));
 
+/**
+ * liveClock — padanan jam berjalan di `.clock-card` prototype
+ * (`#liveClock`, di-tick tiap detik lewat setInterval). Cuma tampilan
+ * jam saat ini (bukan working-hours counter — itu `workingHoursToday`
+ * di atas), jadi gak butuh config apa pun dari server.
+ */
+Alpine.data("liveClock", () => ({
+    time: "--:--:--",
+    _timer: null,
+
+    init() {
+        this.tick();
+        this._timer = setInterval(() => this.tick(), 1000);
+        this.$el.addEventListener("alpine:destroy", () => {
+            if (this._timer) clearInterval(this._timer);
+        });
+    },
+
+    tick() {
+        this.time = new Date().toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        });
+    },
+}));
+
 Alpine.data("attendanceWidget", (config) => ({
     mode: config.defaultMode || "kantor",
     workContext: "",

@@ -136,6 +136,12 @@
         @endif
     </div>
 
+    {{-- Polish (2026-09-28, dari audit tampilan absensi vs screenshot
+         prototype) — kartu "Today's Work Rhythm", tampil tepat
+         sebelum Milestones (posisi dikonfirmasi dari screenshot app
+         prototype yang beneran jalan). Lihat employee/_today-rhythm.blade.php. --}}
+    @include('employee._today-rhythm')
+
     {{-- App Mode quick win (2026-09-09) — Milestones (Lama Bekerja,
          Birthday, Work Anniversary), padanan employeeCelebrationMarkup
          di prototype. Lihat employee/_milestones.blade.php. --}}
@@ -260,6 +266,15 @@
                     </div>
                 </div>
             @else
+                {{-- Polish (2026-09-29, revisi dari audit tampilan absensi)
+                     — sebelumnya jam berjalan + menu absen (mode, geo,
+                     foto, tombol) numpuk jadi 1 kartu warna. Sekarang
+                     dipisah 3 blok kayak yang diminta: (1) kartu warna
+                     "Status Kehadiran" isinya CUMA status + jam berjalan,
+                     (2) kartu putih "menu absensi" isinya mode/geo/foto/
+                     tombol, (3) metric-grid Working Hours Today/This
+                     Month di bawah (tetap posisinya, cuma teksnya
+                     dibesarin — lihat komentar metric-grid). --}}
                 <div class="rounded-wsm-lg p-6 text-white" :class="hasClockIn ? 'bg-brand-green' : 'bg-brand-blue'">
                     <span class="text-[11px] font-black uppercase tracking-wide text-white/75">Status Kehadiran</span>
                     <p class="mt-3 text-2xl font-black"
@@ -270,8 +285,21 @@
                         </p>
                     @endif
 
+                    {{-- Jam berjalan (live, tick tiap detik di browser),
+                         padanan `.clock-card` prototype. Dibesarin dari
+                         44px -> 56px biar proporsinya kerasa kayak
+                         prototype (`.clock{font-size:54px}`). --}}
+                    <div x-data="liveClock()" class="mt-4 border-t border-white/20 pt-4">
+                        <div class="text-[56px] font-black leading-none tracking-tight" x-text="time">--:--:--</div>
+                        <p class="mt-1 text-xs text-white/70">{{ now()->translatedFormat('l, d F Y') }}</p>
+                    </div>
+                </div>
+
+                <div class="card-wsm-white mt-3.5">
+                    <p class="mb-3 text-xs font-extrabold uppercase tracking-wide text-[#5e5952]">Menu Absensi</p>
+
                     {{-- Pilihan mode, cuma sebelum absen masuk --}}
-                    <div class="mode-toggle-wsm mt-5" x-show="!hasClockIn">
+                    <div class="mode-toggle-wsm" x-show="!hasClockIn">
                         <button type="button" @click="mode = 'kantor'" class="mode-toggle-wsm-btn"
                             :class="mode === 'kantor' ? 'active' : ''">
                             🏢 Kantor
@@ -289,16 +317,28 @@
                             🎤 Gigs
                         </button>
                     </div>
-                    <p class="mt-1.5 text-[11px] text-white/70"
+                    <p class="mt-1.5 text-[11px] text-muted"
                         x-show="!hasClockIn && (mode === 'lapangan' || mode === 'gigs')">
                         Mode ini boleh absen masuk-pulang berkali-kali dalam sehari (per kunjungan/acara).
                     </p>
                     <input x-show="!hasClockIn" x-model="workContext" type="text"
-                        placeholder="Catatan (opsional) — mis. nama project/lokasi" class="input-wsm mt-2.5!"
-                        style="background:rgba(255,255,255,.92)">
+                        placeholder="Catatan (opsional) — mis. nama project/lokasi" class="input-wsm mt-2.5!">
+
+                    {{-- Polish (2026-09-28) — padanan `officeCheckinNotice()`
+                         di prototype: peringatan kalau lokasi kantor belum
+                         diset CEO/HR Admin, cuma muncul buat mode Kantor
+                         sebelum check-in (WFO check-in ditolak server kalau
+                         ini kejadian — lihat AttendanceController). --}}
+                    @if (!$officeSetting->geo_attendance_enabled || !$officeSetting->latitude || !$officeSetting->longitude)
+                        <div x-show="!hasClockIn && mode === 'kantor'"
+                            class="mt-2.5 rounded-2xl border border-[#edd58b] bg-[#fff2c7] px-3.5 py-2.5 text-[10px] leading-relaxed text-[#6e5300]">
+                            Lokasi kantor belum dikonfigurasi. WFO check-in akan diblok sampai CEO / HR Admin
+                            menyimpan titik kantor.
+                        </div>
+                    @endif
 
                     {{-- Status geo + tombol test lokasi --}}
-                    <div class="geo-status-wsm mt-3.5" style="background:rgba(255,255,255,.95)">
+                    <div class="geo-status-wsm mt-3.5">
                         <div class="min-w-0">
                             <strong class="block text-xs text-ink">📍 Geo Tag</strong>
                             <span class="mt-0.5 block text-[11px] text-muted" x-show="!geo">
@@ -319,8 +359,7 @@
                     </div>
 
                     {{-- Foto selfie opsional --}}
-                    <div class="mt-3.5 rounded-2xl border border-line bg-white p-3.5"
-                        style="background:rgba(255,255,255,.95)">
+                    <div class="mt-3.5 rounded-2xl border border-line bg-white p-3.5">
                         <div class="flex items-center gap-3">
                             <div
                                 class="grid h-14 w-14 flex-none place-items-center overflow-hidden rounded-2xl bg-[#ece7df] text-[10px] font-black text-muted">
@@ -350,11 +389,11 @@
 
                     {{-- Tombol utama --}}
                     <button type="button" x-show="!hasClockIn" @click="openConfirm('clockIn')" :disabled="geoLoading"
-                        class="mt-4 w-full rounded-wsm bg-black/85 py-4 text-sm font-extrabold text-white transition hover:bg-black">
+                        class="mt-4 w-full rounded-wsm bg-ink py-4 text-sm font-extrabold text-white transition hover:bg-black">
                         Absen Masuk
                     </button>
                     <button type="button" x-show="hasClockIn" @click="openConfirm('clockOut')" :disabled="geoLoading"
-                        class="mt-4 w-full rounded-wsm bg-black/15 py-4 text-sm font-extrabold text-white transition hover:bg-black/25">
+                        class="mt-4 w-full rounded-wsm bg-brand-green py-4 text-sm font-extrabold text-white transition hover:brightness-110">
                         Absen Pulang
                     </button>
                 </div>
@@ -418,7 +457,10 @@
          prototype: tepat setelah kartu absen, sebelum My KPI. Warna
          nyamain prototype (yellow-card untuk jam hari ini, green-card
          untuk hari hadir bulan ini) pakai class stat-wsm-* yang udah
-         ada (dipakai juga di Payroll Overview Owner). --}}
+         ada (dipakai juga di Payroll Overview Owner). Angka dibesarin
+         (2026-09-29, revisi) dari text-2xl (24px) ke text-4xl bawaan
+         stat-wsm-value (36px) — sebelumnya di-override lebih kecil,
+         padahal prototype `.metric-card strong{font-size:38px}`. --}}
     <div class="mb-3.5 grid grid-cols-2 gap-2.5">
         {{-- Fix (2026-09-15) — dulu statis, cuma ke-hitung sekali pas
              halaman di-render, jadi diam gak jalan selama "Sedang
@@ -434,16 +476,16 @@
         })">
             <span class="stat-wsm-label">Working Hours Today</span>
             <div>
-                <strong class="stat-wsm-value text-2xl!"><span
+                <strong class="stat-wsm-value"><span
                         x-text="hoursLabel">{{ number_format($workedMinutesToday / 60, 1) }}</span><span
-                        class="text-sm">h</span></strong>
+                        class="text-base">h</span></strong>
                 <p class="stat-wsm-note mt-1">{{ $sessions->count() }} session</p>
             </div>
         </div>
         <div class="stat-wsm-green min-h-0! p-4!">
             <span class="stat-wsm-label">This Month</span>
             <div>
-                <strong class="stat-wsm-value text-2xl!">{{ $daysPresentThisMonth }}</strong>
+                <strong class="stat-wsm-value">{{ $daysPresentThisMonth }}</strong>
                 <p class="stat-wsm-note mt-1">hari tercatat hadir</p>
             </div>
         </div>
