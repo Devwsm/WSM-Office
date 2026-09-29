@@ -190,8 +190,7 @@
                                         <details class="group">
                                             <summary
                                                 class="cursor-pointer list-none text-[9px] font-bold text-muted [&::-webkit-details-marker]:hidden">
-                                                <span class="group-open:hidden">+{{ $cell['hidden']->count() }}
-                                                    item</span>
+                                                <span class="group-open:hidden">+{{ $cell['hidden']->count() }} item</span>
                                                 <span class="hidden group-open:inline">Tutup</span>
                                             </summary>
                                             <div class="mt-1 grid gap-1">

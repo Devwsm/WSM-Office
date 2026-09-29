@@ -389,7 +389,7 @@ return [
                 ],
                 'Arti tampilan' => [
                     ['Kotak berwarna di tanggal', 'satu task dengan deadline hari itu, warnanya mengikuti project. Arahkan kursor untuk melihat judul dan PIC lengkap.'],
-                    ['+N', 'ada task lain di tanggal itu. Tiap tanggal hanya menampilkan 3 task.'],
+                    ['+N', 'ada task lain di tanggal itu. Tiap tanggal hanya menampilkan 6 task, klik +N untuk melihat sisanya.'],
                     ['Deretan hari di atas kalender', 'ritme kerja mingguan (fokus, WFO/WFH, jam) dari Senin sampai Jumat.'],
                 ],
                 'Perlu diketahui' => [
