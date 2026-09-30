@@ -371,6 +371,11 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
             Route::post('/proyek', [WorkTrackerBoardController::class, 'storeProject'])->middleware('module:work,manage')->name('projects.store');
             Route::patch('/proyek/{project}', [WorkTrackerBoardController::class, 'updateProject'])->middleware('module:work,manage')->name('projects.update');
             Route::delete('/proyek/{project}', [WorkTrackerBoardController::class, 'destroyProject'])->middleware('module:work,manage')->name('projects.destroy');
+            // Section di dalam project: tambah, warna, geser urutan, hapus.
+            Route::post('/proyek/{project}/section', [WorkTrackerBoardController::class, 'storeSection'])->middleware('module:work,manage')->name('sections.store');
+            Route::patch('/section/{section}', [WorkTrackerBoardController::class, 'updateSection'])->middleware('module:work,manage')->name('sections.update');
+            Route::patch('/section/{section}/geser', [WorkTrackerBoardController::class, 'moveSection'])->middleware('module:work,manage')->name('sections.move');
+            Route::delete('/section/{section}', [WorkTrackerBoardController::class, 'destroySection'])->middleware('module:work,manage')->name('sections.destroy');
             Route::post('/task', [WorkTrackerBoardController::class, 'storeItem'])->middleware('module:work,manage')->name('items.store');
             Route::patch('/task/{item}', [WorkTrackerBoardController::class, 'updateItem'])->middleware('module:work,manage')->name('items.update');
             Route::delete('/task/{item}', [WorkTrackerBoardController::class, 'destroyItem'])->middleware('module:work,manage')->name('items.destroy');

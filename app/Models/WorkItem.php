@@ -89,6 +89,20 @@ class WorkItem extends Model
     }
 
     /**
+     * Item yang memakai section baru di sebuah project otomatis mendaftarkan
+     * section itu ke `project_sections` (warna & urutan) — satu tempat untuk
+     * semua jalur tulis: form task, import, action item MoM, reminder.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (self $item) {
+            if ($item->wasRecentlyCreated || $item->wasChanged(['project_id', 'section'])) {
+                ProjectSection::ensure($item->project_id, $item->section);
+            }
+        });
+    }
+
+    /**
      * Task yang melibatkan $userId sebagai PIC — PIC utama ATAU salah satu PIC
      * tambahan. Satu-satunya tempat definisi "task milik seseorang", dipakai
      * Home karyawan, kalender, Team Overview, dan filter PIC di board.

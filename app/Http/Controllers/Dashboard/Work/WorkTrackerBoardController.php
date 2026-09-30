@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\ProjectRequest;
 use App\Http\Requests\Dashboard\Work\WorkItemRequest;
 use App\Models\Project;
+use App\Models\ProjectSection;
 use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -56,11 +58,22 @@ class WorkTrackerBoardController extends Controller
         $projects = Project::query()->orderBy('name')->get();
         $employees = User::query()->orderBy('name')->get(['id', 'name']);
 
+        // Tambal baris warna/urutan untuk section yang belum terdaftar, lalu
+        // baca sekali: [project_id => [nama => ProjectSection]] terurut.
+        ProjectSection::syncMissing();
+        $meta = ProjectSection::query()->orderBy('sort_order')->orderBy('id')->get()
+            ->groupBy('project_id')
+            ->map(fn($rows) => $rows->keyBy('name'));
+
         $selectedProjectId = $request->integer('project_id') ?: null;
         $selectedPic = $request->integer('pic') ?: null;
         $selectedProgress = in_array($request->query('progress'), WorkItem::PROGRESS_OPTIONS, true)
             ? $request->query('progress')
             : null;
+
+        // Filter PIC/Progress menyembunyikan item — section kosong ikut
+        // disembunyikan & tombol geser dimatikan (urutan penuh jadi tidak terlihat).
+        $filtering = (bool) ($selectedPic || $selectedProgress);
 
         $all = WorkItem::query()->with(['pic', 'additionalPics'])->orderBy('due_date')->orderBy('item_no')->get();
 
@@ -76,9 +89,16 @@ class WorkTrackerBoardController extends Controller
         // Section yang sudah ada per project (key 0 = tanpa project) — dipakai
         // dropdown Section di form Tambah/Edit Task. Dari SEMUA item, bukan
         // yang lolos filter, biar section tidak hilang dari form saat difilter.
+        // Section terdaftar (urutan yang diatur, termasuk yang masih kosong)
+        // lebih dulu, lalu section yang dipakai item tapi belum terdaftar.
         $sectionsByProject = $totals->map(
-            fn($rows) => $rows->sortBy('id')->pluck('section')->filter(fn($s) => $s !== '')->unique()->values()->all()
+            fn($rows, $projectId) => collect($meta->get($projectId, collect())->keys())
+                ->merge($rows->sortBy('id')->pluck('section')->filter(fn($s) => $s !== ''))
+                ->unique()->values()->all()
         )->all();
+        foreach ($meta as $projectId => $rows) {
+            $sectionsByProject[$projectId] ??= $rows->keys()->values()->all();
+        }
 
         $visible = $all
             ->when($selectedProjectId, fn($c) => $c->where('project_id', $selectedProjectId))
@@ -88,12 +108,12 @@ class WorkTrackerBoardController extends Controller
 
         $cards = $projects
             ->when($selectedProjectId, fn($c) => $c->where('id', $selectedProjectId))
-            ->map(fn(Project $p) => $this->buildCard($p, $totals->get($p->id, collect()), $visible->get($p->id, collect())))
+            ->map(fn(Project $p) => $this->buildCard($p, $totals->get($p->id, collect()), $visible->get($p->id, collect()), $meta->get($p->id, collect()), $filtering))
             ->values();
 
         // Task tanpa project — kartu sendiri, cuma muncul kalau ada isinya.
         if (! $selectedProjectId && $visible->has(0)) {
-            $cards->push($this->buildCard(null, $totals->get(0, collect()), $visible->get(0)));
+            $cards->push($this->buildCard(null, $totals->get(0, collect()), $visible->get(0), collect(), $filtering));
         }
 
         return view('dashboard.work.tracker.index', [
@@ -105,6 +125,7 @@ class WorkTrackerBoardController extends Controller
             'selectedProjectId' => $selectedProjectId,
             'selectedPic' => $selectedPic,
             'selectedProgress' => $selectedProgress,
+            'filtering' => $filtering,
         ]);
     }
 
@@ -129,17 +150,48 @@ class WorkTrackerBoardController extends Controller
         ]);
     }
 
-    /** Susun 1 kartu project: progres (dari SEMUA item) + section (dari item yang lolos filter). */
-    private function buildCard(?Project $project, $allItems, $visibleItems): array
+    /**
+     * Susun 1 kartu project: progres (dari SEMUA item) + section.
+     *
+     * Urutan section: yang terdaftar di `project_sections` menurut urutan
+     * yang diatur (section kosong ikut tampil kalau tidak sedang difilter),
+     * lalu section yang dipakai item tapi belum terdaftar, terakhir item
+     * tanpa section. `$meta` = [nama => ProjectSection] milik project ini.
+     */
+    private function buildCard(?Project $project, $allItems, $visibleItems, $meta, bool $filtering): array
     {
         $total = $allItems->count();
         $done = $allItems->where('progress', 'Done')->count();
 
-        $sections = $visibleItems
-            ->groupBy(fn(WorkItem $i) => $i->section !== '' ? $i->section : 'TANPA SECTION')
-            ->map(fn($rows, $name) => ['name' => $name, 'rows' => $rows, 'order' => $rows->min('id')])
-            ->sortBy('order')
-            ->values();
+        $groups = $visibleItems->groupBy(fn(WorkItem $i) => $i->section);
+        $sections = collect();
+
+        $lastManaged = $meta->count() - 1;
+
+        foreach ($meta->values() as $index => $section) {
+            $name = $section->name;
+            $rows = $groups->get($name, collect());
+
+            if ($rows->isNotEmpty() || ! $filtering) {
+                $sections->push([
+                    'name' => (string) $name,
+                    'rows' => $rows,
+                    'model' => $section,
+                    'color' => $section->effectiveColor(),
+                    'is_first' => $index === 0,
+                    'is_last' => $index === $lastManaged,
+                ]);
+            }
+        }
+
+        $groups->reject(fn($rows, $name) => $name === '' || $meta->has($name))
+            ->map(fn($rows, $name) => ['name' => (string) $name, 'rows' => $rows, 'model' => null, 'color' => ProjectSection::defaultColorFor((string) $name), 'first' => $rows->min('id')])
+            ->sortBy('first')
+            ->each(fn($group) => $sections->push($group));
+
+        if ($groups->has('')) {
+            $sections->push(['name' => 'TANPA SECTION', 'rows' => $groups->get(''), 'model' => null, 'color' => ProjectSection::defaultColorFor('TANPA SECTION')]);
+        }
 
         return [
             'project' => $project,
@@ -147,7 +199,7 @@ class WorkTrackerBoardController extends Controller
             'done' => $done,
             'pct' => $total ? (int) round($done / $total * 100) : 0,
             'shown' => $visibleItems->count(),
-            'sections' => $sections,
+            'sections' => $sections->values(),
         ];
     }
 
@@ -186,6 +238,95 @@ class WorkTrackerBoardController extends Controller
         $project->delete();
 
         return back()->with('status', 'Project dihapus. Task yang nempel dipindah jadi "Tanpa Project".');
+    }
+
+    // --- Section CRUD (warna, urutan, tambah, hapus — per project) ---
+
+    public function storeSection(Request $request, Project $project)
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
+        $name = trim($data['name']);
+
+        // Unik per project, tanpa membedakan huruf besar/kecil ("Contract" = "CONTRACT").
+        $exists = ProjectSection::query()->where('project_id', $project->id)
+            ->get(['name'])->contains(fn($s) => mb_strtolower($s->name) === mb_strtolower($name));
+
+        if ($name === '' || $exists) {
+            return back()->withErrors(['name' => 'Section "' . $name . '" sudah ada di project ini.']);
+        }
+
+        ProjectSection::ensure($project->id, $name);
+
+        return back()->with('status', 'Section ditambahkan.');
+    }
+
+    public function updateSection(Request $request, ProjectSection $section)
+    {
+        $data = $request->validate(['color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/']]);
+
+        $section->update(['color' => strtolower($data['color'])]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return back()->with('status', 'Warna section diperbarui.');
+    }
+
+    /** Geser 1 posisi ke atas/bawah dalam urutan section project itu. */
+    public function moveSection(Request $request, ProjectSection $section)
+    {
+        $data = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]]);
+
+        DB::transaction(function () use ($section, $data) {
+            $ordered = ProjectSection::orderedFor($section->project_id);
+            $index = $ordered->search(fn($s) => $s->id === $section->id);
+
+            if ($index === false) {
+                return;
+            }
+
+            $neighbor = $ordered->get($data['direction'] === 'up' ? $index - 1 : $index + 1);
+
+            // Sudah di ujung: tidak ada yang digeser.
+            if ($neighbor === null || ($data['direction'] === 'up' && $index === 0)) {
+                return;
+            }
+
+            $current = $ordered[$index];
+            [$a, $b] = [$current->sort_order, $neighbor->sort_order];
+            $current->update(['sort_order' => $b]);
+            $neighbor->update(['sort_order' => $a]);
+        });
+
+        return back();
+    }
+
+    /**
+     * Hapus section (padanan `deleteProjectSectionV26`): section KOSONG
+     * langsung terhapus; kalau berisi item, item-itemnya IKUT terhapus dan
+     * nama section harus diketik persis sebagai konfirmasi.
+     */
+    public function destroySection(Request $request, ProjectSection $section)
+    {
+        $items = WorkItem::query()->where('project_id', $section->project_id)->where('section', $section->name);
+        $count = (clone $items)->count();
+
+        if ($count > 0) {
+            $request->validate(
+                ['confirm_name' => ['required', 'string', Rule::in([$section->name])]],
+                ['confirm_name.in' => 'Nama section tidak cocok. Penghapusan dibatalkan.', 'confirm_name.required' => 'Ketik nama section untuk konfirmasi.']
+            );
+        }
+
+        DB::transaction(function () use ($items, $section) {
+            $items->delete();
+            $section->delete();
+        });
+
+        return back()->with('status', $count > 0
+            ? 'Section "' . $section->name . '" dan ' . $count . ' item di dalamnya dihapus.'
+            : 'Section "' . $section->name . '" dihapus.');
     }
 
     // --- WorkItem CRUD ---

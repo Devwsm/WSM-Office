@@ -12,8 +12,10 @@
     simpan saat blur, Edit/Tambah item lewat 1 modal. Form project TIDAK
     di sini lagi — ada di menu Projects (modal).
 
-    Warna section deterministik dari nama (belum ada kolom warna/urutan
-    section di DB) — urutan section = urutan item pertama dibuat.
+    Section bisa diatur (2026-09-30, padanan prototype v24-v28): warna
+    (color picker), urutan (↑ ↓), tambah section kosong, dan hapus
+    (section berisi item -> ketik nama section untuk konfirmasi). Data
+    warna/urutan ada di `project_sections`; default warna = dari nama.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Work Tracker', 'navActive' => 'modules'])
@@ -21,20 +23,6 @@
 @section('content')
     @php
         $canManage = auth()->user()->canManageModule('work');
-        $sectionPalette = [
-            '#dbe8f7',
-            '#f7e8a6',
-            '#e4d8f2',
-            '#f5cfc9',
-            '#d5e4fb',
-            '#f6d9a8',
-            '#d4ecd0',
-            '#cbe6e3',
-            '#ddd6f3',
-            '#f5d6ea',
-            '#e7dcc0',
-        ];
-        $sectionColor = fn(string $name) => $sectionPalette[crc32($name) % count($sectionPalette)];
         $progressClass = fn(string $p) => match ($p) {
             'Done' => 'bg-[#ccebd5] text-[#176c37]',
             'Follow Up' => 'bg-[#ffe876] text-[#392f00]',
@@ -64,8 +52,8 @@
         };
     @endphp
 
-    <div x-data="{ taskModalOpen: false }" @wt-open-task-modal.window="taskModalOpen = true"
-        @keydown.escape.window="taskModalOpen = false">
+    <div x-data="{ taskModalOpen: false, sectionDelete: null, typed: '' }" @wt-open-task-modal.window="taskModalOpen = true"
+        @keydown.escape.window="taskModalOpen = false; sectionDelete = null">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3.5">
             <div>
                 <a href="{{ route('dashboard.work.index') }}" class="text-[11px] font-extrabold text-muted">← Work
@@ -179,9 +167,25 @@
                         </summary>
 
                         <div class="border-t border-line">
+                            @if ($canManage && $project)
+                                <form method="POST"
+                                    action="{{ route('dashboard.work.tracker.sections.store', $project) }}"
+                                    onsubmit="wtRememberOpen({ p: {{ $project->id }}, s: '' })"
+                                    class="flex flex-wrap items-center gap-2 border-b border-line bg-white/60 px-4 py-2.5">
+                                    @csrf
+                                    <input name="name" required maxlength="80" list="wtSectionSuggestions"
+                                        autocomplete="off" placeholder="Section baru (mis. CONTRACT)"
+                                        class="min-w-0 flex-1 rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-bold sm:max-w-xs sm:flex-none">
+                                    <button type="submit"
+                                        class="rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-extrabold">+
+                                        Section</button>
+                                </form>
+                            @endif
                             @forelse ($card['sections'] as $section)
                                 @php
-                                    $secColor = $sectionColor($section['name']);
+                                    $secColor = $section['color'];
+                                    $secInk = \App\Models\Project::contrastTextFor($secColor);
+                                    $sec = $section['model'];
                                     $secKey = $cardKey . ':' . md5($section['name']);
                                 @endphp
                                 <details class="wt-section border-b border-line last:border-b-0"
@@ -189,12 +193,42 @@
                                     data-wt-section="{{ $section['name'] }}">
                                     <summary
                                         class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
-                                        style="background:{{ $secColor }};color:#17130a">
+                                        style="background:{{ $secColor }};color:{{ $secInk }}">
                                         <span
                                             class="flex min-w-0 items-center gap-2 wrap-break-word text-[12px] font-black uppercase tracking-wide">
                                             <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
                                         </span>
-                                        <span class="flex items-center gap-2">
+                                        <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
+                                            @if ($canManage && $sec)
+                                                {{-- Warna: simpan langsung (PATCH JSON), tanpa reload. --}}
+                                                <label title="Ubah warna section" onclick="event.stopPropagation()"
+                                                    class="relative grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-white/70">
+                                                    <span class="wt-swatch h-4 w-4 rounded-full border border-black/25"
+                                                        style="background:{{ $secColor }}"></span>
+                                                    <input type="color" value="{{ $secColor }}"
+                                                        data-orig="{{ $secColor }}"
+                                                        onchange="wtSetSectionColor({{ $sec->id }}, this)"
+                                                        aria-label="Warna section {{ $section['name'] }}"
+                                                        class="absolute inset-0 h-full w-full cursor-pointer opacity-0">
+                                                </label>
+                                                @unless ($filtering)
+                                                    @foreach ([['up', '↑', 'Pindah section ke atas', $section['is_first']], ['down', '↓', 'Pindah section ke bawah', $section['is_last']]] as [$dir, $arrow, $title, $disabled])
+                                                        <form method="POST"
+                                                            action="{{ route('dashboard.work.tracker.sections.move', $sec) }}"
+                                                            onclick="event.stopPropagation()" onsubmit="wtRememberOpen()">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <input type="hidden" name="direction" value="{{ $dir }}">
+                                                            <button type="submit" title="{{ $title }}"
+                                                                @disabled($disabled)
+                                                                class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
+                                                        </form>
+                                                    @endforeach
+                                                    <button type="button" title="Hapus section"
+                                                        @click.prevent.stop="typed = ''; sectionDelete = @js(['name' => $section['name'], 'count' => $section['rows']->count(), 'action' => route('dashboard.work.tracker.sections.destroy', $sec)])"
+                                                        class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black text-[#9b392f]">×</button>
+                                                @endunless
+                                            @endif
                                             @if ($canManage && $project)
                                                 <button type="button" title="Tambah item di section ini"
                                                     onclick="event.preventDefault();event.stopPropagation();wtOpenAddTask('{{ $project?->id }}', @js($section['name'] === 'TANPA SECTION' ? '' : $section['name']))"
@@ -206,112 +240,124 @@
                                         </span>
                                     </summary>
 
-                                    <div class="wt-tablewrap overflow-x-auto bg-white">
-                                        <table class="wt-table w-full text-left text-[11px]">
-                                            <thead>
-                                                <tr class="text-[9px] font-extrabold uppercase tracking-widest text-muted">
-                                                    <th class="w-10 px-3 py-2">No</th>
-                                                    <th class="px-3 py-2">Item</th>
-                                                    <th class="w-24 px-3 py-2">Date</th>
-                                                    <th class="w-24 px-3 py-2">Focus</th>
-                                                    <th class="w-32 px-3 py-2">PIC</th>
-                                                    <th class="w-36 px-3 py-2">Progress</th>
-                                                    <th class="w-56 px-3 py-2">Note</th>
-                                                    <th class="w-14 px-3 py-2">Link</th>
-                                                    <th class="w-24 px-3 py-2"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($section['rows']->sortBy(fn($i) => [$i->due_date?->timestamp ?? PHP_INT_MAX, $i->item_no]) as $item)
-                                                    @php
-                                                        $focus = $item->computedFocus();
-                                                        [$fbg, $ftx] = $focusColors($focus);
-                                                    @endphp
+                                    @if ($section['rows']->isEmpty())
+                                        <p class="bg-white px-4 py-3 text-[11px] text-muted">Section ini masih kosong.
+                                            @if ($canManage && $project)
+                                                Tambah item lewat tombol <b>+</b> di header.
+                                            @endif
+                                        </p>
+                                    @else
+                                        <div class="wt-tablewrap overflow-x-auto bg-white">
+                                            <table class="wt-table w-full text-left text-[11px]">
+                                                <thead>
                                                     <tr
-                                                        class="border-t border-line align-middle {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
-                                                        <td data-label="No" class="wt-no px-3 py-2.5 font-bold text-muted">
-                                                            {{ $item->item_no }}</td>
-                                                        <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
-                                                                class="wt-no-inline">#{{ $item->item_no }}</span>{{ $item->title }}
-                                                        </td>
-                                                        <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
-                                                            {{ $item->due_date?->format('d/m/Y') ?? '-' }}</td>
-                                                        <td data-label="Focus" class="px-3 py-2.5">
-                                                            <span
-                                                                class="inline-flex rounded-full px-2 py-0.5 text-[8px] font-black"
-                                                                style="background:{{ $fbg }};color:{{ $ftx }}">{{ $focus }}</span>
-                                                        </td>
-                                                        <td data-label="PIC" class="px-3 py-2.5 font-bold text-[#5e5952]">
-                                                            {{ $item->pic?->name ?? 'Belum di-assign' }}
-                                                            @foreach ($item->additionalPics as $extraPic)
-                                                                <span
-                                                                    class="block text-[11px] font-bold text-[#5e5952]">{{ $extraPic->name }}</span>
-                                                            @endforeach
-                                                            {{-- Catatan teks lama / ALL TEAM hanya tampil kalau tidak ada PIC tambahan sungguhan. --}}
-                                                            @if ($item->additional_pic && $item->additionalPics->isEmpty())
-                                                                <span class="block text-[10px] font-medium text-muted">+
-                                                                    {{ $item->additional_pic }}</span>
-                                                            @endif
-                                                        </td>
-                                                        <td data-label="Progress" class="px-3 py-2.5">
-                                                            @if ($canManage)
-                                                                <select
-                                                                    onchange="wtQuickProgress({{ $item->id }}, this)"
-                                                                    class="w-full rounded-lg border-0 px-2 py-1.5 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">
-                                                                    @foreach (\App\Models\WorkItem::PROGRESS_OPTIONS as $status)
-                                                                        <option value="{{ $status }}"
-                                                                            @selected($item->progress === $status)>
-                                                                            {{ $status }}</option>
-                                                                    @endforeach
-                                                                </select>
-                                                            @else
-                                                                <span
-                                                                    class="inline-flex rounded-lg px-2 py-1 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">{{ $item->progress }}</span>
-                                                            @endif
-                                                        </td>
-                                                        <td data-label="Note" class="wt-note px-3 py-2.5">
-                                                            @if ($canManage)
-                                                                <textarea rows="1" placeholder="Tambah note / blocker..." data-orig="{{ $item->notes }}"
-                                                                    onblur="wtSaveNote({{ $item->id }}, this)"
-                                                                    class="wt-note-input block w-full resize-y rounded-lg border border-transparent bg-transparent px-1.5 py-1.5 text-[11px] leading-snug hover:border-line focus:border-line focus:bg-white">{{ $item->notes }}</textarea>
-                                                            @else
-                                                                {{ $item->notes ?: '-' }}
-                                                            @endif
-                                                        </td>
-                                                        <td data-label="Link" class="px-3 py-2.5">
-                                                            @if ($item->link)
-                                                                <a href="{{ $item->link }}" target="_blank"
-                                                                    rel="noopener"
-                                                                    class="font-extrabold text-[#2647b8] underline">Open</a>
-                                                            @else
-                                                                -
-                                                            @endif
-                                                        </td>
-                                                        <td class="wt-actions px-3 py-2.5">
-                                                            @if ($canManage)
-                                                                <div class="flex gap-1">
-                                                                    <button type="button"
-                                                                        data-item="{{ $item->toJson() }}"
-                                                                        onclick="wtOpenEditTask(JSON.parse(this.dataset.item))"
-                                                                        class="rounded-lg bg-[#ece7dd] px-2 py-1 text-[9px] font-extrabold">Edit</button>
-                                                                    <form method="POST"
-                                                                        action="{{ route('dashboard.work.tracker.items.destroy', $item) }}"
-                                                                        data-confirm="Hapus task &quot;{{ $item->title }}&quot;?"
-                                                                        data-confirm-title="Hapus task?"
-                                                                        data-confirm-button="Ya, hapus">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button type="submit"
-                                                                            class="rounded-lg bg-[#ffded8] px-2 py-1 text-[9px] font-extrabold text-[#9b392f]">Hapus</button>
-                                                                    </form>
-                                                                </div>
-                                                            @endif
-                                                        </td>
+                                                        class="text-[9px] font-extrabold uppercase tracking-widest text-muted">
+                                                        <th class="w-10 px-3 py-2">No</th>
+                                                        <th class="px-3 py-2">Item</th>
+                                                        <th class="w-24 px-3 py-2">Date</th>
+                                                        <th class="w-24 px-3 py-2">Focus</th>
+                                                        <th class="w-32 px-3 py-2">PIC</th>
+                                                        <th class="w-36 px-3 py-2">Progress</th>
+                                                        <th class="w-56 px-3 py-2">Note</th>
+                                                        <th class="w-14 px-3 py-2">Link</th>
+                                                        <th class="w-24 px-3 py-2"></th>
                                                     </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach ($section['rows']->sortBy(fn($i) => [$i->due_date?->timestamp ?? PHP_INT_MAX, $i->item_no]) as $item)
+                                                        @php
+                                                            $focus = $item->computedFocus();
+                                                            [$fbg, $ftx] = $focusColors($focus);
+                                                        @endphp
+                                                        <tr
+                                                            class="border-t border-line align-middle {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
+                                                            <td data-label="No"
+                                                                class="wt-no px-3 py-2.5 font-bold text-muted">
+                                                                {{ $item->item_no }}</td>
+                                                            <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
+                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>{{ $item->title }}
+                                                            </td>
+                                                            <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
+                                                                {{ $item->due_date?->format('d/m/Y') ?? '-' }}</td>
+                                                            <td data-label="Focus" class="px-3 py-2.5">
+                                                                <span
+                                                                    class="inline-flex rounded-full px-2 py-0.5 text-[8px] font-black"
+                                                                    style="background:{{ $fbg }};color:{{ $ftx }}">{{ $focus }}</span>
+                                                            </td>
+                                                            <td data-label="PIC"
+                                                                class="px-3 py-2.5 font-bold text-[#5e5952]">
+                                                                {{ $item->pic?->name ?? 'Belum di-assign' }}
+                                                                @foreach ($item->additionalPics as $extraPic)
+                                                                    <span
+                                                                        class="block text-[11px] font-bold text-[#5e5952]">{{ $extraPic->name }}</span>
+                                                                @endforeach
+                                                                {{-- Catatan teks lama / ALL TEAM hanya tampil kalau tidak ada PIC tambahan sungguhan. --}}
+                                                                @if ($item->additional_pic && $item->additionalPics->isEmpty())
+                                                                    <span
+                                                                        class="block text-[10px] font-medium text-muted">+
+                                                                        {{ $item->additional_pic }}</span>
+                                                                @endif
+                                                            </td>
+                                                            <td data-label="Progress" class="px-3 py-2.5">
+                                                                @if ($canManage)
+                                                                    <select
+                                                                        onchange="wtQuickProgress({{ $item->id }}, this)"
+                                                                        class="w-full rounded-lg border-0 px-2 py-1.5 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">
+                                                                        @foreach (\App\Models\WorkItem::PROGRESS_OPTIONS as $status)
+                                                                            <option value="{{ $status }}"
+                                                                                @selected($item->progress === $status)>
+                                                                                {{ $status }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                @else
+                                                                    <span
+                                                                        class="inline-flex rounded-lg px-2 py-1 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">{{ $item->progress }}</span>
+                                                                @endif
+                                                            </td>
+                                                            <td data-label="Note" class="wt-note px-3 py-2.5">
+                                                                @if ($canManage)
+                                                                    <textarea rows="1" placeholder="Tambah note / blocker..." data-orig="{{ $item->notes }}"
+                                                                        onblur="wtSaveNote({{ $item->id }}, this)"
+                                                                        class="wt-note-input block w-full resize-y rounded-lg border border-transparent bg-transparent px-1.5 py-1.5 text-[11px] leading-snug hover:border-line focus:border-line focus:bg-white">{{ $item->notes }}</textarea>
+                                                                @else
+                                                                    {{ $item->notes ?: '-' }}
+                                                                @endif
+                                                            </td>
+                                                            <td data-label="Link" class="px-3 py-2.5">
+                                                                @if ($item->link)
+                                                                    <a href="{{ $item->link }}" target="_blank"
+                                                                        rel="noopener"
+                                                                        class="font-extrabold text-[#2647b8] underline">Open</a>
+                                                                @else
+                                                                    -
+                                                                @endif
+                                                            </td>
+                                                            <td class="wt-actions px-3 py-2.5">
+                                                                @if ($canManage)
+                                                                    <div class="flex gap-1">
+                                                                        <button type="button"
+                                                                            data-item="{{ $item->toJson() }}"
+                                                                            onclick="wtOpenEditTask(JSON.parse(this.dataset.item))"
+                                                                            class="rounded-lg bg-[#ece7dd] px-2 py-1 text-[9px] font-extrabold">Edit</button>
+                                                                        <form method="POST"
+                                                                            action="{{ route('dashboard.work.tracker.items.destroy', $item) }}"
+                                                                            data-confirm="Hapus task &quot;{{ $item->title }}&quot;?"
+                                                                            data-confirm-title="Hapus task?"
+                                                                            data-confirm-button="Ya, hapus">
+                                                                            @csrf
+                                                                            @method('DELETE')
+                                                                            <button type="submit"
+                                                                                class="rounded-lg bg-[#ffded8] px-2 py-1 text-[9px] font-extrabold text-[#9b392f]">Hapus</button>
+                                                                        </form>
+                                                                    </div>
+                                                                @endif
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endif
                                 </details>
                             @empty
                                 <p class="p-4 text-xs text-muted">
@@ -452,6 +498,43 @@
                     </form>
                 </div>
             </div>
+
+            {{-- Modal hapus section: section berisi item -> nama section harus diketik persis. --}}
+            <div x-show="sectionDelete" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+                <div @click.outside="sectionDelete = null" class="w-full max-w-sm rounded-4xl bg-cream p-5">
+                    <h3 class="text-lg font-black">Hapus section?</h3>
+                    <template x-if="sectionDelete && sectionDelete.count === 0">
+                        <p class="mt-2 text-[13px] text-muted">Section <b x-text="sectionDelete.name"></b> masih kosong
+                            dan akan dihapus dari project ini.</p>
+                    </template>
+                    <template x-if="sectionDelete && sectionDelete.count > 0">
+                        <p class="mt-2 text-[13px] text-[#9b392f]">Section <b x-text="sectionDelete.name"></b> berisi
+                            <b x-text="sectionDelete.count + ' item'"></b>. Section <u>dan seluruh item di dalamnya</u>
+                            akan terhapus permanen.
+                        </p>
+                    </template>
+                    <form method="POST" :action="sectionDelete ? sectionDelete.action : '#'" onsubmit="wtRememberOpen()"
+                        class="mt-3 grid gap-3">
+                        @csrf
+                        @method('DELETE')
+                        <template x-if="sectionDelete && sectionDelete.count > 0">
+                            <div class="grid gap-1">
+                                <label class="text-[10px] font-extrabold uppercase text-muted">Ketik nama section untuk
+                                    konfirmasi</label>
+                                <input name="confirm_name" x-model="typed" autocomplete="off"
+                                    :placeholder="sectionDelete.name"
+                                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
+                            </div>
+                        </template>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="sectionDelete = null" class="btn-wsm-white">Batal</button>
+                            <button type="submit"
+                                :disabled="sectionDelete && sectionDelete.count > 0 && typed !== sectionDelete.name"
+                                class="btn-wsm-red disabled:cursor-not-allowed disabled:opacity-40">Ya, hapus</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         @endif
     </div>
 
@@ -465,8 +548,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-                   lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-                   tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                       lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                       tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -585,6 +668,40 @@
             }).catch(() => {
                 select.disabled = false;
                 wtError('Gagal update progress, coba lagi.');
+            });
+        }
+
+        // --- Warna section: simpan langsung, header diwarnai ulang tanpa reload ---
+        const wtSectionBase = "{{ url('/dashboard/work/tracker/section') }}";
+
+        function wtInkFor(hex) {
+            const n = parseInt(hex.slice(1), 16);
+            const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+            return lum > 0.6 ? '#17130a' : '#ffffff';
+        }
+
+        function wtSetSectionColor(id, input) {
+            const color = input.value;
+            fetch(`${wtSectionBase}/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': wtCsrf(),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    color
+                }),
+            }).then((res) => {
+                if (!res.ok) throw new Error();
+                const summary = input.closest('summary');
+                summary.style.background = color;
+                summary.style.color = wtInkFor(color);
+                input.parentElement.querySelector('.wt-swatch').style.background = color;
+                input.dataset.orig = color;
+            }).catch(() => {
+                input.value = input.dataset.orig;
+                wtError('Warna section gagal disimpan, coba lagi.');
             });
         }
 
