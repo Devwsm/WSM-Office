@@ -64,6 +64,13 @@
             </a>
         @endif
     </div>
+    {{-- Task kerja bareng (2026-09-30): tampilkan rekan PIC lain supaya jelas ini tugas bersama. --}}
+    @php
+        $coPics = $item->allPics()->reject(fn($u) => $u->id === auth()->id());
+    @endphp
+    @if ($coPics->isNotEmpty())
+        <p class="mt-2 text-[10px] font-bold text-muted">Bersama: {{ $coPics->pluck('name')->implode(', ') }}</p>
+    @endif
     @if ($item->notes)
         <p class="mt-2 text-[11px] leading-relaxed text-[#5e5952]">{{ $item->notes }}</p>
     @endif

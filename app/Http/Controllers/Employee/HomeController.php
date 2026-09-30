@@ -213,13 +213,13 @@ class HomeController extends Controller
             ->values();
 
         // App Mode (2026-09-09) — "My Work Tracker", padanan
-        // `employeeTasksMarkup()` di prototype. `pic_employee_id`
-        // adalah satu-satunya kolom yang nentuin "punya siapa" —
-        // `additional_pic` (string bebas) sengaja gak ikut, lihat
-        // catatan lengkap di WorkTrackerController.
+        // `employeeTasksMarkup()` di prototype. "Punya siapa" ditentukan
+        // WorkItem::scopeForPic(): PIC utama ATAU salah satu PIC tambahan
+        // (2026-09-30, PIC lebih dari satu orang per task). Catatan teks
+        // `additional_pic` tetap tidak ikut — tidak bisa dicocokkan ke user.
         $myWorkItems = WorkItem::query()
-            ->where('pic_employee_id', Auth::id())
-            ->with('project')
+            ->forPic(Auth::id())
+            ->with(['project', 'pic', 'additionalPics'])
             ->orderByRaw('due_date IS NULL, due_date')
             ->get();
 

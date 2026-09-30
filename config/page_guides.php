@@ -361,7 +361,7 @@ return [
                     ['Progress', 'ubah langsung lewat pilihan di kolom Progress (akses Manage), tersimpan otomatis.'],
                     ['Note', 'ketik di kolom Note, tersimpan otomatis saat kamu klik di luar kolom.'],
                     ['+ di judul section', 'tambah item baru langsung ke section itu.'],
-                    ['+ Tambah Task', 'pilih project (harus sudah ada) dan section yang sudah ada di project itu, atau pilih "+ Section baru". Project yang belum punya section langsung diminta membuat section pertamanya. Lalu isi PIC, due date, progress, priority, link, dan notes.'],
+                    ['+ Tambah Task', 'pilih project (harus sudah ada) dan section yang sudah ada di project itu, atau pilih "+ Section baru". Project yang belum punya section langsung diminta membuat section pertamanya. Lalu isi PIC, due date, progress, priority, link, dan notes. Satu task bisa punya sampai 3 PIC (PIC 1, PIC 2, PIC 3), dan semuanya melihat task itu di daftar kerjanya.'],
                     ['Edit / Hapus', 'tombol di ujung kanan tiap baris.'],
                     ['Kelola Projects', 'menuju menu Projects untuk menambah atau mengubah project.'],
                 ],

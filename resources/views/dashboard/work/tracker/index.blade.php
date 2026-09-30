@@ -243,7 +243,12 @@
                                                         </td>
                                                         <td data-label="PIC" class="px-3 py-2.5 font-bold text-[#5e5952]">
                                                             {{ $item->pic?->name ?? 'Belum di-assign' }}
-                                                            @if ($item->additional_pic)
+                                                            @foreach ($item->additionalPics as $extraPic)
+                                                                <span
+                                                                    class="block text-[11px] font-bold text-[#5e5952]">{{ $extraPic->name }}</span>
+                                                            @endforeach
+                                                            {{-- Catatan teks lama / ALL TEAM hanya tampil kalau tidak ada PIC tambahan sungguhan. --}}
+                                                            @if ($item->additional_pic && $item->additionalPics->isEmpty())
                                                                 <span class="block text-[10px] font-medium text-muted">+
                                                                     {{ $item->additional_pic }}</span>
                                                             @endif
@@ -377,8 +382,8 @@
                         </div>
                         <div class="grid items-start gap-3 sm:grid-cols-2">
                             <div class="grid content-start gap-1">
-                                <label class="text-[10px] font-extrabold uppercase text-muted">PIC</label>
-                                <select name="pic_employee_id" id="wtTaskPic"
+                                <label class="text-[10px] font-extrabold uppercase text-muted">PIC 1</label>
+                                <select name="pic_employee_id" id="wtTaskPic" onchange="wtSyncPicOptions()"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     <option value="">Belum di-assign</option>
                                     @foreach ($employees as $employee)
@@ -391,6 +396,25 @@
                                 <input type="date" name="due_date" id="wtTaskDue"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                             </div>
+                        </div>
+                        <div class="grid items-start gap-3 sm:grid-cols-2">
+                            @foreach ([2, 3] as $picNo)
+                                <div class="grid content-start gap-1">
+                                    <label class="text-[10px] font-extrabold uppercase text-muted">PIC {{ $picNo }}
+                                        (opsional)
+                                    </label>
+                                    <select name="additional_pic_ids[]" id="wtTaskPic{{ $picNo }}"
+                                        onchange="wtSyncPicOptions()"
+                                        class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
+                                        <option value="">Tidak ada</option>
+                                        @foreach ($employees as $employee)
+                                            <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endforeach
+                            <p class="text-[10px] font-medium text-muted sm:col-span-2">Maksimal 3 PIC. Semua PIC
+                                melihat task ini di daftar kerjanya masing-masing.</p>
                         </div>
                         <div class="grid items-start gap-3 sm:grid-cols-2">
                             <div class="grid content-start gap-1">
@@ -441,8 +465,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-               lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-               tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                   lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                   tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -746,6 +770,18 @@
             }
         }
 
+        // PIC 1 / 2 / 3: orang yang sudah dipilih di salah satu kolom dinonaktifkan di dua kolom lainnya.
+        function wtSyncPicOptions() {
+            const ids = ['wtTaskPic', 'wtTaskPic2', 'wtTaskPic3'];
+            const chosen = ids.map(id => document.getElementById(id).value);
+            ids.forEach((id, index) => {
+                document.getElementById(id).querySelectorAll('option').forEach(opt => {
+                    opt.disabled = opt.value !== '' && chosen.some((val, i) => i !== index && val === opt
+                        .value);
+                });
+            });
+        }
+
         // --- Form Task: 1 modal untuk tambah & edit ---
         function wtOpenAddTask(projectId, section) {
             document.getElementById('wtTaskFormTitle').textContent = 'Tambah Task';
@@ -755,6 +791,7 @@
             document.getElementById('wtTaskFormMethod').innerHTML = '';
             document.getElementById('wtTaskProject').value = projectId || wtOnlyProject || '';
             wtRebuildSections(section || '');
+            wtSyncPicOptions();
             window.dispatchEvent(new CustomEvent('wt-open-task-modal'));
         }
 
@@ -767,6 +804,10 @@
             document.getElementById('wtTaskProject').value = item.project_id || '';
             wtRebuildSections(item.section || '');
             document.getElementById('wtTaskPic').value = item.pic_employee_id || '';
+            const extraPics = (item.additional_pics || []).map(u => u.id);
+            document.getElementById('wtTaskPic2').value = extraPics[0] || '';
+            document.getElementById('wtTaskPic3').value = extraPics[1] || '';
+            wtSyncPicOptions();
             document.getElementById('wtTaskDue').value = item.due_date ? item.due_date.substring(0, 10) : '';
             document.getElementById('wtTaskProgress').value = item.progress || 'Pending';
             document.getElementById('wtTaskPriority').value = item.priority || 'Medium';

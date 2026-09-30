@@ -36,17 +36,18 @@ class TeamWorkController extends Controller
             ->orderBy('name')
             ->get();
 
+        // 2026-09-30 — task bersama (PIC 2 / PIC 3) dihitung untuk SETIAP
+        // anggota tim yang terlibat, bukan cuma PIC utama.
         $items = WorkItem::query()
-            ->whereIn('pic_employee_id', $users->pluck('id'))
+            ->forPic($users->pluck('id'))
             ->where('progress', '!=', 'Done')
-            ->with('project')
+            ->with(['project', 'pic', 'additionalPics'])
             ->orderByRaw('due_date IS NULL, due_date')
-            ->get()
-            ->groupBy('pic_employee_id');
+            ->get();
 
         $rows = $users
             ->map(function (User $user) use ($items) {
-                $tasks = $items->get($user->id, collect());
+                $tasks = $items->filter(fn(WorkItem $task) => $task->hasPic($user->id))->values();
                 $overdue = $tasks->filter(fn(WorkItem $task) => $task->computedFocus() === 'KELEWAT')->values();
 
                 return [

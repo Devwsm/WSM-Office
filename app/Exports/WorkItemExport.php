@@ -17,7 +17,7 @@ class WorkItemExport extends BaseExport
     public function rows(): Collection
     {
         return WorkItem::query()
-            ->with(['project', 'pic'])
+            ->with(['project', 'pic', 'additionalPics'])
             ->when($this->projectId, fn($q) => $q->where('project_id', $this->projectId))
             ->orderBy('due_date')
             ->get();
@@ -35,7 +35,7 @@ class WorkItemExport extends BaseExport
             $row->section,
             $row->title,
             optional($row->due_date)->format('d/m/Y'),
-            $row->pic?->name ?? '-',
+            $row->picLabel('-'),
             $row->progress,
             $row->priority,
             $row->notes,

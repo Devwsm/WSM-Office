@@ -62,7 +62,7 @@ class WorkTrackerBoardController extends Controller
             ? $request->query('progress')
             : null;
 
-        $all = WorkItem::query()->with('pic')->orderBy('due_date')->orderBy('item_no')->get();
+        $all = WorkItem::query()->with(['pic', 'additionalPics'])->orderBy('due_date')->orderBy('item_no')->get();
 
         $stats = [
             'today' => $all->filter(fn(WorkItem $i) => $i->computedFocus() === 'HARI INI')->count(),
@@ -82,7 +82,7 @@ class WorkTrackerBoardController extends Controller
 
         $visible = $all
             ->when($selectedProjectId, fn($c) => $c->where('project_id', $selectedProjectId))
-            ->when($selectedPic, fn($c) => $c->where('pic_employee_id', $selectedPic))
+            ->when($selectedPic, fn($c) => $c->filter(fn(WorkItem $i) => $i->hasPic($selectedPic)))
             ->when($selectedProgress, fn($c) => $c->where('progress', $selectedProgress))
             ->groupBy(fn(WorkItem $i) => $i->project_id ?? 0);
 
@@ -193,17 +193,23 @@ class WorkTrackerBoardController extends Controller
     public function storeItem(WorkItemRequest $request)
     {
         $data = $request->validated();
+        $extraPicIds = $this->pullAdditionalPicIds($data);
         $data['created_by'] = $request->user()->id;
         $data['item_no'] = $this->nextItemNo($data['project_id'] ?? null, $data['section'] ?? null);
 
-        WorkItem::create($data);
+        $item = WorkItem::create($data);
+        $this->syncAdditionalPics($item, $extraPicIds);
 
         return back()->with('status', 'Task ditambahkan.');
     }
 
     public function updateItem(WorkItemRequest $request, WorkItem $item)
     {
-        $item->update($request->validated());
+        $data = $request->validated();
+        $extraPicIds = $this->pullAdditionalPicIds($data);
+
+        $item->update($data);
+        $this->syncAdditionalPics($item, $extraPicIds);
 
         return back()->with('status', 'Task diperbarui.');
     }
@@ -249,6 +255,42 @@ class WorkTrackerBoardController extends Controller
         }
 
         return back();
+    }
+
+    /**
+     * Ambil `additional_pic_ids` keluar dari data yang divalidasi (bukan
+     * kolom tabel `work_items`). Mengembalikan null kalau field tidak dikirim
+     * sama sekali, supaya update lain (mis. dari script/test) tidak menghapus
+     * PIC tambahan yang sudah ada.
+     */
+    private function pullAdditionalPicIds(array &$data): ?array
+    {
+        if (! array_key_exists('additional_pic_ids', $data)) {
+            return null;
+        }
+
+        $ids = array_map('intval', $data['additional_pic_ids'] ?? []);
+        unset($data['additional_pic_ids']);
+
+        return $ids;
+    }
+
+    /**
+     * Simpan PIC tambahan. Kalau ada PIC tambahan, catatan teks lama
+     * (`additional_pic`, termasuk penanda "ALL TEAM") dikosongkan: task itu
+     * sekarang punya PIC nyata, dan teks lama tidak boleh menyimpang darinya.
+     */
+    private function syncAdditionalPics(WorkItem $item, ?array $ids): void
+    {
+        if ($ids === null) {
+            return;
+        }
+
+        $item->additionalPics()->sync($ids);
+
+        if ($ids !== [] && $item->additional_pic !== null) {
+            $item->update(['additional_pic' => null]);
+        }
     }
 
     private function nextItemNo(?int $projectId, ?string $section): int

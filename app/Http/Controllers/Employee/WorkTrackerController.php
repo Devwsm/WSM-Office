@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 
 /**
@@ -31,10 +32,11 @@ use Illuminate\Support\Facades\Request;
  * Senin-Jumat), task berwarna sesuai project, dan legend warna project
  * di bawah — persis `calendar()` versi ini sekarang.
  *
- * "My Work Tracker" = WorkItem dengan `pic_employee_id` = user yang
- * login. `additional_pic` (kolom string bebas, BUKAN FK) sengaja TIDAK
- * ikut nentuin "punya siapa" — gak bisa dicocokkan ke user_id manapun,
- * cuma teks tambahan buat dibaca manusia.
+ * "My Work Tracker" = WorkItem yang user login jadi PIC-nya: PIC utama
+ * (`pic_employee_id`) atau PIC tambahan (tabel `work_item_additional_pics`,
+ * max 2) — lihat WorkItem::scopeForPic(). `additional_pic` (kolom string
+ * bebas, BUKAN FK) sengaja TIDAK ikut nentuin "punya siapa" — gak bisa
+ * dicocokkan ke user_id manapun, cuma catatan teks buat dibaca manusia.
  *
  * SCOPE YANG SENGAJA BELUM DIKERJAKAN (v1, lihat README): update
  * progress/notes langsung dari Home (prototype punya dropdown ubah
@@ -111,8 +113,8 @@ class WorkTrackerController extends Controller
             ->visibleTo($viewer)
             ->whereBetween('due_date', [$gridStart->toDateString(), $rangeEnd->toDateString()])
             ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
-            ->when($picFilter, fn($q) => $q->where('pic_employee_id', $picFilter))
-            ->with(['pic', 'project'])
+            ->when($picFilter, fn($q) => $q->forPic($picFilter))
+            ->with(['pic', 'additionalPics', 'project'])
             ->get()
             ->groupBy(fn(WorkItem $item) => $item->due_date->toDateString());
 
@@ -129,7 +131,7 @@ class WorkTrackerController extends Controller
                     'rhythm' => $weeklyRhythm[$date->dayOfWeek] ?? null,
                     'items' => $dayItems->map(fn(WorkItem $item) => [
                         'title' => $item->title,
-                        'pic' => $item->pic?->name,
+                        'pic' => $item->allPics()->pluck('name')->implode(' · ') ?: null,
                         'color' => Project::colorFor($item->project),
                         'text' => Project::contrastTextFor(Project::colorFor($item->project)),
                     ]),
@@ -138,8 +140,11 @@ class WorkTrackerController extends Controller
         });
 
         $projects = Project::query()->visibleTo($viewer)->orderBy('name')->get(['id', 'name', 'color']);
+        $visibleItemIds = WorkItem::query()->visibleTo($viewer)->select('work_items.id');
         $picOptions = User::query()
-            ->whereIn('id', WorkItem::query()->visibleTo($viewer)->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
+            ->where(fn($q) => $q
+                ->whereIn('id', WorkItem::query()->whereIn('id', $visibleItemIds)->whereNotNull('pic_employee_id')->select('pic_employee_id'))
+                ->orWhereIn('id', DB::table('work_item_additional_pics')->whereIn('work_item_id', $visibleItemIds)->select('user_id')))
             ->orderBy('name')
             ->get(['id', 'name']);
 

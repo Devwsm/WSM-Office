@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -64,7 +65,7 @@ class CalendarController extends Controller
             ->whereBetween('due_date', $range)
             ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
             ->when($picUser, fn($q) => $this->wherePic($q, $picUser))
-            ->with(['pic', 'project'])
+            ->with(['pic', 'additionalPics', 'project'])
             ->orderBy('item_no')
             ->orderBy('id')
             ->get()
@@ -109,7 +110,7 @@ class CalendarController extends Controller
 
                         return [
                             'title' => $item->title,
-                            'pic' => $item->pic?->name,
+                            'pic' => $item->allPics()->pluck('name')->implode(' · ') ?: null,
                             'color' => $color,
                             'text' => Project::contrastTextFor($color),
                             'url' => route('dashboard.work.tracker.index', array_filter(['project_id' => $item->project_id])),
@@ -132,7 +133,9 @@ class CalendarController extends Controller
 
         $projects = Project::query()->orderBy('name')->get(['id', 'name', 'color']);
         $picOptions = User::query()
-            ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->distinct()->pluck('pic_employee_id'))
+            ->where(fn($q) => $q
+                ->whereIn('id', WorkItem::query()->whereNotNull('pic_employee_id')->select('pic_employee_id'))
+                ->orWhereIn('id', DB::table('work_item_additional_pics')->select('user_id')))
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -198,13 +201,14 @@ class CalendarController extends Controller
     }
 
     /**
-     * Filter PIC seperti `taskHasPicV19()` prototype: PIC utama, item "ALL TEAM",
-     * atau nama PIC muncul di `additional_pic` (kolom teks bebas, bukan FK).
+     * Filter PIC seperti `taskHasPicV19()` prototype: PIC utama, PIC tambahan
+     * (relasi user), item "ALL TEAM", atau nama PIC muncul di catatan teks
+     * `additional_pic` (data lama / pihak luar, bukan FK).
      */
     private function wherePic($query, User $pic)
     {
         return $query->where(function ($q) use ($pic) {
-            $q->where('pic_employee_id', $pic->id)
+            $q->forPic($pic->id)
                 ->orWhere('additional_pic', 'ALL TEAM')
                 ->orWhere('additional_pic', 'like', '%' . str_replace(['%', '_'], ['\%', '\_'], $pic->name) . '%');
         });

@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Model WorkItem
@@ -64,6 +67,9 @@ class WorkItem extends Model
 
     public const PRIORITIES = ['Low', 'Medium', 'High'];
 
+    /** PIC utama + maksimal 2 PIC tambahan (padanan "maksimal 3 PIC" di prototype). */
+    public const MAX_ADDITIONAL_PICS = 2;
+
     /**
      * Kolom `section` NOT NULL, tapi form Task, sinkron action item MoM, dan
      * import boleh mengosongkannya (null) — tanpa ini insert gagal dengan
@@ -83,12 +89,29 @@ class WorkItem extends Model
     }
 
     /**
+     * Task yang melibatkan $userId sebagai PIC — PIC utama ATAU salah satu PIC
+     * tambahan. Satu-satunya tempat definisi "task milik seseorang", dipakai
+     * Home karyawan, kalender, Team Overview, dan filter PIC di board.
+     */
+    public function scopeForPic(Builder $query, int|array|Collection $userIds): Builder
+    {
+        $ids = collect(is_iterable($userIds) ? $userIds : [$userIds])->filter()->values()->all();
+
+        return $query->where(function (Builder $w) use ($ids) {
+            $w->whereIn('work_items.pic_employee_id', $ids)
+                ->orWhereIn('work_items.id', DB::table('work_item_additional_pics')
+                    ->whereIn('user_id', $ids)
+                    ->select('work_item_id'));
+        });
+    }
+
+    /**
      * Task yang boleh dilihat $user di kalender bersama karyawan: task
      * tanpa project, task di project yang terlihat olehnya (lihat
      * Project::scopeVisibleTo), atau task yang dia sendiri PIC-nya
-     * (kolom PIC utama, atau namanya tertulis di PIC tambahan).
-     * Dengan begitu pembatasan project tidak pernah menyembunyikan task
-     * milik sendiri.
+     * (PIC utama, PIC tambahan, atau namanya tertulis di catatan teks
+     * `additional_pic`). Dengan begitu pembatasan project tidak pernah
+     * menyembunyikan task milik sendiri.
      */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
@@ -101,7 +124,7 @@ class WorkItem extends Model
         return $query->where(function (Builder $w) use ($user, $nameLike) {
             $w->whereNull('project_id')
                 ->orWhereIn('project_id', Project::query()->visibleTo($user)->select('projects.id'))
-                ->orWhere('pic_employee_id', $user->id)
+                ->orWhere(fn(Builder $own) => $own->forPic($user->id))
                 ->orWhere('additional_pic', 'like', $nameLike);
         });
     }
@@ -119,6 +142,38 @@ class WorkItem extends Model
     public function pic(): BelongsTo
     {
         return $this->belongsTo(User::class, 'pic_employee_id');
+    }
+
+    /** PIC 2 & PIC 3 (relasi sungguhan ke user, beda dari teks bebas `additional_pic`). */
+    public function additionalPics(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'work_item_additional_pics', 'work_item_id', 'user_id')
+            ->withTimestamps()
+            ->orderBy('work_item_additional_pics.id');
+    }
+
+    /**
+     * Semua PIC berurutan: PIC utama dulu, lalu tambahan. Butuh relasi `pic`
+     * & `additionalPics` sudah di-eager-load kalau dipakai di loop.
+     *
+     * @return Collection<int, User>
+     */
+    public function allPics(): Collection
+    {
+        return collect([$this->pic])->concat($this->additionalPics)->filter()->unique('id')->values();
+    }
+
+    public function hasPic(int $userId): bool
+    {
+        return $this->allPics()->contains('id', $userId);
+    }
+
+    /** Label PIC untuk tampilan ringkas, mis. "Ancha · Kanaya" (pola `trackerOwnerName()` prototype). */
+    public function picLabel(string $fallback = 'Belum di-assign'): string
+    {
+        $names = $this->allPics()->pluck('name');
+
+        return $names->isNotEmpty() ? $names->implode(' · ') : $fallback;
     }
 
     public function creator(): BelongsTo
