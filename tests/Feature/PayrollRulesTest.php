@@ -284,6 +284,34 @@ class PayrollRulesTest extends TestCase
         $this->assertDatabaseCount('attendance_absences', 1);
     }
 
+    public function test_weekends_cannot_be_marked_as_absent(): void
+    {
+        $hrd = $this->actingAs($this->p['hrd']);
+        $url = route('attendance.recap.absence.store', $this->p['aldora']);
+
+        // 2026-09-19 Sabtu, 2026-09-20 Minggu.
+        foreach (['2026-09-19', '2026-09-20'] as $weekend) {
+            $hrd->post($url, ['date' => $weekend, 'note' => 'Salah tanggal'])
+                ->assertSessionHas('error', fn($m) => str_contains($m, 'akhir pekan'));
+        }
+        $this->assertDatabaseCount('attendance_absences', 0);
+
+        // Hari kerja biasa tetap bisa ditandai.
+        $hrd->post($url, ['date' => '2026-09-18', 'note' => 'Jumat tanpa kabar'])->assertSessionHas('status');
+        $this->assertDatabaseCount('attendance_absences', 1);
+    }
+
+    public function test_payroll_wording_does_not_claim_a_carry_over_that_does_not_exist(): void
+    {
+        $this->workDay($this->p['aldora'], '2026-09-15', '09:30', '13:30'); // kurang 240 menit
+        $record = $this->generateFor($this->p['aldora']);
+
+        $this->actingAs($this->p['owner'])->get(route('dashboard.payroll.show', $record))
+            ->assertOk()
+            ->assertDontSee('dibawa bulan depan')
+            ->assertSee('tidak dipotong bulan ini');
+    }
+
     public function test_marking_absent_needs_manage_access_and_respects_the_team_scope(): void
     {
         $url = route('attendance.recap.absence.store', $this->p['aldora']);

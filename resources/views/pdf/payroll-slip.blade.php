@@ -50,8 +50,8 @@
                 <td>
                     Potongan Kurang Jam
                     <span style="display:block;color:#6b6459;font-size:9px;">
-                        {{ $shortage['blocks'] }} blok (sisa {{ $shortage['remainder_minutes'] }} menit dibawa
-                        bulan depan) × {{ \App\Models\PayrollRecord::formatRupiah($ratePerBlock) }} per blok
+                        {{ $shortage['blocks'] }} blok (sisa {{ $shortage['remainder_minutes'] }} menit tidak
+                        dipotong bulan ini) × {{ \App\Models\PayrollRecord::formatRupiah($ratePerBlock) }} per blok
                     </span>
                 </td>
                 <td>-{{ \App\Models\PayrollRecord::formatRupiah($payroll->shortage_deduction) }}</td>

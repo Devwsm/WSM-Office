@@ -10,6 +10,7 @@ use App\Models\LeaveRequest;
 use App\Models\PayrollRecord;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -44,6 +45,12 @@ class AbsenceController extends Controller
             'date.before_or_equal' => 'Tanggal absen tidak boleh di masa depan.',
             'note.required' => 'Keterangan wajib diisi.',
         ]);
+
+        // Pembagi gaji (bawaan 22) menghitung hari kerja Senin–Jumat, jadi Sabtu/Minggu
+        // tidak boleh dipotong sebagai hari absen.
+        if (Carbon::parse($data['date'])->isWeekend()) {
+            return back()->with('error', 'Tanggal itu jatuh di akhir pekan (Sabtu/Minggu), bukan hari kerja, jadi tidak bisa ditandai absen.');
+        }
 
         if ($locked = $this->lockedPayroll($user->id, $data['date'])) {
             return back()->with('error', $locked);

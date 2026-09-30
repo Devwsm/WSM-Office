@@ -4,7 +4,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 
 **Stack:** Laravel 13.32 · PHP 8.3 (batas cPanel Rumahweb; `composer.json` mengunci platform ke 8.3.0) · MySQL · Tailwind CSS v4 + Vite · Alpine.js · Leaflet (peta geofence) · SweetAlert2 · `maatwebsite/excel` 4.0 · `barryvdh/laravel-dompdf` 3.1.
 
-**Ukuran kode:** 25 model · 32 FormRequest · 45 migrasi · 5 seeder · 117 view Blade · 48 panduan halaman · sekitar 160+ route (lihat `php artisan route:list`) · **430 tes otomatis**.
+**Ukuran kode:** 25 model · 32 FormRequest · 48 migrasi · 5 seeder · 117 view Blade · 48 panduan halaman · sekitar 160+ route (lihat `php artisan route:list`) · **446 tes otomatis**.
 
 **Legenda status:** ✅ ada & sesuai · ⚠️ ada tapi lebih sederhana / beda dari prototype · ❌ belum ada · ➕ tambahan (tidak ada di prototype)
 
@@ -112,34 +112,35 @@ php artisan test
 
 SQLite `:memory:`; `public/hot` dan `public/build` tidak perlu ada. `phpunit.xml` mengunci `WOS_PREVIEW_MODE=true` dan `WOS_ENTRY_POPUPS=false`, jadi isi `.env` lokal tidak memengaruhi hasil. Untuk MySQL, buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` (jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya).
 
-**Hasil terakhir:** 430 tes lulus (dijalankan lokal). **Pipeline deploy tidak menjalankan tes** (5.1), jadi `php artisan test` wajib dijalankan manual sebelum push.
+**Hasil terakhir:** 446 tes lulus (dijalankan lokal). **Pipeline deploy tidak menjalankan tes** (5.1), jadi `php artisan test` wajib dijalankan manual sebelum push.
 
-| File tes                    | Tes | Mencakup                                                                                                                                                                      |
-| --------------------------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PublicPagesTest`           | 13  | Halaman publik, karir, form lamar/kontak, throttle, 404, redirect ke login                                                                                                    |
-| `AuthenticationTest`        | 20  | Login/brute-force, redirect per role, remember me, logout, akun nonaktif, ganti password, kunci dashboard                                                                     |
-| `AttendanceFlowTest`        | 30  | Geofence, WFH, lapangan/gigs multi-sesi, selfie, bentrok cuti, auto-close, riwayat, throttle                                                                                  |
-| `EmployeeRequestsTest`      | 24  | Cuti (kuota, akhir pekan, batal), lembur, koreksi presensi                                                                                                                    |
-| `ApprovalFlowTest`          | 21  | Setujui/tolak/batal, wewenang atasan vs Owner vs HRD, audit log, dampak ke saldo cuti/absen                                                                                   |
-| `AttendanceRecapTest`       | 15  | Cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual                                                                                                      |
-| `OwnerAreaTest`             | 24  | CRUD karyawan, nonaktif/aktif, akses modul, pengaturan kantor, pesan kontak                                                                                                   |
-| `EmployeeAppTest`           | 21  | Home, KPI, memo & inbox, matriks modul, halaman 403                                                                                                                           |
-| `WorkControlTest`           | 35  | Memo Forum, Project & Work Tracker, menu Projects, urutan menu, Timeline Calendar, rapat/MoM + sync tracker + Blast                                                           |
-| `TimelineCalendarTest`      | 9   | Rhythm dari database, simpan/reset rhythm (hanya `work` manage + audit), penanda start/end project, filter PIC, lipatan `+N item`, legend                                     |
-| `WorkReminderTest`          | 3   | Kirim Reminder: `WorkItem` + `Memo` tertarget                                                                                                                                 |
-| `TeamOverviewTest`          | 4   | Absensi Tim dan Progress Kerja Tim manajer                                                                                                                                    |
-| `ManagementModulesTest`     | 28  | KPI, kontrak, payroll, budget, royalty, legal, audit log, changelog, view vs manage                                                                                           |
-| `RecruitmentTest`           | 17  | Lowongan, pipeline pelamar, konversi jadi akun, alur ujung ke ujung                                                                                                           |
-| `ExportImportTest`          | 24  | Semua export dibuat lalu dibaca ulang, tanpa hash password, template, preview → commit, kolom wajib, tanggal mustahil                                                         |
-| `AccessMatrixTest`          | 27  | 21 URL × 5 akun seeder, smoke test seluruh GET tanpa parameter                                                                                                                |
-| `PrivateFileAccessTest`     | 18  | Akses file private (selfie, kontrak, dokumen legal)                                                                                                                           |
-| `DeveloperRoleTest`         | 27  | Akses Developer, aturan akun Owner/Developer, Rekap semua orang, import karyawan                                                                                              |
-| `PasswordResetTest`         | 20  | Reset password IT, wajib ganti password, `TestingAccountsSeeder`                                                                                                              |
-| `PageGuideTest`             | 11  | Peta route → panduan, tombol di semua halaman dashboard, label akses, teks di-escape                                                                                          |
-| `EntryPopupsTest`           | 10  | Popup preview per pintu, urutan, saklar, tidak muncul di halaman error/kunci/wajib ganti password                                                                             |
-| `WorkVisibilityTest`        | 16  | Tebakan tim kerja, visibilitas project di kalender karyawan (tim, Lead, PIC, assigned, tanpa project), dropdown tidak bocor, dashboard tetap penuh, form project dan karyawan |
-| `OfficeAttendanceRulesTest` | 11  | Ukuran blok kurang jam, saklar tutup-otomatis, validasi, form lama tidak mengubah aturan, audit                                                                               |
-| `ExampleTest` ×2            | 2   | Stub bawaan (Feature dan Unit)                                                                                                                                                |
+| File tes                    | Tes | Mencakup                                                                                                                                                                                                            |
+| --------------------------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PublicPagesTest`           | 13  | Halaman publik, karir, form lamar/kontak, throttle, 404, redirect ke login                                                                                                                                          |
+| `AuthenticationTest`        | 20  | Login/brute-force, redirect per role, remember me, logout, akun nonaktif, ganti password, kunci dashboard                                                                                                           |
+| `AttendanceFlowTest`        | 30  | Geofence, WFH, lapangan/gigs multi-sesi, selfie, bentrok cuti, auto-close, riwayat, throttle                                                                                                                        |
+| `EmployeeRequestsTest`      | 24  | Cuti (kuota, akhir pekan, batal), lembur, koreksi presensi                                                                                                                                                          |
+| `ApprovalFlowTest`          | 21  | Setujui/tolak/batal, wewenang atasan vs Owner vs HRD, audit log, dampak ke saldo cuti/absen                                                                                                                         |
+| `AttendanceRecapTest`       | 15  | Cakupan rekap per akun, ringkasan harian, detail bulanan, koreksi manual                                                                                                                                            |
+| `OwnerAreaTest`             | 24  | CRUD karyawan, nonaktif/aktif, akses modul, pengaturan kantor, pesan kontak                                                                                                                                         |
+| `EmployeeAppTest`           | 21  | Home, KPI, memo & inbox, matriks modul, halaman 403                                                                                                                                                                 |
+| `WorkControlTest`           | 35  | Memo Forum, Project & Work Tracker, menu Projects, urutan menu, Timeline Calendar, rapat/MoM + sync tracker + Blast                                                                                                 |
+| `TimelineCalendarTest`      | 9   | Rhythm dari database, simpan/reset rhythm (hanya `work` manage + audit), penanda start/end project, filter PIC, lipatan `+N item`, legend                                                                           |
+| `WorkReminderTest`          | 3   | Kirim Reminder: `WorkItem` + `Memo` tertarget                                                                                                                                                                       |
+| `TeamOverviewTest`          | 4   | Absensi Tim dan Progress Kerja Tim manajer                                                                                                                                                                          |
+| `ManagementModulesTest`     | 28  | KPI, kontrak, payroll, budget, royalty, legal, audit log, changelog, view vs manage                                                                                                                                 |
+| `RecruitmentTest`           | 17  | Lowongan, pipeline pelamar, konversi jadi akun, alur ujung ke ujung                                                                                                                                                 |
+| `ExportImportTest`          | 24  | Semua export dibuat lalu dibaca ulang, tanpa hash password, template, preview → commit, kolom wajib, tanggal mustahil                                                                                               |
+| `AccessMatrixTest`          | 27  | 21 URL × 5 akun seeder, smoke test seluruh GET tanpa parameter                                                                                                                                                      |
+| `PrivateFileAccessTest`     | 18  | Akses file private (selfie, kontrak, dokumen legal)                                                                                                                                                                 |
+| `DeveloperRoleTest`         | 27  | Akses Developer, aturan akun Owner/Developer, Rekap semua orang, import karyawan                                                                                                                                    |
+| `PasswordResetTest`         | 20  | Reset password IT, wajib ganti password, `TestingAccountsSeeder`                                                                                                                                                    |
+| `PageGuideTest`             | 11  | Peta route → panduan, tombol di semua halaman dashboard, label akses, teks di-escape                                                                                                                                |
+| `EntryPopupsTest`           | 10  | Popup preview per pintu, urutan, saklar, tidak muncul di halaman error/kunci/wajib ganti password                                                                                                                   |
+| `WorkVisibilityTest`        | 16  | Tebakan tim kerja, visibilitas project di kalender karyawan (tim, Lead, PIC, assigned, tanpa project), dropdown tidak bocor, dashboard tetap penuh, form project dan karyawan                                       |
+| `OfficeAttendanceRulesTest` | 11  | Ukuran blok kurang jam, saklar tutup-otomatis, validasi, form lama tidak mengubah aturan, audit                                                                                                                     |
+| `PayrollRulesTest`          | 16  | Potongan hari absen (hanya yang ditandai, tidak untuk akhir pekan), potongan kurang jam dari gaji, toleransi sisa blok, pembagi hari, total minimal 0, buka kembali payroll final (Owner saja), kunci penanda absen |
+| `ExampleTest` ×2            | 2   | Stub bawaan (Feature dan Unit)                                                                                                                                                                                      |
 
 Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL serta fungsi `FIELD()`/`DATE_FORMAT()` di SQLite, hanya di tes) dan `tests/Concerns/CreatesWsmFixtures.php` (5 akun standar + pengaturan kantor + waktu dibekukan ke Senin 2026-09-21).
 
@@ -184,7 +185,7 @@ app/
 config/                     # + page_guides.php (panduan halaman), entry_popups.php (popup preview)
 database/
 ├── factories/UserFactory.php
-├── migrations/             # 45 migrasi. Dua pasang bernama sama (`office_settings`, `attendances`:
+├── migrations/             # 48 migrasi. Dua pasang bernama sama (`office_settings`, `attendances`:
 │                           # create + alter) dibedakan hanya lewat timestamp
 └── seeders/                # DatabaseSeeder, OfficeSettingSeeder, ProductionSeeder (akun asli),
                             # DemoSeeder + TestingAccountsSeeder (hanya lokal)
@@ -206,7 +207,7 @@ routes/
 
 docs/server/index.php       # Salinan public/index.php versi server (sudah `usePublicPath`); ikut di-upload ke ~/wsm-office/docs
 .github/workflows/deploy.yml  # Auto-deploy GitHub Actions → FTPS cPanel (Bab 5)
-tests/                      # 24 file tes Feature + 1 Unit (Bab 3)
+tests/                      # 25 file tes Feature + 1 Unit (Bab 3)
 ```
 
 Di sisi server (tidak ada di repo): `public_html/<domain>/deploy-hook.php` (5.4).
