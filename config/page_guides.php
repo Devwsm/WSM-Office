@@ -57,6 +57,7 @@ return [
         'dashboard.work.create' => 'memo-form',
         'dashboard.work.edit' => 'memo-form',
         'dashboard.work.projects.*' => 'work-projects',
+        'dashboard.work.tracker.projects.sync.*' => 'work-project-sync',
         'dashboard.work.tracker.*' => 'work-tracker',
         'dashboard.work.calendar' => 'timeline-calendar',
         'dashboard.work.meetings.index' => 'meetings',
@@ -336,6 +337,8 @@ return [
                     ['+ Add New Project', 'buka jendela (modal) untuk mengisi nama, tanggal mulai/selesai, priority, status, warna, lead, visibility, link tracker, dan progress recap.'],
                     ['Edit', 'ubah data project lewat jendela yang sama.'],
                     ['Open Work Tracker', 'lompat ke Work Tracker yang sudah difilter ke project itu.'],
+                    ['Download Excel', 'unduh satu project sebagai file Excel: sheet Project (info project) dan sheet Tracker (semua task per section).'],
+                    ['Sinkron Sheet', 'samakan task project dengan tracker di Google Sheet lewat file Excel/CSV. Butuh akses Manage.'],
                     ['Hapus', 'hapus project. Task-nya tidak ikut terhapus.'],
                 ],
                 'Arti tampilan' => [
@@ -347,6 +350,29 @@ return [
                     'Visibility hanya membatasi kalender bersama di halaman karyawan. Halaman dashboard ini tetap menampilkan semua project bagi yang punya akses Work. Tim tiap karyawan diatur di Karyawan → Edit → Tim Kerja.',
                     'Menghapus project tidak menghapus task-nya. Task dipindah menjadi "Tanpa Project".',
                     'Akses View hanya bisa melihat daftar. Menambah, mengubah, dan menghapus butuh Manage.',
+                ],
+            ],
+        ],
+
+        'work-project-sync' => [
+            'title' => 'Sinkron Sheet',
+            'summary' => 'Samakan task satu project dengan tracker Google Sheet lewat file Excel/CSV. Ada preview dulu; belum ada yang tersimpan sebelum kamu konfirmasi.',
+            'access' => 'work',
+            'sections' => [
+                'Langkah' => [
+                    ['Siapkan file', 'di Google Sheet pilih File → Download → Microsoft Excel (.xlsx) atau CSV. Bisa juga memakai hasil Download Excel project yang sudah diedit.'],
+                    ['Lihat Preview', 'upload file, lalu cek task baru, task yang berubah, dan baris yang error.'],
+                    ['Terapkan Sinkron', 'menyimpan semua perubahan yang tampil di preview. Preview berlaku 30 menit.'],
+                ],
+                'Aturan' => [
+                    ['ID WSM', 'kolom paling kanan di file hasil Download Excel. Baris ber-ID memperbarui task itu; jangan dihapus supaya task tidak dobel.'],
+                    ['Tanpa ID', 'dicocokkan lewat section + judul. Kalau tidak ketemu, dibuat sebagai task baru.'],
+                    ['PIC', 'dicocokkan ke nama karyawan (maksimal 3). Nama yang tidak dikenal, mis. ALL TEAM, disimpan sebagai teks saja.'],
+                ],
+                'Perlu diketahui' => [
+                    'Sinkron tidak pernah menghapus task. Task di WSM yang tidak ada di file dibiarkan.',
+                    'Sel kosong di file tidak mengosongkan data di WSM.',
+                    'Ini bukan sambungan langsung ke Google: perubahan di Google Sheet baru masuk ke WSM saat file diunggah di sini.',
                 ],
             ],
         ],

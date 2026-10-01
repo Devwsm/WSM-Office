@@ -48,6 +48,7 @@ use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
 use App\Http\Controllers\Dashboard\Work\CalendarController as DashboardWorkCalendarController;
 use App\Http\Controllers\Dashboard\Work\MeetingController;
 use App\Http\Controllers\Dashboard\Work\MemoController;
+use App\Http\Controllers\Dashboard\Work\ProjectSheetController;
 use App\Http\Controllers\Dashboard\Work\WorkReminderController;
 use App\Http\Controllers\Dashboard\Work\WorkTrackerBoardController;
 use App\Http\Controllers\Manajer\TeamAttendanceController;
@@ -371,6 +372,11 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
             Route::post('/proyek', [WorkTrackerBoardController::class, 'storeProject'])->middleware('module:work,manage')->name('projects.store');
             Route::patch('/proyek/{project}', [WorkTrackerBoardController::class, 'updateProject'])->middleware('module:work,manage')->name('projects.update');
             Route::delete('/proyek/{project}', [WorkTrackerBoardController::class, 'destroyProject'])->middleware('module:work,manage')->name('projects.destroy');
+            // Download project ke Excel + sinkron dari tracker Google Sheet / Excel (item 6 selisih prototype v32).
+            Route::get('/proyek/{project}/excel', [ProjectSheetController::class, 'download'])->middleware('module:work,view')->name('projects.excel');
+            Route::get('/proyek/{project}/sinkron', [ProjectSheetController::class, 'show'])->middleware('module:work,manage')->name('projects.sync.show');
+            Route::post('/proyek/{project}/sinkron/preview', [ProjectSheetController::class, 'preview'])->middleware(['module:work,manage', 'throttle:10,1'])->name('projects.sync.preview');
+            Route::post('/proyek/{project}/sinkron/commit', [ProjectSheetController::class, 'commit'])->middleware(['module:work,manage', 'throttle:10,1'])->name('projects.sync.commit');
             // Section di dalam project: tambah, warna, geser urutan, hapus.
             Route::post('/proyek/{project}/section', [WorkTrackerBoardController::class, 'storeSection'])->middleware('module:work,manage')->name('sections.store');
             Route::patch('/section/{section}', [WorkTrackerBoardController::class, 'updateSection'])->middleware('module:work,manage')->name('sections.update');

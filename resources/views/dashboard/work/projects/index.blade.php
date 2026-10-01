@@ -109,6 +109,14 @@
                     <a href="{{ route('dashboard.work.tracker.index', ['project_id' => $project->id]) }}"
                         class="rounded-xl border border-line bg-white px-3 py-1.5 text-[10px] font-extrabold">Open Work
                         Tracker</a>
+                    <a href="{{ route('dashboard.work.tracker.projects.excel', $project) }}"
+                        class="rounded-xl border border-line bg-white px-3 py-1.5 text-[10px] font-extrabold">Download
+                        Excel</a>
+                    @if ($canManage)
+                        <a href="{{ route('dashboard.work.tracker.projects.sync.show', $project) }}"
+                            class="rounded-xl border border-line bg-white px-3 py-1.5 text-[10px] font-extrabold">Sinkron
+                            Sheet</a>
+                    @endif
                     @if ($project->tracker_url)
                         <a href="{{ $project->tracker_url }}" target="_blank" rel="noopener"
                             class="rounded-xl border border-line bg-white px-3 py-1.5 text-[10px] font-extrabold">Tracker

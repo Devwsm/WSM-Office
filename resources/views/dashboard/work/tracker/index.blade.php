@@ -167,6 +167,18 @@
                         </summary>
 
                         <div class="border-t border-line">
+                            @if ($project)
+                                <div class="flex flex-wrap items-center gap-2 border-b border-line bg-white/60 px-4 py-2.5">
+                                    <a href="{{ route('dashboard.work.tracker.projects.excel', $project) }}"
+                                        class="rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-extrabold">Download
+                                        Excel</a>
+                                    @if ($canManage)
+                                        <a href="{{ route('dashboard.work.tracker.projects.sync.show', $project) }}"
+                                            class="rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-extrabold">Sinkron
+                                            Sheet</a>
+                                    @endif
+                                </div>
+                            @endif
                             @if ($canManage && $project)
                                 <form method="POST"
                                     action="{{ route('dashboard.work.tracker.sections.store', $project) }}"
