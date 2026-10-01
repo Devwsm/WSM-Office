@@ -105,11 +105,6 @@
                     $u = auth()->user();
                 @endphp
                 @if ($u->isOwnerOrDeveloper())
-                    <a href="{{ route('owner.dashboard') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
-                        Dashboard
-                    </a>
                     {{-- Fase 1 (susulan, 2026-09-13) — badge angka jumlah pesan
                         status 'baru', numpang query ringan langsung di sini
                         (sama pola sederhana kayak nav lain, belum ada shared
@@ -149,8 +144,8 @@
                     gak ada linknya sendiri — di app ini "Projects" udah
                     dilebur jadi bagian dari Work Tracker board (Fase 9),
                     bukan halaman terpisah. "Executive People Overview"
-                    (prototype, section People) SENGAJA di-skip dulu — gak
-                    ada padanan halaman yang jelas di app ini. Badge
+                    (prototype, section People) = halaman Dashboard owner
+                    (owner.dashboard), dipasang di grup 1 · PEOPLE (2026-10-01). Badge
                     "LIMITED" & "v21" (versi statis di prototype) juga
                     SENGAJA belum diporting — belum ada keputusan gimana itu
                     harus dipetakan ke sistem akses view/manage yang
@@ -164,13 +159,19 @@
                 --}}
                 @php $sectionNo = 0; @endphp
 
-                {{-- 1 · PEOPLE — cuma "Organization" (Owner-only, padanan
-                    Struktur Organisasi). "Executive People Overview"
-                    di-skip, lihat catatan di atas. --}}
+                {{-- 1 · PEOPLE — "Executive People Overview" (Owner-only,
+                    padanan halaman Dashboard owner; 2026-10-01 dipindah dari
+                    link lepas di atas sidebar biar sama kayak prototype) dan
+                    "Organization" (Owner-only, padanan Struktur Organisasi). --}}
                 @if ($u->isOwnerOrDeveloper())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
                         style="background-color:#dff3ee">{{ $sectionNo }} · PEOPLE</p>
+                    <a href="{{ route('owner.dashboard') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
+                        <span class="mr-1.5 inline-block w-4 text-center">◫</span>Executive People Overview
+                    </a>
                     <a href="{{ route('owner.organization') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'organization'])>
@@ -304,27 +305,17 @@
                             <span class="mr-1.5 inline-block w-4 text-center">$</span>Payroll
                         </a>
                     @endif
-                @endif
-
-                {{-- "HR / Geo / Color Settings" — padanan Pengaturan Kantor
-                    (Owner-only), ditaruh persis kayak posisinya di
-                    prototype: antara HR ADMIN & LEGAL.
-                    Sekarang dikasih judul kelompok berwarna krem (sama
-                    pola kayak IT/LEGAL/dst di atas) biar kelihatan sebagai
-                    section sendiri, dan link di bawahnya balik ke pola
-                    standar semua link lain: nge-blend transparan di atas
-                    sidebar (gak ada bg sendiri) pas gak aktif, cuma hitam
-                    solid pas beneran lagi dibuka. Sebelumnya sempat
-                    dicoba versi outline hitam+putih permanen, tapi itu
-                    malah bikin beda sendiri dari pola section lain. --}}
-                @if ($u->isOwnerOrDeveloper())
-                    @php $sectionNo++; @endphp
-                    <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
-                        style="background-color:#f1ead9">{{ $sectionNo }} · SETTINGS</p>
-                    <a href="{{ route('owner.office-settings.edit') }}"
-                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('owner.office-settings.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
-                        <span class="mr-1.5 inline-block w-4 text-center">⚙</span>HR / Geo / Color Settings
-                    </a>
+                    {{-- "HR / Geo / Color Settings" — padanan Pengaturan Kantor
+                        (Owner-only). 2026-10-01 dipindah BALIK ke dalam grup
+                        HR ADMIN sebagai item terakhir, persis prototype
+                        (sebelumnya jadi grup "SETTINGS" sendiri, bikin nomor
+                        Legal/IT geser jadi 7/8 buat Owner). --}}
+                    @if ($u->isOwnerOrDeveloper())
+                        <a href="{{ route('owner.office-settings.edit') }}"
+                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('owner.office-settings.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                            <span class="mr-1.5 inline-block w-4 text-center">⚙</span>HR / Geo / Color Settings
+                        </a>
+                    @endif
                 @endif
 
                 {{-- 6 · LEGAL — 1 controller/1 route, 2 kategori dibedain
