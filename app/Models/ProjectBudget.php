@@ -11,15 +11,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * ---------------------------------------------------------------------
  * Fase 13 — padanan `state.projectBudgets` (`saveBudgetEntry`) di
  * prototype v18. Nempel modul `budget` ("Project Budgeting").
+ * `song_title` & `proof_link` = padanan "Linked Song P&L" dan "Payment
+ * Proof Link" prototype v22 (lihat migration add_song_and_proof_*).
  * ---------------------------------------------------------------------
  */
 #[Fillable([
     'project_id',
     'category',
     'item',
+    'song_title',
     'budget',
     'actual',
     'note',
+    'proof_link',
     'updated_by',
 ])]
 class ProjectBudget extends Model

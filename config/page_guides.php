@@ -703,21 +703,28 @@ return [
 
         'budget' => [
             'title' => 'Project Budgeting',
-            'summary' => 'Perbandingan budget dan realisasi (actual) biaya per project.',
+            'summary' => 'Perbandingan budget dan realisasi (actual) biaya per project, lengkap dengan grafik dan laporan PDF.',
             'access' => 'budget',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['Filter Project', 'tampilkan baris budget satu project saja.'],
+                    ['Filter Project', 'tampilkan ringkasan, grafik, dan baris budget satu project saja.'],
+                    ['Grafik Budget vs Actual', 'pilih Per Kategori, Per Project, atau Per Lagu untuk mengubah cara batang dikelompokkan.'],
+                    ['Unduh PDF', 'laporan siap cetak (A4 mendatar) sesuai filter project dan pengelompokan grafik yang sedang dibuka.'],
+                    ['Export Excel dan Import Excel', 'unduh data budget, atau masukkan banyak baris sekaligus lewat template (Import butuh akses Manage).'],
                     ['+ Tambah Budget', 'tambah baris budget baru (akses Manage).'],
                     ['Edit dan Hapus', 'ubah angka atau hapus baris. Hapus bersifat permanen.'],
                 ],
                 'Arti angka' => [
-                    ['Budget', 'anggaran yang direncanakan.'],
+                    ['Total Budget', 'jumlah semua anggaran yang direncanakan (mengikuti filter project).'],
                     ['Actual', 'biaya yang sudah benar-benar keluar.'],
-                    ['Variance', 'Budget dikurangi Actual. Positif berarti masih ada sisa anggaran, negatif berarti melebihi anggaran.'],
+                    ['Remaining dan Variance', 'Budget dikurangi Actual. Positif berarti masih ada sisa anggaran, negatif berarti melebihi anggaran dan ditandai "Melebihi budget".'],
+                    ['Utilization', 'persen Actual terhadap Budget. Tanda "–" berarti belum ada budget yang bisa dibandingkan.'],
+                    ['Batang grafik', 'batang biru muda = Budget, batang biru tua = Actual. Batang Actual berubah merah kalau melebihi Budget.'],
                 ],
                 'Perlu diketahui' => [
-                    'Data budget bisa diunduh sebagai Excel dan diimpor massal lewat Export & Import.',
+                    'Kategori dikelompokkan tanpa membedakan huruf besar/kecil, jadi "Marketing" dan "marketing" dihitung satu batang.',
+                    'Lagu adalah teks bebas (belum terhubung ke data Royalty). Tulis judul dengan ejaan yang sama agar terkelompok jadi satu di grafik Per Lagu.',
+                    'Link Bukti Bayar sebaiknya link Google Drive ke bukti pembayaran. Hanya link http/https yang diterima.',
                 ],
             ],
         ],
@@ -729,9 +736,11 @@ return [
             'sections' => [
                 'Arti tiap isian' => [
                     ['Project', 'project yang memiliki biaya ini.'],
-                    ['Kategori dan Item', 'pengelompokan dan nama biaya, mis. kategori Marketing, item Iklan.'],
+                    ['Kategori dan Item', 'pengelompokan dan nama biaya, mis. kategori Marketing, item Iklan. Kategori yang sudah pernah dipakai muncul sebagai saran; pakai ejaan yang sama agar grafik per kategori tidak terpecah.'],
                     ['Budget (Rp)', 'anggaran yang direncanakan.'],
                     ['Actual (Rp)', 'realisasi biaya. Boleh 0 kalau belum ada pengeluaran.'],
+                    ['Lagu', 'judul lagu yang terkait dengan biaya ini (opsional). Dipakai untuk grafik Per Lagu.'],
+                    ['Link Bukti Bayar', 'link ke bukti pembayaran, mis. Google Drive (opsional).'],
                     ['Catatan', 'keterangan tambahan (opsional).'],
                 ],
             ],

@@ -24,7 +24,7 @@ class ProjectBudgetImport extends BaseImport
 {
     public function templateHeadings(): array
     {
-        return ['project', 'kategori', 'item', 'anggaran', 'realisasi', 'catatan'];
+        return ['project', 'kategori', 'item', 'anggaran', 'realisasi', 'catatan', 'lagu', 'bukti_bayar'];
     }
 
     public function previewColumns(): array
@@ -33,6 +33,7 @@ class ProjectBudgetImport extends BaseImport
             ['label' => 'Project', 'key' => 'project_name'],
             ['label' => 'Kategori', 'key' => 'category'],
             ['label' => 'Item', 'key' => 'item'],
+            ['label' => 'Lagu', 'key' => 'song_title', 'fallback' => '-'],
             ['label' => 'Anggaran', 'key' => 'budget'],
             ['label' => 'Realisasi', 'key' => 'actual'],
             ['label' => 'Catatan', 'key' => 'note', 'fallback' => '-'],
@@ -48,6 +49,8 @@ class ProjectBudgetImport extends BaseImport
             'anggaran' => ['required' => true],
             'realisasi' => ['required' => false, 'note' => 'Kalau kosong, otomatis 0.'],
             'catatan' => ['required' => false],
+            'lagu' => ['required' => false, 'note' => 'Judul lagu yang terkait (teks bebas). Kosong = tidak terkait lagu.'],
+            'bukti_bayar' => ['required' => false, 'note' => 'Link bukti pembayaran, lengkap diawali https:// (mis. link Google Drive).'],
         ];
     }
 
@@ -60,6 +63,8 @@ class ProjectBudgetImport extends BaseImport
             'anggaran' => ['required', 'numeric', 'min:0'],
             'realisasi' => ['nullable', 'numeric', 'min:0'],
             'catatan' => ['nullable', 'string'],
+            'lagu' => ['nullable', 'string', 'max:150'],
+            'bukti_bayar' => ['nullable', 'url:http,https', 'max:500'],
         ];
     }
 
@@ -76,6 +81,8 @@ class ProjectBudgetImport extends BaseImport
             // biar preview nampilin angka yang beneran bakal kesimpen.
             'actual' => $validated['realisasi'] !== '' && $validated['realisasi'] !== null ? (float) $validated['realisasi'] : 0.0,
             'note' => $validated['catatan'] ?? null,
+            'song_title' => ($validated['lagu'] ?? null) !== '' ? ($validated['lagu'] ?? null) : null,
+            'proof_link' => ($validated['bukti_bayar'] ?? null) !== '' ? ($validated['bukti_bayar'] ?? null) : null,
             // Display-only buat preview (diabaikan Eloquent pas
             // mass-assign) — sama trik kayak project_name/pic_name di
             // WorkItemImport.

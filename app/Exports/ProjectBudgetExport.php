@@ -26,7 +26,7 @@ class ProjectBudgetExport extends BaseExport
 
     public function headings(): array
     {
-        return ['Project', 'Kategori', 'Item', 'Anggaran', 'Realisasi', 'Selisih', 'Catatan'];
+        return ['Project', 'Kategori', 'Item', 'Lagu', 'Anggaran', 'Realisasi', 'Selisih', 'Bukti Bayar', 'Catatan'];
     }
 
     public function map($row): array
@@ -35,9 +35,11 @@ class ProjectBudgetExport extends BaseExport
             $row->project?->name ?? '-',
             $row->category,
             $row->item,
+            $row->song_title,
             $row->budget,
             $row->actual,
             $row->budget - $row->actual,
+            $row->proof_link,
             $row->note,
         ];
     }

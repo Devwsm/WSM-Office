@@ -458,6 +458,7 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
     // (gate beda: 'budget' vs 'royalty'), meski dibangun bareng.
     Route::prefix('budget')->name('budget.')->group(function () {
         Route::get('/', [BudgetController::class, 'index'])->middleware('module:budget,view')->name('index');
+        Route::get('/pdf', [BudgetController::class, 'pdf'])->middleware('module:budget,view')->name('pdf');
         Route::get('/create', [BudgetController::class, 'create'])->middleware('module:budget,manage')->name('create');
         Route::post('/', [BudgetController::class, 'store'])->middleware('module:budget,manage')->name('store');
         Route::get('/{budget}/edit', [BudgetController::class, 'edit'])->middleware('module:budget,manage')->name('edit');
