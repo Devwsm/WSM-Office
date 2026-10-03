@@ -377,6 +377,8 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         // Dashboard\Work\CalendarController.
         Route::get('/kalender', [DashboardWorkCalendarController::class, 'index'])->middleware('module:work,view')->name('calendar');
         // 2026-09-28 — Weekly Rhythm Settings (padanan prototype), disimpan di office_settings.weekly_rhythm.
+        // Drag & drop pindah tanggal deadline (UI hanya aktif di desktop).
+        Route::patch('/kalender/item/{item}/tanggal', [DashboardWorkCalendarController::class, 'moveItem'])->middleware(['module:work,manage', 'throttle:60,1'])->name('calendar.items.move');
         Route::patch('/kalender/rhythm', [DashboardWorkCalendarController::class, 'updateRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.update');
         Route::post('/kalender/rhythm/reset', [DashboardWorkCalendarController::class, 'resetRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.reset');
 
@@ -402,12 +404,15 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
             Route::post('/proyek/{project}/section', [WorkTrackerBoardController::class, 'storeSection'])->middleware('module:work,manage')->name('sections.store');
             Route::patch('/section/{section}', [WorkTrackerBoardController::class, 'updateSection'])->middleware('module:work,manage')->name('sections.update');
             Route::patch('/section/{section}/geser', [WorkTrackerBoardController::class, 'moveSection'])->middleware('module:work,manage')->name('sections.move');
+            Route::put('/section/{section}/viewers', [WorkTrackerBoardController::class, 'updateSectionViewers'])->middleware('module:work,manage')->name('sections.viewers');
             Route::delete('/section/{section}', [WorkTrackerBoardController::class, 'destroySection'])->middleware('module:work,manage')->name('sections.destroy');
             Route::post('/task', [WorkTrackerBoardController::class, 'storeItem'])->middleware('module:work,manage')->name('items.store');
             Route::patch('/task/{item}', [WorkTrackerBoardController::class, 'updateItem'])->middleware('module:work,manage')->name('items.update');
             Route::delete('/task/{item}', [WorkTrackerBoardController::class, 'destroyItem'])->middleware('module:work,manage')->name('items.destroy');
             Route::patch('/task/{item}/progress', [WorkTrackerBoardController::class, 'updateProgress'])->middleware('module:work,manage')->name('items.progress');
             Route::patch('/task/{item}/note', [WorkTrackerBoardController::class, 'updateNote'])->middleware('module:work,manage')->name('items.note');
+            // Edit satuan judul/tanggal/PIC/link langsung dari tabel (tanpa form Edit).
+            Route::patch('/task/{item}/field', [WorkTrackerBoardController::class, 'updateField'])->middleware(['module:work,manage', 'throttle:120,1'])->name('items.field');
         });
 
         // --- Fase 9 lanjutan: MoM terstruktur (Meeting + action item) ---

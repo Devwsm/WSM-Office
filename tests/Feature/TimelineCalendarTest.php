@@ -178,8 +178,8 @@ class TimelineCalendarTest extends TestCase
 
         $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.calendar'))
             ->assertOk()
-            ->assertSee('+2 item')
-            ->assertSee('Tugas padat 8') // tetap ada di dalam lipatan
+            ->assertSee('+5 item') // maks 3 chip per tanggal, sisanya +N
+            ->assertSee('Tugas padat 8') // tetap ada di data popup harian
             ->assertSee(route('dashboard.work.tracker.index', ['project_id' => $project->id]), false);
     }
 

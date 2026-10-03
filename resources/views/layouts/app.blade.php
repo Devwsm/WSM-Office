@@ -145,7 +145,7 @@
                     dilebur jadi bagian dari Work Tracker board (Fase 9),
                     bukan halaman terpisah. "Executive People Overview"
                     (prototype, section People) = halaman Dashboard owner
-                    (owner.dashboard), dipasang di grup 1 · PEOPLE (2026-10-01). Badge
+                    (owner.dashboard), dipasang di grup 1 · CEO DASHBOARD (2026-10-01). Badge
                     "LIMITED" & "v21" (versi statis di prototype) juga
                     SENGAJA belum diporting — belum ada keputusan gimana itu
                     harus dipetakan ke sistem akses view/manage yang
@@ -159,14 +159,15 @@
                 --}}
                 @php $sectionNo = 0; @endphp
 
-                {{-- 1 · PEOPLE — "Executive People Overview" (Owner-only,
+                {{-- 1 · CEO DASHBOARD (dulu "PEOPLE") — "Executive People Overview" (Owner-only,
                     padanan halaman Dashboard owner; 2026-10-01 dipindah dari
                     link lepas di atas sidebar biar sama kayak prototype) dan
-                    "Organization" (Owner-only, padanan Struktur Organisasi). --}}
+                    "Organization" (Owner-only, padanan Struktur Organisasi), dan
+                    "Karyawan & Access" (Owner-only). --}}
                 @if ($u->isOwnerOrDeveloper())
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
-                        style="background-color:#dff3ee">{{ $sectionNo }} · PEOPLE</p>
+                        style="background-color:#dff3ee">{{ $sectionNo }} · CEO DASHBOARD</p>
                     <a href="{{ route('owner.dashboard') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'dashboard' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'dashboard'])>
@@ -176,6 +177,13 @@
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'organization' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
                         @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'organization'])>
                         <span class="mr-1.5 inline-block w-4 text-center">⌘</span>Organization
+                    </a>
+                    {{-- 2026-10-03 — "Karyawan & Access" dipindah dari HR ADMIN ke grup CEO DASHBOARD
+                        (permintaan tim: semua halaman khusus Owner satu kelompok). --}}
+                    <a href="{{ route('owner.employees.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
+                        @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
+                        <span class="mr-1.5 inline-block w-4 text-center">◉</span>Karyawan &amp; Access
                     </a>
                 @endif
 
@@ -260,8 +268,8 @@
                 @endif
 
                 {{-- 5 · HR ADMIN — gabungan lintas modul: 'people'
-                    (Attendance/Requests), 'kpi', Owner-only "Karyawan &
-                    Access", 'contracts', 'payroll'. Header-nya nongol
+                    (Attendance/Requests), 'kpi', 'contracts', 'payroll', dan
+                    Owner-only "HR / Geo / Color Settings" ("Karyawan & Access" pindah ke CEO DASHBOARD, 2026-10-03). Header-nya nongol
                     kalau MINIMAL SATU item di bawah kelihatan. --}}
                 @php
                     $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwnerOrDeveloper() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
@@ -284,13 +292,6 @@
                         <a href="{{ route('dashboard.kpi.index') }}"
                             class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.kpi.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                             <span class="mr-1.5 inline-block w-4 text-center">◎</span>KPI &amp; Performance
-                        </a>
-                    @endif
-                    @if ($u->isOwnerOrDeveloper())
-                        <a href="{{ route('owner.employees.index') }}"
-                            class="rounded-2xl px-3.5 py-3 font-extrabold {{ ($navActive ?? '') === 'employees' ? 'text-white' : 'text-[#5e5951] hover:bg-white' }}"
-                            @style(['background-color: var(--ceo-accent)' => ($navActive ?? '') === 'employees'])>
-                            <span class="mr-1.5 inline-block w-4 text-center">◉</span>Karyawan &amp; Access
                         </a>
                     @endif
                     @if ($u->canViewModule('contracts'))

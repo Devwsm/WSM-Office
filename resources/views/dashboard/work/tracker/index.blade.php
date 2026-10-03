@@ -52,8 +52,8 @@
         };
     @endphp
 
-    <div x-data="{ taskModalOpen: false, sectionDelete: null, typed: '' }" @wt-open-task-modal.window="taskModalOpen = true"
-        @keydown.escape.window="taskModalOpen = false; sectionDelete = null">
+    <div x-data="{ taskModalOpen: false, sectionDelete: null, typed: '', viewersModal: null }" @wt-open-task-modal.window="taskModalOpen = true"
+        @keydown.escape.window="taskModalOpen = false; sectionDelete = null; viewersModal = null">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3.5">
             <div>
                 <a href="{{ route('dashboard.work.index') }}" class="text-[11px] font-extrabold text-muted">← Work
@@ -88,7 +88,7 @@
 
         {{-- Filter --}}
         <form method="GET" class="mb-3 flex flex-wrap items-end gap-2">
-            @foreach ([['project_id', 'Project', $projects->pluck('name', 'id'), $selectedProjectId, 'Semua Project'], ['pic', 'PIC', $employees->pluck('name', 'id'), $selectedPic, 'Semua PIC'], ['progress', 'Progress', collect(\App\Models\WorkItem::PROGRESS_OPTIONS)->mapWithKeys(fn($s) => [$s => $s]), $selectedProgress, 'Semua']] as [$name, $label, $options, $current, $all])
+            @foreach ([['project_id', 'Project', $projects->pluck('name', 'id'), $selectedProjectId, 'Semua Project'], ['pic', 'PIC', $employees->pluck('name', 'id'), $selectedPic, 'Semua PIC'], ['progress', 'Progress', collect(\App\Models\WorkItem::PROGRESS_OPTIONS)->mapWithKeys(fn($s) => [$s => $s]), $selectedProgress, 'Semua'], ['focus', 'Focus', collect($focusOptions)->mapWithKeys(fn($s) => [$s => $s]), $selectedFocus, 'Semua Focus']] as [$name, $label, $options, $current, $all])
                 <label class="grid min-w-34 flex-1 gap-1 sm:flex-none">
                     <span class="text-[10px] font-extrabold uppercase text-muted">{{ $label }}</span>
                     <select name="{{ $name }}" onchange="this.form.submit()"
@@ -101,7 +101,7 @@
                     </select>
                 </label>
             @endforeach
-            @if ($selectedProjectId || $selectedPic || $selectedProgress)
+            @if ($selectedProjectId || $selectedPic || $selectedProgress || $selectedFocus)
                 <a href="{{ route('dashboard.work.tracker.index') }}"
                     class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset</a>
             @endif
@@ -211,7 +211,16 @@
                                             <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
                                         </span>
                                         <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
+                                            @if (!empty($section['viewer_ids']))
+                                                <span title="Hanya orang tertentu yang bisa melihat section ini"
+                                                    class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
+                                                    {{ count($section['viewer_ids']) }} orang</span>
+                                            @endif
                                             @if ($canManage && $sec)
+                                                {{-- Visibility per orang (kosong = semua orang boleh lihat). --}}
+                                                <button type="button" title="Atur siapa yang bisa melihat section ini"
+                                                    @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids']])"
+                                                    class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
                                                 {{-- Warna: simpan langsung (PATCH JSON), tanpa reload. --}}
                                                 <label title="Ubah warna section" onclick="event.stopPropagation()"
                                                     class="relative grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-white/70">
@@ -230,7 +239,8 @@
                                                             onclick="event.stopPropagation()" onsubmit="wtRememberOpen()">
                                                             @csrf
                                                             @method('PATCH')
-                                                            <input type="hidden" name="direction" value="{{ $dir }}">
+                                                            <input type="hidden" name="direction"
+                                                                value="{{ $dir }}">
                                                             <button type="submit" title="{{ $title }}"
                                                                 @disabled($disabled)
                                                                 class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
@@ -287,10 +297,29 @@
                                                                 class="wt-no px-3 py-2.5 font-bold text-muted">
                                                                 {{ $item->item_no }}</td>
                                                             <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
-                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>{{ $item->title }}
+                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>
+                                                                @if ($canManage)
+                                                                    <input type="text" value="{{ $item->title }}"
+                                                                        data-orig="{{ $item->title }}" maxlength="255"
+                                                                        onblur="wtSaveField({{ $item->id }}, 'title', this)"
+                                                                        onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){this.value=this.dataset.orig;this.blur()}"
+                                                                        aria-label="Judul item"
+                                                                        class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-black hover:border-line focus:border-line focus:bg-white">@else{{ $item->title }}
+                                                                @endif
                                                             </td>
                                                             <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
-                                                                {{ $item->due_date?->format('d/m/Y') ?? '-' }}</td>
+                                                                @if ($canManage)
+                                                                    <input type="date"
+                                                                        value="{{ $item->due_date?->format('Y-m-d') }}"
+                                                                        data-orig="{{ $item->due_date?->format('Y-m-d') }}"
+                                                                        data-reload="1"
+                                                                        onchange="wtSaveField({{ $item->id }}, 'due_date', this)"
+                                                                        aria-label="Tanggal"
+                                                                        class="wt-inline w-31 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] hover:border-line focus:border-line focus:bg-white">
+                                                                @else
+                                                                    {{ $item->due_date?->format('d/m/Y') ?? '-' }}
+                                                                @endif
+                                                            </td>
                                                             <td data-label="Focus" class="px-3 py-2.5">
                                                                 <span
                                                                     class="inline-flex rounded-full px-2 py-0.5 text-[8px] font-black"
@@ -298,7 +327,21 @@
                                                             </td>
                                                             <td data-label="PIC"
                                                                 class="px-3 py-2.5 font-bold text-[#5e5952]">
-                                                                {{ $item->pic?->name ?? 'Belum di-assign' }}
+                                                                @if ($canManage)
+                                                                    <select data-orig="{{ $item->pic_employee_id }}"
+                                                                        onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
+                                                                        aria-label="PIC utama"
+                                                                        class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] font-bold hover:border-line focus:border-line focus:bg-white">
+                                                                        <option value="">Belum di-assign</option>
+                                                                        @foreach ($employees as $emp)
+                                                                            <option value="{{ $emp->id }}"
+                                                                                @selected($item->pic_employee_id === $emp->id)>
+                                                                                {{ $emp->name }}</option>
+                                                                        @endforeach
+                                                                    </select>
+                                                                @else
+                                                                    {{ $item->pic?->name ?? 'Belum di-assign' }}
+                                                                @endif
                                                                 @foreach ($item->additionalPics as $extraPic)
                                                                     <span
                                                                         class="block text-[11px] font-bold text-[#5e5952]">{{ $extraPic->name }}</span>
@@ -340,8 +383,15 @@
                                                                     <a href="{{ $item->link }}" target="_blank"
                                                                         rel="noopener"
                                                                         class="font-extrabold text-[#2647b8] underline">Open</a>
-                                                                @else
+                                                                @elseif (!$canManage)
                                                                     -
+                                                                @endif
+                                                                @if ($canManage)
+                                                                    <button type="button"
+                                                                        title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
+                                                                        onclick="wtEditLink({{ $item->id }}, this)"
+                                                                        data-link="{{ $item->link }}"
+                                                                        class="ml-1 rounded-md bg-[#ece7dd] px-1.5 py-0.5 text-[9px] font-extrabold">{{ $item->link ? '✎' : '+ Link' }}</button>
                                                                 @endif
                                                             </td>
                                                             <td class="wt-actions px-3 py-2.5">
@@ -511,6 +561,35 @@
                 </div>
             </div>
 
+            {{-- Modal visibility section: pilih orang yang boleh melihat; kosong = semua. --}}
+            <div x-show="viewersModal" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+                <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
+                    <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
+                    <p class="mt-1 text-[12px] text-muted">Section <b x-text="viewersModal ? viewersModal.name : ''"></b>.
+                        Kosongkan semua centang agar terbuka untuk semua orang. Owner/Developer dan PIC item di section ini
+                        selalu tetap bisa melihat.</p>
+                    <form method="POST" :action="viewersModal ? viewersModal.action : '#'" onsubmit="wtRememberOpen()"
+                        class="mt-3 grid gap-3">
+                        @csrf
+                        @method('PUT')
+                        <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2">
+                            @foreach ($employees as $emp)
+                                <label
+                                    class="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]">
+                                    <input type="checkbox" name="user_ids[]" value="{{ $emp->id }}"
+                                        :checked="viewersModal && viewersModal.ids.includes({{ $emp->id }})">
+                                    {{ $emp->name }}
+                                </label>
+                            @endforeach
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="viewersModal = null" class="btn-wsm-white">Batal</button>
+                            <button type="submit" class="btn-wsm-black">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             {{-- Modal hapus section: section berisi item -> nama section harus diketik persis. --}}
             <div x-show="sectionDelete" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
                 <div @click.outside="sectionDelete = null" class="w-full max-w-sm rounded-4xl bg-cream p-5">
@@ -560,8 +639,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-                       lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-                       tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                           lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                           tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -681,6 +760,67 @@
                 select.disabled = false;
                 wtError('Gagal update progress, coba lagi.');
             });
+        }
+
+        // --- Edit satuan (judul / tanggal / PIC / link): simpan saat berubah, tanpa buka form Edit ---
+        function wtSaveField(id, field, el) {
+            const orig = el.dataset.orig ?? '';
+            if (el.value === orig) return;
+            el.classList.add('opacity-60');
+            fetch(`${wtBase}/${id}/field`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': wtCsrf(),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    field,
+                    value: el.value
+                }),
+            }).then(async (res) => {
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.errors ? Object.values(body.errors).flat()[0] : (body.message || ''));
+                }
+                el.dataset.orig = el.value;
+                // Tanggal/PIC mengubah badge Focus & ringkasan -> muat ulang, state buka dipertahankan.
+                if (el.dataset.reload === '1' || field === 'pic_employee_id') {
+                    wtRememberOpen();
+                    window.location.reload();
+                    return;
+                }
+                el.classList.remove('opacity-60');
+                el.classList.add('border-[#27c84d]');
+                setTimeout(() => el.classList.remove('border-[#27c84d]'), 900);
+            }).catch((e) => {
+                el.classList.remove('opacity-60');
+                el.value = orig;
+                wtError(e.message || 'Gagal menyimpan perubahan, coba lagi.');
+            });
+        }
+
+        // Link: prompt kecil (URL jarang diubah, input permanen terlalu lebar untuk kolom 56px).
+        function wtEditLink(id, btn) {
+            const current = btn.dataset.link || '';
+            const next = window.prompt('Link (kosongkan untuk menghapus):', current);
+            if (next === null || next.trim() === current) return;
+            fetch(`${wtBase}/${id}/field`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': wtCsrf(),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    field: 'link',
+                    value: next.trim()
+                }),
+            }).then((res) => {
+                if (!res.ok) throw new Error();
+                wtRememberOpen();
+                window.location.reload();
+            }).catch(() => wtError('Link tidak valid (harus diawali http:// atau https://).'));
         }
 
         // --- Warna section: simpan langsung, header diwarnai ulang tanpa reload ---

@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -35,8 +36,11 @@ use Illuminate\Validation\Rule;
  */
 class CalendarController extends Controller
 {
-    /** Maksimal chip yang langsung tampil per sel; sisanya dilipat jadi "+N item". */
-    private const VISIBLE_PER_CELL = 6;
+    /**
+     * Maksimal chip yang langsung tampil per sel; sisanya jadi "+N item" yang
+     * membuka popup harian (2026-10-03: turun dari 6 ke 3 sesuai permintaan tim).
+     */
+    private const VISIBLE_PER_CELL = 3;
 
     public function index(Request $request)
     {
@@ -55,7 +59,8 @@ class CalendarController extends Controller
         $picUser = $picFilter ? User::query()->find($picFilter, ['id', 'name']) : null;
 
         $office = OfficeSetting::current();
-        $weeklyRhythm = $office->weeklyRhythm();
+        // 7 hari (Minggu..Sabtu) — Sabtu/Minggu berisi ritme event (header kalender).
+        $weeklyRhythm = $office->calendarRhythm();
 
         $gridStart = $anchor->copy()->subDays($anchor->dayOfWeek);
         $gridEnd = $gridStart->copy()->addDays(41);
@@ -89,8 +94,12 @@ class CalendarController extends Controller
             $color = Project::colorFor($p);
 
             return [
+                'id' => null,
                 'title' => $label,
                 'pic' => null,
+                'project' => $p->name,
+                'progress' => null,
+                'focus' => null,
                 'color' => $color,
                 'text' => Project::contrastTextFor($color),
                 'url' => $projectsUrl,
@@ -109,8 +118,12 @@ class CalendarController extends Controller
                         $color = Project::colorFor($item->project);
 
                         return [
+                            'id' => $item->id,
                             'title' => $item->title,
                             'pic' => $item->allPics()->pluck('name')->implode(' · ') ?: null,
+                            'project' => $item->project?->name,
+                            'progress' => $item->progress,
+                            'focus' => $item->computedFocus(),
                             'color' => $color,
                             'text' => Project::contrastTextFor($color),
                             'url' => route('dashboard.work.tracker.index', array_filter(['project_id' => $item->project_id])),
@@ -124,12 +137,23 @@ class CalendarController extends Controller
                     'date' => $date,
                     'outside' => $date->month !== $anchor->month,
                     'isToday' => $date->isToday(),
+                    'key' => $key,
                     'rhythm' => $weeklyRhythm[$date->dayOfWeek] ?? null,
+                    'all' => $items,
                     'visible' => $items->take(self::VISIBLE_PER_CELL),
                     'hidden' => $items->slice(self::VISIBLE_PER_CELL)->values(),
                 ];
             });
         });
+
+        // Data popup harian (satu JSON untuk seluruh grid): tanggal, ritme hari itu, dan semua item.
+        $dayPopups = $weeks->flatten(1)->mapWithKeys(fn(array $cell) => [
+            $cell['key'] => [
+                'label' => $cell['date']->translatedFormat('l, j F Y'),
+                'rhythm' => $cell['rhythm'] ? Arr::only($cell['rhythm'], ['focus', 'mode', 'hours']) : null,
+                'items' => $cell['all']->values()->all(),
+            ],
+        ]);
 
         $projects = Project::query()->orderBy('name')->get(['id', 'name', 'color']);
         $picOptions = User::query()
@@ -144,6 +168,8 @@ class CalendarController extends Controller
 
         return view('dashboard.work.calendar', [
             'weeks' => $weeks,
+            'dayPopups' => $dayPopups,
+            'rhythmOrder' => [1, 2, 3, 4, 5, 6, 0],
             'anchor' => $anchor,
             'projects' => $projects,
             'picOptions' => $picOptions,
@@ -157,7 +183,29 @@ class CalendarController extends Controller
         ]);
     }
 
-    /** Simpan Weekly Rhythm (Senin–Jumat) — padanan `saveWeeklyRhythmV19()` prototype. */
+    /**
+     * Pindah tanggal deadline item lewat drag & drop kalender (desktop saja —
+     * halaman hanya mengaktifkan drag di layar lebar dengan mouse; endpoint ini
+     * tetap digerbang work=manage). Padanan prototype: ubah `due`, bukan section.
+     */
+    public function moveItem(Request $request, WorkItem $item)
+    {
+        $data = $request->validate(['due_date' => ['required', 'date_format:Y-m-d']]);
+
+        $oldDate = $item->due_date?->toDateString();
+        if ($oldDate !== $data['due_date']) {
+            $item->update(['due_date' => $data['due_date']]);
+            AuditLog::record(
+                'Deadline task dipindah',
+                'Task "' . $item->title . '" dipindah dari ' . ($oldDate ?? 'tanpa tanggal') . ' ke ' . $data['due_date'] . ' (kalender) oleh ' . $request->user()->name . '.',
+                $request->user()
+            );
+        }
+
+        return response()->json(['ok' => true, 'due_date' => $data['due_date']]);
+    }
+
+    /** Simpan Weekly Rhythm (Senin–Minggu) — padanan `saveWeeklyRhythmV19()` prototype. */
     public function updateRhythm(Request $request)
     {
         $data = $request->validate([
@@ -172,8 +220,17 @@ class CalendarController extends Controller
             return back()->with('error', 'Pengaturan kantor belum dikonfigurasi — isi dulu di Pengaturan Kantor.');
         }
 
+        // 5 hari kerja + Sabtu/Minggu (ritme event). Hari yang tidak ikut dikirim
+        // mempertahankan nilai tersimpan, bukan jatuh ke default.
+        $stored = is_array($office->weekly_rhythm) ? $office->weekly_rhythm : [];
         $rhythm = [];
-        foreach (OfficeSetting::DEFAULT_WEEKLY_RHYTHM as $dow => $default) {
+        foreach (OfficeSetting::DEFAULT_WEEKEND_RHYTHM + OfficeSetting::DEFAULT_WEEKLY_RHYTHM as $dow => $default) {
+            if (! isset($data['rhythm'][$dow]) && isset($stored[$dow])) {
+                $rhythm[$dow] = $stored[$dow];
+
+                continue;
+            }
+
             $row = $data['rhythm'][$dow] ?? [];
             $rhythm[$dow] = [
                 'focus' => trim((string) ($row['focus'] ?? '')) ?: $default['focus'],

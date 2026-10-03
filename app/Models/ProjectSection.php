@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -56,6 +57,28 @@ class ProjectSection extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Orang yang boleh melihat section ini (2026-10-03). Kosong = terbuka
+     * untuk semua; terisi = terbatas (lihat migration project_section_viewers).
+     */
+    public function viewers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'project_section_viewers', 'project_section_id', 'user_id');
+    }
+
+    public function isRestricted(): bool
+    {
+        return $this->viewers->isNotEmpty();
+    }
+
+    /** Boleh dilihat $user? (Item milik sendiri ditangani terpisah di level item.) */
+    public function isVisibleTo(User $user): bool
+    {
+        return $user->seesAllWork()
+            || ! $this->isRestricted()
+            || $this->viewers->contains('id', $user->id);
     }
 
     /** Pastikan (project, nama) punya baris; baru ditaruh di urutan paling bawah. Idempotent. */

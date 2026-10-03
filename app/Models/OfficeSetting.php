@@ -61,7 +61,18 @@ class OfficeSetting extends Model
         5 => ['day' => 'Jumat', 'focus' => 'Review & Improvement + Planning', 'mode' => 'WFH', 'hours' => ''],
     ];
 
-    public const RHYTHM_MODES = ['WFO', 'WFH', 'Flexible'];
+    /**
+     * Ritme akhir pekan (2026-10-03) — Sabtu (6) & Minggu (0) tidak ikut
+     * `weeklyRhythm()` (itu murni 5 hari kerja: dashboard Owner, kartu
+     * "Today's Work Rhythm", strip App Mode) — hanya dipakai header
+     * Timeline Calendar lewat `calendarRhythm()`. Isinya ritme "event".
+     */
+    public const DEFAULT_WEEKEND_RHYTHM = [
+        6 => ['day' => 'Sabtu', 'focus' => 'Event & Show', 'mode' => 'Event', 'hours' => ''],
+        0 => ['day' => 'Minggu', 'focus' => 'Event & Rest', 'mode' => 'Event', 'hours' => ''],
+    ];
+
+    public const RHYTHM_MODES = ['WFO', 'WFH', 'Flexible', 'Event'];
 
     /**
      * Weekly Rhythm final, siap tampil — key = nomor hari (1=Senin..5=Jumat,
@@ -73,12 +84,31 @@ class OfficeSetting extends Model
      */
     public function weeklyRhythm(): array
     {
+        return $this->buildRhythm(self::DEFAULT_WEEKLY_RHYTHM);
+    }
+
+    /**
+     * Ritme 7 hari (Minggu=0 .. Sabtu=6) untuk header Timeline Calendar:
+     * 5 hari kerja dari `weeklyRhythm()` + ritme event Sabtu/Minggu. Data
+     * tersimpan di kolom `weekly_rhythm` yang sama (key 0 & 6).
+     */
+    public function calendarRhythm(): array
+    {
+        $all = $this->buildRhythm(self::DEFAULT_WEEKEND_RHYTHM + self::DEFAULT_WEEKLY_RHYTHM);
+        ksort($all);
+
+        return $all;
+    }
+
+    /** @param array<int, array{day:string,focus:string,mode:string,hours:string}> $defaults */
+    private function buildRhythm(array $defaults): array
+    {
         $officeHours = Carbon::parse($this->work_start_time)->format('H:i') . '–' .
             Carbon::parse($this->normal_end_time)->format('H:i');
         $stored = is_array($this->weekly_rhythm) ? $this->weekly_rhythm : [];
 
         $result = [];
-        foreach (self::DEFAULT_WEEKLY_RHYTHM as $dow => $default) {
+        foreach ($defaults as $dow => $default) {
             $row = is_array($stored[$dow] ?? null) ? $stored[$dow] : [];
             $mode = in_array($row['mode'] ?? null, self::RHYTHM_MODES, true) ? $row['mode'] : $default['mode'];
             $focus = trim((string) ($row['focus'] ?? '')) ?: $default['focus'];
@@ -88,7 +118,11 @@ class OfficeSetting extends Model
                 'day' => $default['day'],
                 'focus' => $focus,
                 'mode' => $mode,
-                'hours' => $hours !== '' ? $hours : ($mode === 'WFO' ? $officeHours : 'Flexible / remote'),
+                'hours' => $hours !== '' ? $hours : match ($mode) {
+                    'WFO' => $officeHours,
+                    'Event' => 'Sesuai jadwal event',
+                    default => 'Flexible / remote',
+                },
                 'hours_custom' => $hours,
             ];
         }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard\Work;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\ProjectRequest;
 use App\Http\Requests\Dashboard\Work\WorkItemRequest;
+use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\ProjectSection;
 use App\Models\User;
@@ -47,6 +48,19 @@ use Illuminate\Validation\Rule;
  */
 class WorkTrackerBoardController extends Controller
 {
+    /** Pilihan filter Focus — urutan = dari yang paling mendesak. */
+    public const FOCUS_OPTIONS = ['KELEWAT', 'HARI INI', 'BESOK', 'MINGGU INI', 'MINGGU DEPAN', 'AMAN', 'NOT URGENT', 'SELESAI'];
+
+    /** PIC item di section terbatas tetap boleh melihat section itu (task sendiri tidak disembunyikan). */
+    private function picsOfSection(ProjectSection $section, User $user): bool
+    {
+        return WorkItem::query()
+            ->where('project_id', $section->project_id)
+            ->where('section', $section->name)
+            ->forPic($user->id)
+            ->exists();
+    }
+
     /**
      * Work Tracker = task PER PROJECT (2026-09-28): kartu project ->
      * accordion section -> tabel item, meniru `trackerBoardMarkup()`
@@ -61,7 +75,11 @@ class WorkTrackerBoardController extends Controller
         // Tambal baris warna/urutan untuk section yang belum terdaftar, lalu
         // baca sekali: [project_id => [nama => ProjectSection]] terurut.
         ProjectSection::syncMissing();
-        $meta = ProjectSection::query()->orderBy('sort_order')->orderBy('id')->get()
+        $viewer = $request->user();
+        // Section terbatas (visibility per orang) disembunyikan dari yang tidak berhak;
+        // daftar viewer ikut dimuat untuk dialog "Siapa yang bisa lihat" (Owner/manage).
+        $meta = ProjectSection::query()->with('viewers:id,name')->orderBy('sort_order')->orderBy('id')->get()
+            ->filter(fn(ProjectSection $s) => $s->isVisibleTo($viewer) || $this->picsOfSection($s, $viewer))
             ->groupBy('project_id')
             ->map(fn($rows) => $rows->keyBy('name'));
 
@@ -73,9 +91,13 @@ class WorkTrackerBoardController extends Controller
 
         // Filter PIC/Progress menyembunyikan item — section kosong ikut
         // disembunyikan & tombol geser dimatikan (urutan penuh jadi tidak terlihat).
-        $filtering = (bool) ($selectedPic || $selectedProgress);
+        // Focus = hasil `computedFocus()` (HARI INI/BESOK/KELEWAT/...), bukan kolom DB — difilter di PHP.
+        $selectedFocus = in_array($request->query('focus'), self::FOCUS_OPTIONS, true)
+            ? $request->query('focus')
+            : null;
+        $filtering = (bool) ($selectedPic || $selectedProgress || $selectedFocus);
 
-        $all = WorkItem::query()->with(['pic', 'additionalPics'])->orderBy('due_date')->orderBy('item_no')->get();
+        $all = WorkItem::query()->sectionVisibleTo($viewer)->with(['pic', 'additionalPics'])->orderBy('due_date')->orderBy('item_no')->get();
 
         $stats = [
             'today' => $all->filter(fn(WorkItem $i) => $i->computedFocus() === 'HARI INI')->count(),
@@ -104,6 +126,7 @@ class WorkTrackerBoardController extends Controller
             ->when($selectedProjectId, fn($c) => $c->where('project_id', $selectedProjectId))
             ->when($selectedPic, fn($c) => $c->filter(fn(WorkItem $i) => $i->hasPic($selectedPic)))
             ->when($selectedProgress, fn($c) => $c->where('progress', $selectedProgress))
+            ->when($selectedFocus, fn($c) => $c->filter(fn(WorkItem $i) => $i->computedFocus() === $selectedFocus))
             ->groupBy(fn(WorkItem $i) => $i->project_id ?? 0);
 
         $cards = $projects
@@ -125,6 +148,8 @@ class WorkTrackerBoardController extends Controller
             'selectedProjectId' => $selectedProjectId,
             'selectedPic' => $selectedPic,
             'selectedProgress' => $selectedProgress,
+            'selectedFocus' => $selectedFocus,
+            'focusOptions' => self::FOCUS_OPTIONS,
             'filtering' => $filtering,
         ]);
     }
@@ -178,6 +203,7 @@ class WorkTrackerBoardController extends Controller
                     'rows' => $rows,
                     'model' => $section,
                     'color' => $section->effectiveColor(),
+                    'viewer_ids' => $section->viewers->pluck('id')->all(),
                     'is_first' => $index === 0,
                     'is_last' => $index === $lastManaged,
                 ]);
@@ -271,6 +297,33 @@ class WorkTrackerBoardController extends Controller
         }
 
         return back()->with('status', 'Warna section diperbarui.');
+    }
+
+    /**
+     * Atur siapa saja yang boleh melihat section (2026-10-03). Daftar kosong
+     * = section terbuka untuk semua. Owner/Developer selalu melihat semuanya.
+     */
+    public function updateSectionViewers(Request $request, ProjectSection $section)
+    {
+        $data = $request->validate([
+            'user_ids' => ['nullable', 'array'],
+            'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $ids = array_map('intval', $data['user_ids'] ?? []);
+        $section->viewers()->sync($ids);
+
+        AuditLog::record(
+            'Visibility section diubah',
+            'Section "' . $section->name . '" (project #' . $section->project_id . ') ' . ($ids === [] ? 'dibuka untuk semua' : 'dibatasi untuk ' . count($ids) . ' orang') . ' oleh ' . $request->user()->name . '.',
+            $request->user()
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'count' => count($ids)]);
+        }
+
+        return back()->with('status', $ids === [] ? 'Section terbuka untuk semua.' : 'Visibility section disimpan.');
     }
 
     /** Geser 1 posisi ke atas/bawah dalam urutan section project itu. */
@@ -379,6 +432,48 @@ class WorkTrackerBoardController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true]);
+        }
+
+        return back();
+    }
+
+    /**
+     * Edit satuan 1 kolom langsung dari tabel tracker (2026-10-03), tanpa
+     * membuka form Edit: judul, tanggal, PIC utama, link. Progress & note
+     * punya endpoint sendiri di atas/bawah. Hanya field yang dikirim yang diubah.
+     */
+    public function updateField(Request $request, WorkItem $item)
+    {
+        $field = $request->validate([
+            'field' => ['required', Rule::in(['title', 'due_date', 'pic_employee_id', 'link'])],
+        ])['field'];
+
+        $rules = [
+            'title' => ['required', 'string', 'max:255'],
+            'due_date' => ['nullable', 'date'],
+            'pic_employee_id' => ['nullable', 'exists:users,id'],
+            'link' => ['nullable', 'url', 'max:255'],
+        ];
+
+        $value = $request->validate(['value' => $rules[$field]])['value'] ?? null;
+        $value = is_string($value) ? trim($value) : $value;
+        $value = ($value === '' || $value === null) ? null : $value;
+
+        if ($field === 'title' && $value === null) {
+            return response()->json(['message' => 'Judul tidak boleh kosong.'], 422);
+        }
+
+        DB::transaction(function () use ($item, $field, $value) {
+            $item->update([$field => $value]);
+
+            // Satu orang = satu peran: PIC utama baru tidak boleh sekaligus PIC tambahan.
+            if ($field === 'pic_employee_id' && $value !== null) {
+                $item->additionalPics()->detach((int) $value);
+            }
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'value' => $item->fresh()->{$field}]);
         }
 
         return back();

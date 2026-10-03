@@ -140,6 +140,32 @@ class WorkItem extends Model
                 ->orWhereIn('project_id', Project::query()->visibleTo($user)->select('projects.id'))
                 ->orWhere(fn(Builder $own) => $own->forPic($user->id))
                 ->orWhere('additional_pic', 'like', $nameLike);
+        })->sectionVisibleTo($user);
+    }
+
+    /**
+     * Pembatasan section per orang (2026-10-03): item di section yang punya
+     * daftar viewer hanya terlihat oleh viewer itu, Owner/Developer, dan PIC
+     * item tersebut. Section tanpa viewer = terbuka (perilaku lama).
+     */
+    public function scopeSectionVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->seesAllWork()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $w) use ($user) {
+            $w->whereNotExists(function ($section) use ($user) {
+                $section->select(DB::raw(1))
+                    ->from('project_sections as ps')
+                    ->whereColumn('ps.project_id', 'work_items.project_id')
+                    ->whereColumn('ps.name', 'work_items.section')
+                    ->whereExists(fn($v) => $v->select(DB::raw(1))->from('project_section_viewers as v')
+                        ->whereColumn('v.project_section_id', 'ps.id'))
+                    ->whereNotExists(fn($v) => $v->select(DB::raw(1))->from('project_section_viewers as v2')
+                        ->whereColumn('v2.project_section_id', 'ps.id')
+                        ->where('v2.user_id', $user->id));
+            })->orWhere(fn(Builder $own) => $own->forPic($user->id));
         });
     }
 
