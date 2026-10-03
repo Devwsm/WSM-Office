@@ -191,4 +191,98 @@
 
         <button type="submit" class="btn-wsm-black justify-self-start">Simpan Pengaturan</button>
     </form>
+
+    {{-- 2026-10-02 — Beranda Publik: padanan "Landing Copy & Banner" di Settings
+        prototype. Form terpisah (bukan bagian form di atas) karena disimpan ke
+        route sendiri dan punya tombol "Kembalikan bawaan". --}}
+    @php
+        $landing = $setting->landing();
+        $cardsOld = old('cards', $landing['cards']);
+    @endphp
+    <section class="mt-8" x-data="{
+        headline: @js(old('headline', $landing['headline'])),
+        tagline: @js(old('tagline', $landing['tagline'])),
+        cards: @js(array_values($cardsOld)),
+        textOn(hex) {
+            const h = (hex || '').replace('#', '');
+            if (h.length !== 6) return '#ffffff';
+            const r = parseInt(h.slice(0, 2), 16),
+                g = parseInt(h.slice(2, 4), 16),
+                b = parseInt(h.slice(4, 6), 16);
+            return ((r * 299 + g * 587 + b * 114) / 1000) >= 150 ? '#13220d' : '#ffffff';
+        },
+    }">
+        <div class="mb-4">
+            <h3 class="text-[26px] font-black leading-none tracking-tight">Beranda Publik</h3>
+            <p class="mt-1 text-[13px] text-muted">Judul, tagline, dan 4 banner di bagian atas halaman depan website
+                (yang dibuka sebelum login). Perubahan langsung tampil di
+                <a href="{{ route('public.home') }}" target="_blank" rel="noopener"
+                    class="font-bold underline">beranda</a>.
+            </p>
+        </div>
+
+        <form method="POST" action="{{ route('owner.landing.update') }}" class="card-wsm-white grid gap-4">
+            @csrf
+            @method('PATCH')
+
+            <div>
+                <label class="mb-1 block text-[11px] font-bold text-muted">Judul Besar</label>
+                <input type="text" name="headline" x-model="headline" maxlength="120" class="input-wsm" required>
+                @error('headline')
+                    <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                @enderror
+            </div>
+            <div>
+                <label class="mb-1 block text-[11px] font-bold text-muted">Tagline</label>
+                <textarea name="tagline" x-model="tagline" rows="3" maxlength="300" class="input-wsm" required></textarea>
+                @error('tagline')
+                    <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+                <template x-for="(card, i) in cards" :key="i">
+                    <div class="rounded-wsm border border-line bg-[#faf8f3] p-3.5">
+                        <p class="mb-2 text-[11px] font-extrabold uppercase text-muted" x-text="'Banner ' + (i + 1)"></p>
+                        <div class="grid gap-2">
+                            <input type="text" :name="`cards[${i}][label]`" x-model="card.label" maxlength="30"
+                                placeholder="Label kecil" class="input-wsm" required>
+                            <input type="text" :name="`cards[${i}][title]`" x-model="card.title" maxlength="30"
+                                placeholder="Judul banner" class="input-wsm" required>
+                            <div class="flex items-center gap-2">
+                                <input type="color" :name="`cards[${i}][color]`" x-model="card.color"
+                                    class="h-10 w-14 cursor-pointer rounded-lg border border-line bg-white p-1">
+                                <span class="text-xs text-muted" x-text="card.color"></span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex min-h-20 flex-col justify-between rounded-2xl p-3"
+                            :style="`background-color:${card.color};color:${textOn(card.color)}`">
+                            <span class="text-[10px] font-black uppercase" x-text="card.label"></span>
+                            <strong class="text-xl font-black" x-text="card.title"></strong>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            @if ($errors->has('cards') || $errors->has('cards.*'))
+                <p class="text-xs font-semibold text-[#a83d35]">Cek lagi isi banner: label dan judul wajib diisi, warna
+                    harus
+                    valid.</p>
+            @endif
+
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="btn-wsm-black">Simpan Beranda</button>
+                @if ($landing['customized'])
+                    <button type="submit" form="landing-reset-form" class="btn-wsm-white">Kembalikan Bawaan</button>
+                @endif
+            </div>
+        </form>
+        @if ($landing['customized'])
+            <form id="landing-reset-form" method="POST" action="{{ route('owner.landing.reset') }}" class="hidden"
+                data-confirm="Judul, tagline, dan banner dikembalikan ke teks bawaan."
+                data-confirm-title="Kembalikan bawaan?" data-confirm-button="Ya, kembalikan">
+                @csrf
+                @method('DELETE')
+            </form>
+        @endif
+    </section>
 @endsection

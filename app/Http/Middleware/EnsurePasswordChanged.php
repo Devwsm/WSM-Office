@@ -29,7 +29,7 @@ class EnsurePasswordChanged
             return $next($request);
         }
 
-        if ($request->routeIs('employee.profile.index', 'employee.profile.password', 'logout')) {
+        if ($request->routeIs('employee.profile.index', 'employee.profile.password', 'avatar.show', 'logout')) {
             return $next($request);
         }
 

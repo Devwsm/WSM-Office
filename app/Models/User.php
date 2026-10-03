@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -39,6 +40,8 @@ use Illuminate\Support\Carbon;
     'target_hours_per_day',
     'flat_overtime_rate',
     'work_team',
+    'avatar_path',
+    'theme_colors',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -90,6 +93,7 @@ class User extends Authenticatable
             'salary_base' => 'float',
             'target_hours_per_day' => 'integer',
             'flat_overtime_rate' => 'float',
+            'theme_colors' => 'array',
         ];
     }
 
@@ -122,6 +126,84 @@ class User extends Authenticatable
     public function workTeamLabel(): string
     {
         return self::WORK_TEAMS[$this->workTeam()];
+    }
+
+    /**
+     * Warna tampilan pribadi (padanan V22_THEME_DEFAULT di prototype).
+     * Key = nama field di form Profile, value = warna bawaan WSM.
+     */
+    public const THEME_DEFAULTS = [
+        'background' => '#f2efe7',
+        'text' => '#101010',
+        'primary' => '#101010',
+        'success' => '#27c84d',
+        'attention' => '#deb92e',
+        'danger' => '#f16c61',
+        'leave' => '#b4ef4b',
+    ];
+
+    /** Warna efektif: pilihan tersimpan (yang valid) menimpa warna bawaan. */
+    public function themeColors(): array
+    {
+        $saved = is_array($this->theme_colors) ? $this->theme_colors : [];
+        $colors = self::THEME_DEFAULTS;
+
+        foreach ($colors as $key => $default) {
+            $value = $saved[$key] ?? null;
+            if (is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value)) {
+                $colors[$key] = strtolower($value);
+            }
+        }
+
+        return $colors;
+    }
+
+    /**
+     * Deklarasi CSS untuk <body> layout karyawan. Warna Primary menimpa
+     * token `ink` (tombol hitam, tab aktif, logo), Main Text jadi `color`
+     * body. Aman dipasang langsung ke atribut style: semua nilai sudah
+     * lolos regex hex 6 digit di themeColors().
+     */
+    public function themeStyle(): string
+    {
+        $c = $this->themeColors();
+
+        return "--color-cream:{$c['background']};--color-ink:{$c['primary']};"
+            . "--color-brand-green:{$c['success']};--color-brand-yellow:{$c['attention']};"
+            . "--color-brand-red:{$c['danger']};--color-brand-lime:{$c['leave']};color:{$c['text']};";
+    }
+
+    /** True kalau user sudah menyimpan warna yang berbeda dari bawaan. */
+    public function hasCustomTheme(): bool
+    {
+        return $this->themeColors() !== self::THEME_DEFAULTS;
+    }
+
+    /** Foto profil tersimpan di disk private, keluar lewat route `avatar.show`. */
+    public function hasAvatar(): bool
+    {
+        return filled($this->avatar_path);
+    }
+
+    public function avatarUrl(): ?string
+    {
+        if (! $this->hasAvatar()) {
+            return null;
+        }
+
+        // `v` hanya pemecah cache browser saat foto diganti.
+        return route('avatar.show', ['user' => $this->id, 'v' => $this->updated_at?->timestamp]);
+    }
+
+    public function initial(): string
+    {
+        return strtoupper(mb_substr(trim($this->name ?? '') ?: '?', 0, 1));
+    }
+
+    /** Kelompok tim custom yang diikuti user ini. */
+    public function teamGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(TeamGroup::class, 'team_group_user');
     }
 
     /** Owner dan Developer melihat semua project (sama seperti akses dashboard mereka). */

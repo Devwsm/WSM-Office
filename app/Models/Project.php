@@ -106,9 +106,34 @@ class Project extends Model
         return $slug;
     }
 
+    /**
+     * Semua pilihan visibility: tim bawaan + kelompok tim custom
+     * ("group:<id>", lihat TeamGroup). Dipakai form project & validasinya.
+     *
+     * @return array<string, string>
+     */
+    public static function visibilityOptions(): array
+    {
+        $options = self::VISIBILITIES;
+
+        foreach (TeamGroup::query()->orderBy('name')->get(['id', 'name']) as $group) {
+            $options['group:' . $group->id] = 'Kelompok · ' . $group->name;
+        }
+
+        return $options;
+    }
+
     public function visibilityLabel(): string
     {
-        return self::VISIBILITIES[$this->visibility ?? 'all'] ?? self::VISIBILITIES['all'];
+        $key = $this->visibility ?? 'all';
+
+        if (str_starts_with($key, 'group:')) {
+            $group = TeamGroup::query()->find((int) substr($key, 6));
+
+            return $group ? 'Kelompok · ' . $group->name : self::VISIBILITIES['all'];
+        }
+
+        return self::VISIBILITIES[$key] ?? self::VISIBILITIES['all'];
     }
 
     /** Project yang boleh dilihat $user di kalender bersama (lihat VISIBILITIES). */
@@ -118,11 +143,19 @@ class Project extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $w) use ($user) {
+        $groupKeys = $user->teamGroups()->pluck('team_groups.id')
+            ->map(fn($id) => 'group:' . $id)
+            ->all();
+
+        return $query->where(function (Builder $w) use ($user, $groupKeys) {
             $w->whereNull('visibility')
                 ->orWhere('visibility', 'all')
                 ->orWhere('lead_employee_id', $user->id)
                 ->orWhere('visibility', $user->workTeam());
+
+            if ($groupKeys !== []) {
+                $w->orWhereIn('visibility', $groupKeys);
+            }
         });
     }
 

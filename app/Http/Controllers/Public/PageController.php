@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\StoreJobApplicationRequest;
 use App\Models\ContactMessage;
 use App\Models\JobOpening;
+use App\Models\OfficeSetting;
 use Illuminate\Http\Request;
 
 /**
@@ -31,7 +32,9 @@ class PageController extends Controller
 {
     public function home()
     {
-        return view('public.home');
+        // Tagline + banner bisa diubah Owner lewat Pengaturan Kantor
+        // (OfficeSetting::landing()); tanpa perubahan = teks bawaan.
+        return view('public.home', ['landing' => OfficeSetting::current()->landing()]);
     }
 
     public function about()

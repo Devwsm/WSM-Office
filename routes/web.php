@@ -57,7 +57,9 @@ use App\Http\Controllers\Owner\ContactMessageController;
 use App\Http\Controllers\Owner\DashboardAccessController;
 use App\Http\Controllers\Owner\DashboardController;
 use App\Http\Controllers\Owner\EmployeeController;
+use App\Http\Controllers\Owner\LandingContentController;
 use App\Http\Controllers\Owner\OfficeSettingController;
+use App\Http\Controllers\Owner\TeamGroupController;
 use App\Http\Controllers\Owner\OrganizationController;
 use App\Http\Controllers\Employee\AttendanceController;
 use App\Http\Controllers\Employee\AttendanceCorrectionController;
@@ -86,6 +88,12 @@ Route::name('public.')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+
+// --- Foto profil (2026-10-02) ---
+// Di luar prefix /app karena <img> dipakai juga di layout dashboard. Cukup
+// login (semua staf internal saling melihat foto di tim); file tetap di disk
+// private, tidak ada URL publik langsung.
+Route::get('/avatar/{user}', [ProfileController::class, 'avatar'])->middleware('auth')->whereNumber('user')->name('avatar.show');
 
 // --- Karyawan & Manajer (Manajer tetap karyawan; HRD juga staf internal) ---
 Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix('app')->name('employee.')->group(function () {
@@ -126,6 +134,11 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix
     // --- Tab Profile (bottom-nav) — sebelumnya placeholder "TODO Fase 1" ---
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    // --- 2026-10-02: foto profil & warna tampilan pribadi ---
+    Route::post('/profile/foto', [ProfileController::class, 'updateAvatar'])->middleware('throttle:10,1')->name('profile.avatar.update');
+    Route::delete('/profile/foto', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+    Route::patch('/profile/warna', [ProfileController::class, 'updateTheme'])->name('profile.theme.update');
+    Route::delete('/profile/warna', [ProfileController::class, 'resetTheme'])->name('profile.theme.reset');
 
     // --- Fase 8: interaksi Memo Forum dari kartu "Info dari Owner" (Home) ---
     // Sengaja di grup role yang sama kayak home/profile di atas (SEMUA
@@ -193,6 +206,14 @@ Route::middleware(['auth', 'role:owner,developer', 'dashboard.unlocked'])->prefi
     // yang ubah + deploy ulang) — sekarang Owner bisa ubah sendiri.
     Route::get('/pengaturan-kantor', [OfficeSettingController::class, 'edit'])->name('office-settings.edit');
     Route::patch('/pengaturan-kantor', [OfficeSettingController::class, 'update'])->name('office-settings.update');
+    // --- 2026-10-02: kelompok tim custom (visibility project) ---
+    Route::get('/kelompok-tim', [TeamGroupController::class, 'index'])->name('team-groups.index');
+    Route::post('/kelompok-tim', [TeamGroupController::class, 'store'])->name('team-groups.store');
+    Route::patch('/kelompok-tim/{group}', [TeamGroupController::class, 'update'])->name('team-groups.update');
+    Route::delete('/kelompok-tim/{group}', [TeamGroupController::class, 'destroy'])->name('team-groups.destroy');
+    // --- 2026-10-02: editor beranda publik (tagline + banner) ---
+    Route::patch('/beranda-publik', [LandingContentController::class, 'update'])->name('landing.update');
+    Route::delete('/beranda-publik', [LandingContentController::class, 'reset'])->name('landing.reset');
 
     // --- Fase 1 (susulan, 2026-09-13): Pesan Kontak publik ---
     // Belum jadi modul dashboard_access — cuma Owner dulu yang bisa

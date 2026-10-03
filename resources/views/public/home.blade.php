@@ -5,6 +5,10 @@
     resmi dari tim (profil perusahaan, foto, dsb.) tersedia — nanti bisa
     diedit lewat CMS ringan di Fase 12, untuk sekarang edit langsung di
     file ini.
+
+    2026-10-02 — judul, tagline, dan 4 banner di bagian atas sekarang
+    dikelola Owner lewat Pengaturan Kantor → Beranda Publik
+    (OfficeSetting::landing()); bagian di bawahnya masih teks tetap.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.public', ['title' => 'Beranda'])
@@ -15,11 +19,10 @@
             <div>
                 <span class="badge-wsm-blue">Whisnu Santika Music</span>
                 <h1 class="mt-5 text-[32px] font-black leading-[1.02] tracking-tight sm:text-[44px] lg:text-[64px]">
-                    Musik, karya, dan tim di baliknya.
+                    {{ $landing['headline'] }}
                 </h1>
                 <p class="mt-5 max-w-lg text-[17px] text-muted">
-                    WSM mengelola produksi musik, kampanye, dan operasional tim di balik karya-karya
-                    Whisnu Santika — dari proses kreatif sampai ke publik.
+                    {{ $landing['tagline'] }}
                 </p>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <a href="{{ route('public.careers') }}" class="btn-wsm-black">Lihat Lowongan</a>
@@ -27,23 +30,17 @@
                 </div>
             </div>
 
+            {{-- 4 banner: label, judul, dan warna dikelola Owner di Pengaturan
+                Kantor → Beranda Publik. Warna & teks dipasang inline supaya
+                bebas dari palet kelas bawaan. --}}
             <div class="grid grid-cols-2 gap-3.5">
-                <div class="stat-wsm-blue">
-                    <span class="stat-wsm-label">Fokus</span>
-                    <strong class="stat-wsm-value">Musik</strong>
-                </div>
-                <div class="stat-wsm-yellow">
-                    <span class="stat-wsm-label">Tim</span>
-                    <strong class="stat-wsm-value">Kreatif</strong>
-                </div>
-                <div class="stat-wsm-green">
-                    <span class="stat-wsm-label">Kampanye</span>
-                    <strong class="stat-wsm-value">Aktif</strong>
-                </div>
-                <div class="stat-wsm-lime">
-                    <span class="stat-wsm-label">Karir</span>
-                    <strong class="stat-wsm-value">Terbuka</strong>
-                </div>
+                @foreach ($landing['cards'] as $card)
+                    <div class="flex min-h-37.5 flex-col justify-between rounded-wsm-lg p-5"
+                        style="background-color: {{ $card['color'] }}; color: {{ $card['text'] }}">
+                        <span class="stat-wsm-label">{{ $card['label'] }}</span>
+                        <strong class="stat-wsm-value wrap-break-word">{{ $card['title'] }}</strong>
+                    </div>
+                @endforeach
             </div>
         </div>
     </section>

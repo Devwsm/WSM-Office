@@ -412,9 +412,13 @@
                     </button>
                 </form>
                 <div class="flex items-center gap-2.5 px-1 pb-3">
-                    <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#ece7dd] text-xs font-black">
-                        {{ strtoupper(substr(auth()->user()->name ?? '?', 0, 1)) }}
-                    </div>
+                    @if (auth()->user()->hasAvatar())
+                        <x-avatar :user="auth()->user()" class="h-9 w-9 rounded-xl text-xs" />
+                    @else
+                        <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#ece7dd] text-xs font-black">
+                            {{ auth()->user()->initial() }}
+                        </div>
+                    @endif
                     <div class="min-w-0 leading-tight">
                         <strong class="block truncate text-xs">{{ auth()->user()->name }}</strong>
                         <span class="text-[10px] capitalize text-muted">{{ auth()->user()->role }}</span>

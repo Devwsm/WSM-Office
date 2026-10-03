@@ -13,7 +13,10 @@
             <h2 class="text-[40px] font-black leading-[0.95] tracking-tight">Karyawan</h2>
             <p class="mt-1 text-[15px] text-muted">Kelola akun, role, dan atasan tiap karyawan.</p>
         </div>
-        <a href="{{ route('owner.employees.create') }}" class="btn-wsm-black">+ Tambah Karyawan</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('owner.team-groups.index') }}" class="btn-wsm-white">Kelompok Tim</a>
+            <a href="{{ route('owner.employees.create') }}" class="btn-wsm-black">+ Tambah Karyawan</a>
+        </div>
     </div>
 
     <form method="GET" class="card-wsm-white mb-5 flex flex-wrap items-end gap-3">

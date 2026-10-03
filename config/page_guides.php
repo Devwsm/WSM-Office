@@ -44,6 +44,7 @@ return [
         'owner.employees.edit' => 'employee-form',
         'owner.employees.access.edit' => 'employee-access',
         'owner.office-settings.edit' => 'office-settings',
+        'owner.team-groups.index' => 'team-groups',
 
         // --- Manajer (Team Overview, README #40) ---
         'manajer.team.attendance' => 'team-attendance',
@@ -239,6 +240,25 @@ return [
             ],
         ],
 
+        'team-groups' => [
+            'title' => 'Kelompok Tim',
+            'summary' => 'Buat kelompok karyawan sendiri (mis. WS TEAM, OPERATING TEAM) untuk membatasi siapa yang melihat sebuah project.',
+            'access' => 'owner-developer',
+            'sections' => [
+                'Yang bisa dilakukan' => [
+                    ['Buat / Edit kelompok', 'isi nama, pilih warna, centang anggotanya. Satu karyawan boleh masuk lebih dari satu kelompok.'],
+                    ['Hapus', 'menghapus kelompok. Ditolak kalau masih ada project yang Visibility-nya memakai kelompok itu.'],
+                ],
+                'Cara memakainya' => [
+                    'Setelah dibuat, kelompok muncul sebagai pilihan "Kelompok · nama" di kolom Visibility pada form project (menu Projects).',
+                ],
+                'Perlu diketahui' => [
+                    'Kelompok ini terpisah dari Tim Kerja bawaan di form Karyawan. Keduanya bisa dipakai bersamaan.',
+                    'Visibility hanya membatasi kalender bersama di halaman karyawan. Lead project dan PIC task tetap melihat; Owner dan Developer melihat semua.',
+                ],
+            ],
+        ],
+
         'office-settings' => [
             'title' => 'Pengaturan Kantor',
             'summary' => 'Lokasi kantor, aturan jam kerja, dan warna aksen dashboard. Perubahan langsung berlaku untuk absen berikutnya.',
@@ -258,6 +278,11 @@ return [
                 ],
                 'Warna Aksen' => [
                     'Mengubah warna menu Dashboard/Owner dan menu Work Control di sidebar.',
+                ],
+                'Beranda Publik' => [
+                    ['Judul Besar dan Tagline', 'teks utama di halaman depan website yang dibuka sebelum login.'],
+                    ['4 Banner', 'label kecil, judul, dan warna tiap kotak di sisi kanan beranda. Warna teks menyesuaikan otomatis supaya terbaca.'],
+                    ['Kembalikan Bawaan', 'mengosongkan semua isian di atas sehingga beranda kembali ke teks awal.'],
                 ],
                 'Perlu diketahui' => [
                     'Absen tidak pernah diblokir karena radius, baik pengecekan geo dinyalakan maupun dimatikan.',

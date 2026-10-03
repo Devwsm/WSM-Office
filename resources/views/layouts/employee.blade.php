@@ -18,9 +18,33 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'WSM' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- 2026-10-02 — Personal Colors (padanan "Personal Theme" prototype).
+        Hanya aktif kalau user sudah menyimpan warna sendiri; badge Done/
+        Follow Up/Overdue memakai hex tetap di app.css, jadi ditimpa di sini
+        (satu-satunya tempat) lewat warna sukses/perhatian/bahaya user. --}}
+    @if (auth()->user()?->hasCustomTheme())
+        @php $theme = auth()->user()->themeColors(); @endphp
+        <style>
+            .badge-wsm-green {
+                background-color: color-mix(in srgb, {{ $theme['success'] }} 16%, white);
+                color: color-mix(in srgb, {{ $theme['success'] }} 62%, black);
+            }
+
+            .badge-wsm-yellow {
+                background-color: color-mix(in srgb, {{ $theme['attention'] }} 20%, white);
+                color: color-mix(in srgb, {{ $theme['attention'] }} 55%, black);
+            }
+
+            .badge-wsm-red {
+                background-color: color-mix(in srgb, {{ $theme['danger'] }} 16%, white);
+                color: color-mix(in srgb, {{ $theme['danger'] }} 62%, black);
+            }
+        </style>
+    @endif
 </head>
 
-<body class="bg-cream text-ink antialiased">
+<body class="bg-cream text-ink antialiased"
+    @if (auth()->user()?->hasCustomTheme()) style="{{ auth()->user()->themeStyle() }}" @endif>
     @include('partials.flash-data')
 
     {{-- Popup informasi preview (README Bab 4.2 no. 8): Sambutan "Welcome to
@@ -101,9 +125,8 @@
                                     </span>
                                 @endif
                             </button>
-                            <a href="{{ route('employee.profile.index') }}" aria-label="Profil saya"
-                                class="grid h-10 w-10 flex-none place-items-center rounded-2xl bg-ink text-xs font-black text-white">
-                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            <a href="{{ route('employee.profile.index') }}" aria-label="Profil saya" class="flex-none">
+                                <x-avatar :user="auth()->user()" class="h-10 w-10 rounded-2xl text-xs" />
                             </a>
                         </div>
                     </div>

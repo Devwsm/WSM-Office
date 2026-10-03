@@ -38,7 +38,7 @@ class ProjectRequest extends FormRequest
             'lead_employee_id' => ['nullable', 'exists:users,id'],
             'tracker_url' => ['nullable', 'url', 'max:255'],
             'progress_recap' => ['nullable', 'string'],
-            'visibility' => ['required', Rule::in(array_keys(Project::VISIBILITIES))],
+            'visibility' => ['required', Rule::in(array_keys(Project::visibilityOptions()))],
         ];
     }
 

@@ -105,7 +105,7 @@
                 <label class="text-[10px] font-extrabold uppercase text-muted">Visibility</label>
                 <select name="visibility" id="wtProjectVisibility"
                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
-                    @foreach (\App\Models\Project::VISIBILITIES as $key => $label)
+                    @foreach (\App\Models\Project::visibilityOptions() as $key => $label)
                         <option value="{{ $key }}" @selected(old('visibility', 'all') === $key)>{{ $label }}
                         </option>
                     @endforeach

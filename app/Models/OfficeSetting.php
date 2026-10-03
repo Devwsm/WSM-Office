@@ -42,6 +42,7 @@ use Illuminate\Support\Carbon;
     'payroll_work_days_divisor',
     'auto_close_enabled',
     'weekly_rhythm',
+    'landing_content',
 ])]
 class OfficeSetting extends Model
 {
@@ -95,6 +96,75 @@ class OfficeSetting extends Model
         return $result;
     }
 
+    /**
+     * Teks & banner bawaan beranda publik (padanan v23LandingConfig di
+     * prototype). Nilainya sama dengan teks yang dulu ditulis langsung di
+     * `public/home.blade.php`, jadi tampilan tidak berubah sampai Owner
+     * mengubahnya lewat Pengaturan Kantor.
+     */
+    public const DEFAULT_LANDING = [
+        'headline' => 'Musik, karya, dan tim di baliknya.',
+        'tagline' => 'WSM mengelola produksi musik, kampanye, dan operasional tim di balik karya-karya Whisnu Santika — dari proses kreatif sampai ke publik.',
+        'cards' => [
+            ['label' => 'Fokus', 'title' => 'Musik', 'color' => '#3558f4'],
+            ['label' => 'Tim', 'title' => 'Kreatif', 'color' => '#deb92e'],
+            ['label' => 'Kampanye', 'title' => 'Aktif', 'color' => '#27c84d'],
+            ['label' => 'Karir', 'title' => 'Terbuka', 'color' => '#b4ef4b'],
+        ],
+    ];
+
+    /**
+     * Konten beranda final: nilai tersimpan (yang valid) menimpa bawaan,
+     * kolom kosong jatuh ke bawaan supaya beranda tidak pernah kosong.
+     * Tiap kartu juga membawa `text` (putih/gelap) yang terbaca di atas
+     * warna kartunya.
+     *
+     * @return array{headline:string, tagline:string, cards:list<array{label:string,title:string,color:string,text:string}>, customized:bool}
+     */
+    public function landing(): array
+    {
+        $stored = is_array($this->landing_content) ? $this->landing_content : [];
+        $default = self::DEFAULT_LANDING;
+
+        $headline = trim((string) ($stored['headline'] ?? '')) ?: $default['headline'];
+        $tagline = trim((string) ($stored['tagline'] ?? '')) ?: $default['tagline'];
+
+        $cards = [];
+        foreach ($default['cards'] as $i => $fallback) {
+            $row = is_array($stored['cards'][$i] ?? null) ? $stored['cards'][$i] : [];
+            $color = (string) ($row['color'] ?? '');
+            $color = preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? strtolower($color) : $fallback['color'];
+
+            $cards[] = [
+                'label' => trim((string) ($row['label'] ?? '')) ?: $fallback['label'],
+                'title' => trim((string) ($row['title'] ?? '')) ?: $fallback['title'],
+                'color' => $color,
+                'text' => self::readableTextOn($color),
+            ];
+        }
+
+        return [
+            'headline' => $headline,
+            'tagline' => $tagline,
+            'cards' => $cards,
+            'customized' => $stored !== [],
+        ];
+    }
+
+    /** Warna teks (putih atau gelap) yang terbaca di atas warna latar `$hex` (rumus YIQ). */
+    public static function readableTextOn(string $hex): string
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) !== 6 || ! ctype_xdigit($hex)) {
+            return '#ffffff';
+        }
+
+        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+        $yiq = ($r * 299 + $g * 587 + $b * 114) / 1000;
+
+        return $yiq >= 150 ? '#13220d' : '#ffffff';
+    }
+
     protected function casts(): array
     {
         return [
@@ -107,6 +177,7 @@ class OfficeSetting extends Model
             'payroll_work_days_divisor' => 'integer',
             'auto_close_enabled' => 'boolean',
             'weekly_rhythm' => 'array',
+            'landing_content' => 'array',
         ];
     }
 
