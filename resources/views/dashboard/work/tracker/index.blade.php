@@ -211,7 +211,7 @@
                                             <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
                                         </span>
                                         <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
-                                            @if (!empty($section['viewer_ids']))
+                                            @if (! empty($section['viewer_ids']))
                                                 <span title="Hanya orang tertentu yang bisa melihat section ini"
                                                     class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
                                                     {{ count($section['viewer_ids']) }} orang</span>
@@ -239,8 +239,7 @@
                                                             onclick="event.stopPropagation()" onsubmit="wtRememberOpen()">
                                                             @csrf
                                                             @method('PATCH')
-                                                            <input type="hidden" name="direction"
-                                                                value="{{ $dir }}">
+                                                            <input type="hidden" name="direction" value="{{ $dir }}">
                                                             <button type="submit" title="{{ $title }}"
                                                                 @disabled($disabled)
                                                                 class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
@@ -297,22 +296,15 @@
                                                                 class="wt-no px-3 py-2.5 font-bold text-muted">
                                                                 {{ $item->item_no }}</td>
                                                             <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
-                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>
-                                                                @if ($canManage)
-                                                                    <input type="text" value="{{ $item->title }}"
-                                                                        data-orig="{{ $item->title }}" maxlength="255"
+                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>@if ($canManage)<input type="text" value="{{ $item->title }}" data-orig="{{ $item->title }}" maxlength="255"
                                                                         onblur="wtSaveField({{ $item->id }}, 'title', this)"
                                                                         onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){this.value=this.dataset.orig;this.blur()}"
                                                                         aria-label="Judul item"
-                                                                        class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-black hover:border-line focus:border-line focus:bg-white">@else{{ $item->title }}
-                                                                @endif
+                                                                        class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-black hover:border-line focus:border-line focus:bg-white">@else{{ $item->title }}@endif
                                                             </td>
                                                             <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
                                                                 @if ($canManage)
-                                                                    <input type="date"
-                                                                        value="{{ $item->due_date?->format('Y-m-d') }}"
-                                                                        data-orig="{{ $item->due_date?->format('Y-m-d') }}"
-                                                                        data-reload="1"
+                                                                    <input type="date" value="{{ $item->due_date?->format('Y-m-d') }}" data-orig="{{ $item->due_date?->format('Y-m-d') }}" data-reload="1"
                                                                         onchange="wtSaveField({{ $item->id }}, 'due_date', this)"
                                                                         aria-label="Tanggal"
                                                                         class="wt-inline w-31 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] hover:border-line focus:border-line focus:bg-white">
@@ -328,15 +320,12 @@
                                                             <td data-label="PIC"
                                                                 class="px-3 py-2.5 font-bold text-[#5e5952]">
                                                                 @if ($canManage)
-                                                                    <select data-orig="{{ $item->pic_employee_id }}"
-                                                                        onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
+                                                                    <select data-orig="{{ $item->pic_employee_id }}" onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
                                                                         aria-label="PIC utama"
                                                                         class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] font-bold hover:border-line focus:border-line focus:bg-white">
                                                                         <option value="">Belum di-assign</option>
                                                                         @foreach ($employees as $emp)
-                                                                            <option value="{{ $emp->id }}"
-                                                                                @selected($item->pic_employee_id === $emp->id)>
-                                                                                {{ $emp->name }}</option>
+                                                                            <option value="{{ $emp->id }}" @selected($item->pic_employee_id === $emp->id)>{{ $emp->name }}</option>
                                                                         @endforeach
                                                                     </select>
                                                                 @else
@@ -383,14 +372,12 @@
                                                                     <a href="{{ $item->link }}" target="_blank"
                                                                         rel="noopener"
                                                                         class="font-extrabold text-[#2647b8] underline">Open</a>
-                                                                @elseif (!$canManage)
+                                                                @elseif (! $canManage)
                                                                     -
                                                                 @endif
                                                                 @if ($canManage)
-                                                                    <button type="button"
-                                                                        title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
-                                                                        onclick="wtEditLink({{ $item->id }}, this)"
-                                                                        data-link="{{ $item->link }}"
+                                                                    <button type="button" title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
+                                                                        onclick="wtEditLink({{ $item->id }}, this)" data-link="{{ $item->link }}"
                                                                         class="ml-1 rounded-md bg-[#ece7dd] px-1.5 py-0.5 text-[9px] font-extrabold">{{ $item->link ? '✎' : '+ Link' }}</button>
                                                                 @endif
                                                             </td>
@@ -574,8 +561,7 @@
                         @method('PUT')
                         <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2">
                             @foreach ($employees as $emp)
-                                <label
-                                    class="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]">
+                                <label class="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]">
                                     <input type="checkbox" name="user_ids[]" value="{{ $emp->id }}"
                                         :checked="viewersModal && viewersModal.ids.includes({{ $emp->id }})">
                                     {{ $emp->name }}
@@ -639,8 +625,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-                           lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-                           tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                       lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                       tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -800,11 +786,31 @@
             });
         }
 
-        // Link: prompt kecil (URL jarang diubah, input permanen terlalu lebar untuk kolom 56px).
-        function wtEditLink(id, btn) {
+        // Link: dialog SweetAlert (WsmAlert.prompt). URL jarang diubah, jadi tidak dibuat input permanen
+        // di kolom sempit. Isian kosong = hapus link. Fallback ke prompt bawaan kalau aset JS belum ter-build.
+        async function wtEditLink(id, btn) {
             const current = btn.dataset.link || '';
-            const next = window.prompt('Link (kosongkan untuk menghapus):', current);
-            if (next === null || next.trim() === current) return;
+            let next;
+
+            if (window.WsmAlert && WsmAlert.prompt) {
+                const result = await WsmAlert.prompt({
+                    title: current ? 'Ubah link' : 'Tambah link',
+                    text: 'Tempel link Google Drive / Sheet / kontrak. Kosongkan lalu simpan untuk menghapus link.',
+                    value: current,
+                    placeholder: 'https://...',
+                    inputType: 'url',
+                    validate: (v) => (v.trim() === '' || /^https?:\/\/\S+$/i.test(v.trim())) ? undefined :
+                        'Link harus diawali http:// atau https://',
+                });
+                if (!result.isConfirmed) return;
+                next = (result.value || '').trim();
+            } else {
+                const typed = window.prompt('Link (kosongkan untuk menghapus):', current);
+                if (typed === null) return;
+                next = typed.trim();
+            }
+
+            if (next === current) return;
             fetch(`${wtBase}/${id}/field`, {
                 method: 'PATCH',
                 headers: {
@@ -814,13 +820,13 @@
                 },
                 body: JSON.stringify({
                     field: 'link',
-                    value: next.trim()
+                    value: next
                 }),
             }).then((res) => {
                 if (!res.ok) throw new Error();
                 wtRememberOpen();
                 window.location.reload();
-            }).catch(() => wtError('Link tidak valid (harus diawali http:// atau https://).'));
+            }).catch(() => wtError('Link gagal disimpan. Pastikan diawali http:// atau https:// (maks 255 karakter).'));
         }
 
         // --- Warna section: simpan langsung, header diwarnai ulang tanpa reload ---

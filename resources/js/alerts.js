@@ -31,6 +31,8 @@ const swalWsm = Swal.mixin({
         htmlContainer: "text-[14px]! text-[#5e5951]!",
         confirmButton: "btn-wsm-black mx-1.5!",
         cancelButton: "btn-wsm-white mx-1.5!",
+        input: "input-wsm! mx-5! w-auto!",
+        validationMessage: "text-[12px]!",
     },
 });
 
@@ -89,6 +91,34 @@ const WsmAlert = {
             title: "Ada isian yang belum sesuai",
             html: `<ul class="mt-2 list-disc space-y-1 pl-5 text-left">${items}</ul>`,
             confirmButtonText: "Oke, saya perbaiki",
+        });
+    },
+    /**
+     * Dialog dengan 1 kolom isian (pengganti window.prompt, gaya WSM).
+     * Resolusinya SweetAlert result: {isConfirmed, value}. `validate(value)`
+     * mengembalikan teks error (string) atau undefined kalau isian valid.
+     */
+    prompt({
+        title = "Isi data",
+        text = "",
+        value = "",
+        placeholder = "",
+        inputType = "text",
+        confirmText = "Simpan",
+        cancelText = "Batal",
+        validate = null,
+    } = {}) {
+        return swalWsm.fire({
+            title,
+            text,
+            input: inputType,
+            inputValue: value,
+            inputPlaceholder: placeholder,
+            inputAttributes: { autocapitalize: "off", autocomplete: "off" },
+            showCancelButton: true,
+            confirmButtonText: confirmText,
+            cancelButtonText: cancelText,
+            inputValidator: validate ? (v) => validate(v) : undefined,
         });
     },
     /** Dialog konfirmasi generik. Resolusinya SweetAlert result ({isConfirmed}). */

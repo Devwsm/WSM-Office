@@ -220,7 +220,7 @@ class WorkControlRevisionTest extends TestCase
 
         $html = $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.calendar'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('+2 item', $html);
+        $this->assertMatchesRegularExpression('/\+2\s+item/', $html); // toleran terhadap pemformat Blade yang memecah baris
         $this->assertStringContainsString('wsmCalendar(', $html);
         $this->assertStringContainsString('Padat 5', $html); // ada di data popup harian
         $this->assertSame(3, substr_count($html, 'data-item-id="'));

@@ -178,7 +178,8 @@ class TimelineCalendarTest extends TestCase
 
         $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.calendar'))
             ->assertOk()
-            ->assertSee('+5 item') // maks 3 chip per tanggal, sisanya +N
+            ->assertSeeHtml('wsm-more') // maks 3 chip per tanggal, sisanya +N
+            ->assertSeeInOrder(['+5', 'item'], false)
             ->assertSee('Tugas padat 8') // tetap ada di data popup harian
             ->assertSee(route('dashboard.work.tracker.index', ['project_id' => $project->id]), false);
     }

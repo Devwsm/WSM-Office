@@ -127,7 +127,7 @@
                                         Note</label>
                                     <input type="text" name="rhythm[{{ $dow }}][hours]" maxlength="40"
                                         value="{{ old("rhythm.$dow.hours", $rhythm['hours_custom']) }}"
-                                        placeholder="{{ match ($rhythm['mode']) {'WFO' => 'Otomatis: jam kerja kantor','Event' => 'Otomatis: Sesuai jadwal event',default => 'Otomatis: Flexible / remote'} }}"
+                                        placeholder="{{ match ($rhythm['mode']) { 'WFO' => 'Otomatis: jam kerja kantor', 'Event' => 'Otomatis: Sesuai jadwal event', default => 'Otomatis: Flexible / remote' } }}"
                                         class="input-wsm">
                                 </div>
                             </div>
@@ -151,7 +151,8 @@
         @endif
 
         {{-- Grid bulan — header hitam memuat ritme kerja tiap hari (Sabtu/Minggu = ritme event). --}}
-        <div x-data="wsmCalendar(@js($dayPopups), {{ $canManage ? 'true' : 'false' }}, @js(route('dashboard.work.calendar.items.move', ['item' => '__ID__'])))" @keydown.escape.window="popup = null">
+        <div x-data="wsmCalendar(@js($dayPopups), {{ $canManage ? 'true' : 'false' }}, @js(route('dashboard.work.calendar.items.move', ['item' => '__ID__'])))"
+            @keydown.escape.window="popup = null">
             <div class="overflow-hidden rounded-[26px] border border-line bg-white">
                 <div class="grid grid-cols-7 bg-[#111] text-white">
                     @foreach ([0, 1, 2, 3, 4, 5, 6] as $dow)
@@ -164,16 +165,11 @@
                                 default => 'bg-[#eeeae3] text-[#4e4a43]',
                             };
                         @endphp
-                        <div class="px-1 py-2 text-center lg:px-2 lg:py-2.5"
-                            title="{{ $r['focus'] }} · {{ $r['mode'] }} · {{ $r['hours'] }}">
-                            <span class="block text-[10px] font-black lg:text-[11px]"><span
-                                    class="lg:hidden">{{ \Illuminate\Support\Str::substr($r['day'], 0, 3) }}</span><span
-                                    class="hidden lg:inline">{{ $r['day'] }}</span></span>
-                            <span
-                                class="mt-1 block rounded-md px-1 py-0.5 text-[8px] font-black leading-tight {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
+                        <div class="px-1 py-2 text-center lg:px-2 lg:py-2.5" title="{{ $r['focus'] }} · {{ $r['mode'] }} · {{ $r['hours'] }}">
+                            <span class="block text-[10px] font-black lg:text-[11px]"><span class="lg:hidden">{{ \Illuminate\Support\Str::substr($r['day'], 0, 3) }}</span><span class="hidden lg:inline">{{ $r['day'] }}</span></span>
+                            <span class="mt-1 block rounded-md px-1 py-0.5 text-[8px] font-black leading-tight {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
                                 <span class="hidden lg:block">{{ $r['focus'] }}</span>
-                                <span class="block opacity-80">{{ $r['mode'] }}<span class="hidden lg:inline"> ·
-                                        {{ $r['hours'] }}</span></span>
+                                <span class="block opacity-80">{{ $r['mode'] }}<span class="hidden lg:inline"> · {{ $r['hours'] }}</span></span>
                             </span>
                         </div>
                     @endforeach
@@ -181,7 +177,8 @@
                 <div class="grid grid-cols-7">
                     @foreach ($weeks as $week)
                         @foreach ($week as $cell)
-                            <div data-date="{{ $cell['key'] }}" @click="onCell($event, '{{ $cell['key'] }}')"
+                            <div data-date="{{ $cell['key'] }}"
+                                @click="onCell($event, '{{ $cell['key'] }}')"
                                 @dragover.prevent="dragOver($event)" @dragleave="dragLeave($event)"
                                 @drop.prevent="drop($event, '{{ $cell['key'] }}')"
                                 class="min-h-20 cursor-pointer border-b border-r border-[#ece5da] p-1 transition lg:min-h-33 lg:p-2 nth-[7n]:border-r-0 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-white' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
@@ -198,10 +195,8 @@
                                         @include('dashboard.work._calendar-chip', ['item' => $item])
                                     @endforeach
                                     @if ($cell['hidden']->isNotEmpty())
-                                        <button type="button"
-                                            class="text-left text-[10px] font-extrabold text-muted underline-offset-2 hover:underline"
-                                            @click.stop="open('{{ $cell['key'] }}')">+{{ $cell['hidden']->count() }}
-                                            item</button>
+                                        @php $moreLabel = '+' . $cell['hidden']->count() . ' item'; @endphp
+                                        <button type="button" class="wsm-more" @click.stop="open('{{ $cell['key'] }}')">{{ $moreLabel }}</button>
                                     @endif
                                 </div>
 
@@ -209,8 +204,7 @@
                                 @if ($cell['all']->isNotEmpty())
                                     <div class="flex flex-wrap items-center gap-0.5 lg:hidden">
                                         @foreach ($cell['all']->take(6) as $item)
-                                            <i class="inline-block h-2 w-2 rounded-full {{ $item['done'] ? 'opacity-50' : '' }}"
-                                                style="background:{{ $item['color'] }}"></i>
+                                            <i class="inline-block h-2 w-2 rounded-full {{ $item['done'] ? 'opacity-50' : '' }}" style="background:{{ $item['color'] }}"></i>
                                         @endforeach
                                         @if ($cell['all']->count() > 6)
                                             <span class="text-[9px] font-black">+{{ $cell['all']->count() - 6 }}</span>
@@ -225,8 +219,7 @@
 
             {{-- Popup harian: ritme hari itu + semua item/penanda project di tanggal tersebut. --}}
             <div x-show="popup" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-                <div @click.outside="popup = null"
-                    class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-4xl bg-cream p-5">
+                <div @click.outside="popup = null" class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-4xl bg-cream p-5">
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="text-[10px] font-black uppercase tracking-[0.14em] text-muted">Agenda Harian</p>
@@ -238,14 +231,12 @@
                     <template x-if="popup && popup.rhythm">
                         <p class="mt-2 rounded-xl bg-white px-3 py-2 text-[11px] font-bold text-[#4e4a43]">
                             <span x-text="popup.rhythm.focus"></span>
-                            <span class="text-muted"> · <span x-text="popup.rhythm.mode"></span> · <span
-                                    x-text="popup.rhythm.hours"></span></span>
+                            <span class="text-muted"> · <span x-text="popup.rhythm.mode"></span> · <span x-text="popup.rhythm.hours"></span></span>
                         </p>
                     </template>
                     <div class="mt-3 grid gap-2">
                         <template x-if="popup && popup.items.length === 0">
-                            <p class="rounded-xl bg-white px-3 py-4 text-center text-[12px] text-muted">Tidak ada item di
-                                tanggal ini.</p>
+                            <p class="rounded-xl bg-white px-3 py-4 text-center text-[12px] text-muted">Tidak ada item di tanggal ini.</p>
                         </template>
                         <template x-for="(it, i) in (popup ? popup.items : [])" :key="i">
                             <a :href="it.url" class="block rounded-2xl border-l-4 border-black/20 px-3 py-2.5"
@@ -261,18 +252,22 @@
         </div>
 
         <style>
-            [data-date].wsm-drop-over {
-                background: #e7efff !important;
-                box-shadow: inset 0 0 0 2px #3558f4;
+            [data-date].wsm-drop-over { background: #e7efff !important; box-shadow: inset 0 0 0 2px #3558f4; }
+            /* Tombol "+N item": class pendek supaya tag-nya tidak dipecah formatter Blade (teks jadi satu ekspresi). */
+            .wsm-more {
+                text-align: left;
+                font-size: 10px;
+                font-weight: 800;
+                color: #8b867e;
             }
 
-            a[data-chip][draggable="true"] {
-                cursor: grab;
+            .wsm-more:hover {
+                text-decoration: underline;
+                text-underline-offset: 2px;
             }
 
-            a[data-chip].wsm-dragging {
-                opacity: .4;
-            }
+            a[data-chip][draggable="true"] { cursor: grab; }
+            a[data-chip].wsm-dragging { opacity: .4; }
         </style>
         <script>
             function wsmCalendar(days, canManage, moveUrl) {
@@ -295,16 +290,13 @@
                             };
                             a.ondragend = () => {
                                 a.classList.remove('wsm-dragging');
-                                this.$root.querySelectorAll('.wsm-drop-over').forEach((c) => c.classList.remove(
-                                    'wsm-drop-over'));
+                                this.$root.querySelectorAll('.wsm-drop-over').forEach((c) => c.classList.remove('wsm-drop-over'));
                             };
                         });
                         arm();
                         window.matchMedia('(min-width: 1024px)').addEventListener('change', arm);
                     },
-                    open(key) {
-                        this.popup = days[key] ?? null;
-                    },
+                    open(key) { this.popup = days[key] ?? null; },
                     onCell(e, key) {
                         // Desktop: klik chip = buka tracker seperti biasa. Selain itu (dan di HP/tablet): popup harian.
                         if (desktop() && e.target.closest('a[data-chip]')) return;
@@ -315,9 +307,7 @@
                         if (!this.dragId || !desktop()) return;
                         e.currentTarget.classList.add('wsm-drop-over');
                     },
-                    dragLeave(e) {
-                        e.currentTarget.classList.remove('wsm-drop-over');
-                    },
+                    dragLeave(e) { e.currentTarget.classList.remove('wsm-drop-over'); },
                     drop(e, key) {
                         e.currentTarget.classList.remove('wsm-drop-over');
                         const id = this.dragId;
@@ -330,16 +320,13 @@
                                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                                 'Accept': 'application/json',
                             },
-                            body: JSON.stringify({
-                                due_date: key
-                            }),
+                            body: JSON.stringify({ due_date: key }),
                         }).then((res) => {
                             if (!res.ok) throw new Error();
                             window.location.reload();
                         }).catch(() => {
                             const msg = 'Gagal memindahkan item, coba lagi.';
-                            if (window.WsmAlert) WsmAlert.error(msg);
-                            else alert(msg);
+                            if (window.WsmAlert) WsmAlert.error(msg); else alert(msg);
                         });
                     },
                 };

@@ -411,7 +411,7 @@ return [
                     ['Filter', 'tampilkan satu project, satu PIC, satu progress, atau satu fokus (KELEWAT, HARI INI, BESOK, dst.) saja. Expand All / Collapse All membuka atau menutup semua section.'],
                     ['Progress', 'ubah langsung lewat pilihan di kolom Progress (akses Manage), tersimpan otomatis.'],
                     ['Note', 'ketik di kolom Note, tersimpan otomatis saat kamu klik di luar kolom.'],
-                    ['Judul, Date, PIC, Link', 'bisa diubah langsung di barisnya tanpa membuka Edit (akses Manage). Judul dan Link tersimpan saat kamu selesai mengetik; ubah Date atau PIC memuat ulang halaman supaya badge fokus ikut berubah.'],
+                    ['Judul, Date, PIC, Link', 'bisa diubah langsung di barisnya tanpa membuka Edit (akses Manage). Judul tersimpan saat kamu selesai mengetik, Link diubah lewat jendela kecil (kosongkan untuk menghapus), dan ubah Date atau PIC memuat ulang halaman supaya badge fokus ikut berubah.'],
                     ['👁 di judul section', 'atur siapa saja yang boleh melihat section itu. Kosongkan semua centang agar terbuka untuk semua orang.'],
                     ['+ di judul section', 'tambah item baru langsung ke section itu.'],
                     ['+ Tambah Task', 'pilih project (harus sudah ada) dan section yang sudah ada di project itu, atau pilih "+ Section baru". Project yang belum punya section langsung diminta membuat section pertamanya. Lalu isi PIC, due date, progress, priority, link, dan notes. Satu task bisa punya sampai 3 PIC (PIC 1, PIC 2, PIC 3), dan semuanya melihat task itu di daftar kerjanya.'],
