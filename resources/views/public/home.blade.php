@@ -17,7 +17,7 @@
     <section class="mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 sm:pb-16 sm:pt-14 lg:pt-20">
         <div class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
-                <span class="badge-wsm-blue">Whisnu Santika Music</span>
+                <span class="badge-wsm-blue">Whisnu Santika Musik</span>
                 <h1 class="mt-5 text-[32px] font-black leading-[1.02] tracking-tight sm:text-[44px] lg:text-[64px]">
                     {{ $landing['headline'] }}
                 </h1>

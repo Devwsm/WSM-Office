@@ -104,7 +104,7 @@
 <body>
     <div class="header">
         <div class="brand">
-            <strong>Whisnu Santika Music</strong>
+            <strong>Whisnu Santika Musik</strong>
             <span>WSM Office System</span>
         </div>
         <div class="meta">

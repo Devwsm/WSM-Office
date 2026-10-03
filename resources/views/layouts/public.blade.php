@@ -14,7 +14,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title ?? 'WSM Office System' }} — Whisnu Santika Music</title>
+    <title>{{ $title ?? 'WSM Office System' }} — Whisnu Santika Musik</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -36,7 +36,7 @@
             <div class="grid h-10 w-10 place-items-center rounded-2xl bg-ink text-[10px] font-black text-white">
                 WSM
             </div>
-            <span class="hidden text-sm font-black tracking-tight sm:inline">Whisnu Santika Music</span>
+            <span class="hidden text-sm font-black tracking-tight sm:inline">Whisnu Santika Musik</span>
         </a>
     </header>
 
@@ -51,7 +51,7 @@
                     WSM
                 </div>
                 <span class="text-xs font-extrabold text-muted">
-                    © {{ now()->year }} Whisnu Santika Music. Semua hak dilindungi.
+                    © {{ now()->year }} Whisnu Santika Musik. Semua hak dilindungi.
                 </span>
             </div>
             <nav class="flex flex-wrap gap-4 text-xs font-extrabold text-muted">

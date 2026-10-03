@@ -61,7 +61,7 @@
                 </div>
                 <div class="leading-tight">
                     <strong class="block text-sm">WSM Office</strong>
-                    <span class="text-[11px] text-muted">Whisnu Santika Music</span>
+                    <span class="text-[11px] text-muted">Whisnu Santika Musik</span>
                 </div>
             </div>
 

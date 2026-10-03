@@ -11,7 +11,7 @@
     <section class="mx-auto max-w-4xl px-4 pb-10 pt-10 sm:px-6 sm:pb-14 sm:pt-14 lg:pt-20">
         <span class="badge-wsm-blue">Tentang Kami</span>
         <h1 class="mt-5 text-[30px] font-black leading-[1.02] tracking-tight sm:text-[40px] lg:text-[52px]">
-            Cerita di balik Whisnu Santika Music.
+            Cerita di balik Whisnu Santika Musik.
         </h1>
         <p class="mt-5 max-w-2xl text-[16px] text-muted">
             Teks pengantar tentang perusahaan — siapa kami, apa yang kami percaya, dan kenapa kami
