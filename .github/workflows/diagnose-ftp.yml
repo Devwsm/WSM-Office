@@ -1,0 +1,39 @@
+name: Diagnose FTP (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+      FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+    steps:
+      - name: IP publik runner
+        run: curl -s --max-time 10 https://api.ipify.org; echo
+
+      - name: Resolve DNS host
+        run: getent hosts "$FTP_HOST" || echo "DNS gagal"
+
+      - name: Tes TCP port 21 (apakah port terbuka?)
+        run: |
+          if timeout 15 bash -c "</dev/tcp/$FTP_HOST/21"; then
+            echo "PORT 21 TERBUKA"
+          else
+            echo "PORT 21 TIDAK MERESPONS (kemungkinan diblokir firewall)"
+          fi
+
+      - name: Tes banner FTP + handshake TLS (explicit FTPS)
+        continue-on-error: true
+        run: echo | timeout 25 openssl s_client -connect "$FTP_HOST:21" -starttls ftp -brief 2>&1 | head -30
+
+      - name: Tes login + list lewat curl (FTPS)
+        continue-on-error: true
+        run: curl -v --max-time 40 --ssl-reqd --insecure --user "$FTP_USERNAME:$FTP_PASSWORD" "ftp://$FTP_HOST/" 2>&1 | grep -v -i "pass" | head -50
+
+      - name: Tes login + list lewat curl (FTP biasa, hanya untuk diagnosa)
+        continue-on-error: true
+        run: curl -v --max-time 40 --user "$FTP_USERNAME:$FTP_PASSWORD" "ftp://$FTP_HOST/" 2>&1 | grep -v -i "pass" | head -50
