@@ -487,7 +487,22 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         Route::get('/pdf', [BudgetController::class, 'pdf'])->middleware('module:budget,view')->name('pdf');
         Route::get('/create', [BudgetController::class, 'create'])->middleware('module:budget,manage')->name('create');
         Route::post('/', [BudgetController::class, 'store'])->middleware('module:budget,manage')->name('store');
+
+        // 2026-10-04 — Project Budget (anggaran awal, hanya diedit) & kategori
+        // (tambah, warna, urutan, hapus, akses per orang). SEMUA halaman
+        // sendiri, bukan modal (data sensitif). Literal 'proyek'/'kategori'
+        // didaftarkan sebelum '/{budget}/...' supaya tidak tertangkap binding item.
+        Route::get('/proyek/{project}/edit', [BudgetController::class, 'editPlan'])->middleware('module:budget,manage')->name('plan.edit');
+        Route::patch('/proyek/{project}', [BudgetController::class, 'updatePlan'])->middleware('module:budget,manage')->name('plan.update');
+        Route::post('/proyek/{project}/kategori', [BudgetController::class, 'storeCategory'])->middleware('module:budget,manage')->name('categories.store');
+        Route::get('/kategori/{category}/akses', [BudgetController::class, 'accessCategory'])->middleware('module:budget,manage')->name('categories.access');
+        Route::put('/kategori/{category}/akses', [BudgetController::class, 'updateCategoryViewers'])->middleware('module:budget,manage')->name('categories.viewers');
+        Route::patch('/kategori/{category}', [BudgetController::class, 'updateCategory'])->middleware('module:budget,manage')->name('categories.update');
+        Route::patch('/kategori/{category}/geser', [BudgetController::class, 'moveCategory'])->middleware('module:budget,manage')->name('categories.move');
+        Route::delete('/kategori/{category}', [BudgetController::class, 'destroyCategory'])->middleware('module:budget,manage')->name('categories.destroy');
+
         Route::get('/{budget}/edit', [BudgetController::class, 'edit'])->middleware('module:budget,manage')->name('edit');
+        Route::patch('/{budget}/field', [BudgetController::class, 'updateField'])->middleware(['module:budget,manage', 'throttle:120,1'])->name('field');
         Route::patch('/{budget}', [BudgetController::class, 'update'])->middleware('module:budget,manage')->name('update');
         Route::delete('/{budget}', [BudgetController::class, 'destroy'])->middleware('module:budget,manage')->name('destroy');
     });

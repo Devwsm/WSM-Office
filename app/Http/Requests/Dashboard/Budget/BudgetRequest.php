@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Dashboard\Budget;
 
+use App\Models\BudgetCategory;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * BudgetRequest
@@ -24,7 +26,15 @@ class BudgetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Middleware module:budget,manage sudah jaga route-nya.
+        // Middleware module:budget,manage sudah jaga route-nya. Edit item di kategori
+        // terbatas yang tidak boleh dilihat peminta = 404 (dicek di sini karena validasi
+        // form berjalan SEBELUM controller, dan tidak boleh membocorkan keberadaannya).
+        $line = $this->route('budget');
+
+        if ($line instanceof \App\Models\ProjectBudget) {
+            abort_unless($line->isVisibleTo($this->user()), 404);
+        }
+
         return true;
     }
 
@@ -58,6 +68,22 @@ class BudgetRequest extends FormRequest
             'note' => ['nullable', 'string'],
             'proof_link' => ['nullable', 'url:http,https', 'max:500'],
         ];
+    }
+
+    /**
+     * Data sensitif: kategori terbatas yang tidak boleh dilihat peminta tidak
+     * boleh dipakai untuk menaruh item (juga lewat mengetik namanya).
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v) {
+            $projectId = (int) $this->input('project_id');
+            $category = BudgetCategory::findByName($projectId, (string) $this->input('category'));
+
+            if ($category && ! $category->isVisibleTo($this->user())) {
+                $v->errors()->add('category', 'Kategori ini dibatasi dan tidak bisa dipakai. Pilih kategori lain.');
+            }
+        });
     }
 
     public function attributes(): array

@@ -179,7 +179,7 @@ class ExportController extends Controller
                 [$this->monthFilter($period, required: false)],
             ],
             'budget' => [
-                new ProjectBudgetExport($projectId),
+                new ProjectBudgetExport($projectId, $user),
                 [$this->projectFilter($projectId)],
             ],
             'royalty' => [

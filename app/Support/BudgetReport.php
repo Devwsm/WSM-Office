@@ -2,8 +2,12 @@
 
 namespace App\Support;
 
+use App\Models\BudgetCategory;
+use App\Models\Project;
 use App\Models\ProjectBudget;
+use App\Models\ProjectBudgetPlan;
 use App\Models\RoyaltyEntry;
+use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Support\Collection;
 
@@ -18,6 +22,12 @@ use Illuminate\Support\Collection;
  * Pengelompokan grafik tidak membedakan huruf besar/kecil dan spasi
  * pinggir ("Marketing" = "marketing "), label yang tampil adalah ejaan
  * yang pertama ditemukan.
+ *
+ * 2026-10-04 — AKSES: `forProject()` menerima $viewer; item di kategori
+ * terbatas (BudgetCategory::viewers) yang tidak boleh dilihat viewer
+ * dibuang SEBELUM angka dihitung, jadi ringkasan, grafik, PDF, dan Excel
+ * tidak membocorkan total kategori yang disembunyikan. Tanpa $viewer =
+ * semua baris (dipakai test/skrip internal, bukan halaman).
  * ---------------------------------------------------------------------
  */
 class BudgetReport
@@ -31,19 +41,95 @@ class BudgetReport
 
     public const NO_SONG_LABEL = 'Tanpa lagu';
 
+    /** Pilihan filter Status: kunci => label. */
+    public const STATUSES = [
+        'over' => 'Melebihi budget',
+        'within' => 'Dalam budget',
+        'unspent' => 'Belum ada realisasi',
+    ];
+
     /** @param  Collection<int, ProjectBudget>  $lines  sudah di-load relasi `project` */
     public function __construct(private readonly Collection $lines) {}
 
-    public static function forProject(?int $projectId): self
+    /**
+     * @param  array{category?: ?string, song?: ?string, status?: ?string}  $filters
+     */
+    public static function forProject(?int $projectId, ?User $viewer = null, array $filters = []): self
     {
+        $hidden = $viewer ? BudgetCategory::hiddenKeysFor($viewer) : [];
+        $category = BudgetCategory::normalize($filters['category'] ?? null);
+        $song = BudgetCategory::normalize($filters['song'] ?? null);
+        $status = array_key_exists((string) ($filters['status'] ?? ''), self::STATUSES) ? $filters['status'] : null;
+
         $lines = ProjectBudget::query()
             ->with('project')
             ->when($projectId, fn($q) => $q->where('project_id', $projectId))
             ->orderBy('category')
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->reject(fn(ProjectBudget $l) => isset($hidden[BudgetCategory::key($l->project_id, $l->category)]))
+            ->when($category !== '', fn($c) => $c->filter(fn(ProjectBudget $l) => BudgetCategory::normalize($l->category) === $category))
+            ->when($song !== '', fn($c) => $c->filter(fn(ProjectBudget $l) => BudgetCategory::normalize($l->song_title) === $song))
+            ->when($status, fn($c) => $c->filter(fn(ProjectBudget $l) => match ($status) {
+                'over' => $l->actual > $l->budget,
+                'within' => $l->actual > 0 && $l->actual <= $l->budget,
+                default => (float) $l->actual === 0.0,
+            }))
+            ->values();
 
         return new self($lines);
+    }
+
+    /**
+     * Susunan 3 lapis untuk halaman: Project > Kategori > Item. Semua project
+     * di $projects dapat kartu (juga yang belum punya item — supaya Project
+     * Budget-nya bisa diisi). Kategori terdaftar tampil menurut urutan yang
+     * diatur (yang kosong ikut tampil kalau tidak sedang difilter); kategori
+     * terbatas yang tidak boleh dilihat $viewer tidak muncul sama sekali.
+     *
+     * @param  Collection<int, Project>  $projects
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function cards(Collection $projects, User $viewer, bool $filtering): Collection
+    {
+        BudgetCategory::syncMissing();
+
+        $plans = ProjectBudgetPlan::query()->whereIn('project_id', $projects->pluck('id'))->get()->keyBy('project_id');
+        $categories = BudgetCategory::query()->with('viewers:id,name')
+            ->whereIn('project_id', $projects->pluck('id'))
+            ->orderBy('sort_order')->orderBy('id')->get()->groupBy('project_id');
+        $byProject = $this->lines->groupBy('project_id');
+
+        return $projects->map(function (Project $project) use ($plans, $categories, $byProject, $viewer, $filtering) {
+            $lines = $byProject->get($project->id, collect());
+            $registered = $categories->get($project->id, collect());
+            $visible = $registered->filter(fn(BudgetCategory $c) => $c->isVisibleTo($viewer))->values();
+            $groups = $lines->groupBy(fn(ProjectBudget $l) => BudgetCategory::normalize($l->category));
+
+            $sections = $visible->map(function (BudgetCategory $category, int $index) use ($groups, $visible) {
+                $rows = $groups->get(BudgetCategory::normalize($category->name), collect())->values();
+
+                return [
+                    'model' => $category,
+                    'name' => $category->name,
+                    'color' => $category->effectiveColor(),
+                    'viewer_ids' => $category->viewers->pluck('id')->all(),
+                    'rows' => $rows,
+                    'is_first' => $index === 0,
+                    'is_last' => $index === $visible->count() - 1,
+                ] + self::summarize($rows);
+            })->filter(fn(array $s) => $s['rows']->isNotEmpty() || ! $filtering)->values();
+
+            $plan = $plans->get($project->id);
+
+            return [
+                'project' => $project,
+                'plan' => $plan?->project_budget,
+                'has_hidden' => $registered->count() > $visible->count(),
+                'sections' => $sections,
+                'item_count' => $lines->count(),
+            ] + self::summarize($lines);
+        })->values();
     }
 
     public static function normalizeGroup(?string $group): string
@@ -54,6 +140,18 @@ class BudgetReport
     public function isEmpty(): bool
     {
         return $this->lines->isEmpty();
+    }
+
+    /** Daftar kategori (nama unik tanpa beda huruf) dari baris yang tersedia — untuk dropdown filter. @return array<int,string> */
+    public function categoryNames(): array
+    {
+        return self::uniqueCaseInsensitive($this->lines->pluck('category')->all());
+    }
+
+    /** Daftar lagu (nama unik tanpa beda huruf) dari baris yang tersedia — untuk dropdown filter. @return array<int,string> */
+    public function songNames(): array
+    {
+        return self::uniqueCaseInsensitive($this->lines->pluck('song_title')->all());
     }
 
     /**
@@ -116,28 +214,28 @@ class BudgetReport
     }
 
     /**
-     * Saran isian Kategori di form: yang sudah dipakai tim di budget lebih
-     * dulu (kosakata mereka sendiri), lalu section standar Work Tracker.
-     * Duplikat beda huruf dibuang.
+     * Saran isian Kategori (kolom "kategori baru" di form): yang sudah dipakai
+     * tim di budget lebih dulu (hanya dari kategori yang boleh dilihat $viewer),
+     * lalu section standar Work Tracker. Duplikat beda huruf dibuang.
      *
      * @return array<int, string>
      */
-    public static function categorySuggestions(): array
+    public static function categorySuggestions(?User $viewer = null): array
     {
-        $used = ProjectBudget::query()->whereNotNull('category')->distinct()->orderBy('category')->pluck('category')->all();
+        $used = self::forProject(null, $viewer)->categoryNames();
 
         return self::uniqueCaseInsensitive([...$used, ...WorkItem::SECTION_SUGGESTIONS]);
     }
 
     /**
-     * Saran isian Lagu di form: judul yang sudah dipakai di budget ditambah
-     * judul entri Royalty (judul rilis/lagu yang dilaporkan).
+     * Saran isian Lagu di form: judul yang sudah dipakai di budget (hanya dari
+     * kategori yang boleh dilihat $viewer) ditambah judul entri Royalty.
      *
      * @return array<int, string>
      */
-    public static function songSuggestions(): array
+    public static function songSuggestions(?User $viewer = null): array
     {
-        $used = ProjectBudget::query()->whereNotNull('song_title')->where('song_title', '!=', '')->distinct()->orderBy('song_title')->pluck('song_title')->all();
+        $used = self::forProject(null, $viewer)->songNames();
         $royalty = RoyaltyEntry::query()->distinct()->orderBy('title')->pluck('title')->all();
 
         return self::uniqueCaseInsensitive([...$used, ...$royalty]);

@@ -77,20 +77,35 @@ class BudgetReportTest extends TestCase
         $this->assertEquals(8500000, $totals['remaining']);
         $this->assertSame(81, $totals['utilization']);
 
-        $response->assertSeeInOrder(['Total Budget', 'Rp 45.000.000', 'Actual', 'Rp 36.500.000', 'Remaining', 'Rp 8.500.000', 'Utilization', '81%']);
+        // "Total Budget" diganti nama jadi "Budget Allocation" (2026-10-04).
+        $response->assertSeeInOrder(['Budget Allocation', 'Rp 45.000.000', 'Actual', 'Rp 36.500.000', 'Remaining', 'Rp 8.500.000', 'Utilization', '81%']);
+        $response->assertDontSee('>Total Budget<', false); // label kartu sudah diganti (panduan halaman masih menyebut nama lama)
 
-        // Project diurutkan nama; Map of Feelings melebihi budget? 40jt vs 34.5jt → tidak, tapi baris Ads over.
-        $groups = $response->viewData('entriesByProject');
-        $this->assertSame(['Map of Feelings', 'Mavnus'], $groups->pluck('project')->all());
-        $this->assertCount(3, $groups->first()['rows']);
-        $this->assertEquals(5500000, $groups->first()['remaining']);
+        // Project diurutkan nama; kartu per project berisi kategori -> item.
+        $cards = $response->viewData('cards');
+        $this->assertSame(['Map of Feelings', 'Mavnus'], $cards->pluck('project.name')->all());
+        $this->assertSame(3, $cards->first()['item_count']);
+        $this->assertSame(['Marketing', 'Creative'], $cards->first()['sections']->pluck('name')->all());
+        $this->assertCount(2, $cards->first()['sections']->first()['rows'], 'Marketing + "marketing " = satu kategori.');
+        $this->assertEquals(5500000, $cards->first()['remaining']);
     }
 
     public function test_empty_state_has_no_summary_chart_or_pdf_button(): void
     {
+        // Belum ada project sama sekali -> arahkan membuat project; tidak ada grafik/PDF.
         $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))
             ->assertOk()
-            ->assertSee('Belum ada baris budget.')
+            ->assertSee('Belum ada project.')
+            ->assertDontSee('id="budget-chart-title"', false)
+            ->assertDontSee(route('dashboard.budget.pdf'), false);
+
+        // Ada project tapi belum ada item -> kartu project tetap muncul (supaya Project Budget bisa diisi).
+        $this->project('Map of Feelings');
+
+        $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))
+            ->assertOk()
+            ->assertSee('Map of Feelings')
+            ->assertSee('Project ini belum punya kategori / item budget.')
             ->assertDontSee('id="budget-chart-title"', false)
             ->assertDontSee(route('dashboard.budget.pdf'), false);
     }
@@ -102,7 +117,7 @@ class BudgetReportTest extends TestCase
         $response = $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index', ['project_id' => $mavnus->id]))->assertOk();
 
         $this->assertEquals(5000000, $response->viewData('totals')['budget']);
-        $this->assertSame(['Mavnus'], $response->viewData('entriesByProject')->pluck('project')->all());
+        $this->assertSame(['Mavnus'], $response->viewData('cards')->pluck('project.name')->all());
         $response->assertSee('project_id=' . $mavnus->id . '&amp;group=song', false); // toggle grafik
         $response->assertSee('budget/pdf?project_id=' . $mavnus->id, false);
     }

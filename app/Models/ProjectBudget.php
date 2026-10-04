@@ -36,6 +36,32 @@ class ProjectBudget extends Model
         ];
     }
 
+    /**
+     * 2026-10-04 — setiap item selalu memakai ejaan kategori yang sudah
+     * terdaftar di project-nya (atau mendaftarkannya kalau baru), apapun
+     * jalurnya: form, edit satuan, import Excel, seeder. Lihat BudgetCategory.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $line) {
+            if ($line->project_id && trim((string) $line->category) !== '') {
+                $line->category = BudgetCategory::canonicalName((int) $line->project_id, (string) $line->category);
+            }
+        });
+    }
+
+    /** Boleh dilihat $user? (kategori terbatas hanya untuk viewer-nya + Owner/Developer). */
+    public function isVisibleTo(User $user): bool
+    {
+        if ($user->isOwnerOrDeveloper()) {
+            return true;
+        }
+
+        $category = BudgetCategory::findByName((int) $this->project_id, $this->category);
+
+        return $category === null || $category->isVisibleTo($user);
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);

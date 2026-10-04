@@ -27,12 +27,14 @@
 @section('content')
     <table class="data" style="margin-bottom:16px;">
         <tr>
-            <th style="width:25%;">Total Budget</th>
-            <th style="width:25%;">Actual</th>
-            <th style="width:25%;">Remaining</th>
-            <th style="width:25%;">Utilization</th>
+            <th style="width:20%;">Project Budget</th>
+            <th style="width:20%;">Budget Allocation</th>
+            <th style="width:20%;">Actual</th>
+            <th style="width:20%;">Remaining</th>
+            <th style="width:20%;">Utilization</th>
         </tr>
         <tr>
+            <td style="font-size:13px;font-weight:bold;">{{ ($projectBudget ?? 0) > 0 ? $rp($projectBudget) : '-' }}</td>
             <td style="font-size:13px;font-weight:bold;">{{ $rp($totals['budget']) }}</td>
             <td style="font-size:13px;font-weight:bold;">{{ $rp($totals['actual']) }}</td>
             <td style="font-size:13px;font-weight:bold;color:{{ $totals['remaining'] < 0 ? $red : $green }};">

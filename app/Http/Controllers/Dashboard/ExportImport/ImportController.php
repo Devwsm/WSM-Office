@@ -11,6 +11,7 @@ use App\Imports\ProjectBudgetImport;
 use App\Imports\WorkItemImport;
 use App\Models\AuditLog;
 use App\Models\Kpi;
+use App\Models\BudgetCategory;
 use App\Models\ProjectBudget;
 use App\Models\User;
 use App\Models\WorkItem;
@@ -149,6 +150,20 @@ class ImportController extends Controller
                     in_array($row['data']['role'] ?? null, ['owner', 'developer'], true),
                     403,
                     'Akun Owner dan Developer hanya bisa dibuat oleh Owner.',
+                );
+            }
+        }
+
+        // Jaring pengaman data sensitif: import tidak boleh menaruh item ke kategori
+        // terbatas yang tidak bisa dilihat pengimpor. Dicek SEBELUM satu baris pun disimpan.
+        if ($key === 'budget') {
+            foreach ($payload['valid'] as $row) {
+                $category = BudgetCategory::findByName((int) ($row['data']['project_id'] ?? 0), (string) ($row['data']['category'] ?? ''));
+
+                abort_if(
+                    $category && ! $category->isVisibleTo($request->user()),
+                    403,
+                    'File berisi kategori budget yang dibatasi dan tidak bisa kamu akses. Import dibatalkan.',
                 );
             }
         }

@@ -85,6 +85,8 @@ return [
         'dashboard.budget.index' => 'budget',
         'dashboard.budget.create' => 'budget-form',
         'dashboard.budget.edit' => 'budget-form',
+        'dashboard.budget.plan.edit' => 'budget-plan',
+        'dashboard.budget.categories.access' => 'budget-access',
         'dashboard.royalty.index' => 'royalty',
         'dashboard.royalty.create' => 'royalty-form',
         'dashboard.royalty.edit' => 'royalty-form',
@@ -734,26 +736,35 @@ return [
 
         'budget' => [
             'title' => 'Project Budgeting',
-            'summary' => 'Perbandingan budget dan realisasi (actual) biaya per project, lengkap dengan grafik dan laporan PDF.',
+            'summary' => 'Budget vs realisasi (actual) per project, disusun Project > Kategori > Item seperti Work Tracker, lengkap dengan grafik dan laporan PDF.',
             'access' => 'budget',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['Filter Project', 'tampilkan ringkasan, grafik, dan baris budget satu project saja.'],
+                    ['Filter', 'saring berdasarkan Project, Kategori, Lagu, atau Status (Melebihi budget, Dalam budget, Belum ada realisasi). Ringkasan, grafik, dan PDF ikut mengikuti filter.'],
+                    ['Expand All dan Collapse All', 'buka atau tutup semua project dan kategori sekaligus.'],
+                    ['Edit satuan', 'ubah nama item, lagu, Budget, Actual, link bukti, dan catatan langsung di tabel tanpa membuka form (akses Manage). Perubahan tersimpan saat kolom ditinggalkan.'],
+                    ['Kategori', 'tambah kategori baru, ubah warna, geser urutan dengan panah, atau hapus kategori yang sudah kosong (akses Manage).'],
+                    ['Ikon mata di header kategori', 'atur siapa saja yang boleh melihat kategori itu. Kategori yang dibatasi hilang dari halaman, grafik, PDF, dan Excel orang lain.'],
+                    ['Isi/Edit Project Budget', 'isi atau ubah anggaran awal project (akses Manage).'],
                     ['Grafik Budget vs Actual', 'pilih Per Kategori, Per Project, atau Per Lagu untuk mengubah cara batang dikelompokkan.'],
-                    ['Unduh PDF', 'laporan siap cetak (A4 mendatar) sesuai filter project dan pengelompokan grafik yang sedang dibuka.'],
+                    ['Unduh PDF', 'laporan siap cetak (A4 mendatar) sesuai filter dan pengelompokan grafik yang sedang dibuka.'],
                     ['Export Excel dan Import Excel', 'unduh data budget, atau masukkan banyak baris sekaligus lewat template (Import butuh akses Manage).'],
-                    ['+ Tambah Budget', 'tambah baris budget baru (akses Manage).'],
-                    ['Edit dan Hapus', 'ubah angka atau hapus baris. Hapus bersifat permanen.'],
+                    ['+ Tambah Budget dan Edit', 'tambah atau ubah satu item lewat halaman form sendiri (akses Manage). Hapus bersifat permanen.'],
                 ],
                 'Arti angka' => [
-                    ['Total Budget', 'jumlah semua anggaran yang direncanakan (mengikuti filter project).'],
+                    ['Project Budget', 'anggaran awal project yang diisi manual. Tanda "–" atau "Belum diisi" berarti belum ada angkanya.'],
+                    ['Budget Allocation', 'jumlah Budget semua item (dulu berlabel Total Budget). Ini yang sudah dibagi-bagi ke item.'],
+                    ['Unallocated / Over-allocated', 'Project Budget dikurangi Budget Allocation. Muncul per project kalau semua kategorinya terlihat dan tidak sedang difilter. Merah berarti alokasi item sudah melebihi Project Budget.'],
                     ['Actual', 'biaya yang sudah benar-benar keluar.'],
-                    ['Remaining dan Variance', 'Budget dikurangi Actual. Positif berarti masih ada sisa anggaran, negatif berarti melebihi anggaran dan ditandai "Melebihi budget".'],
-                    ['Utilization', 'persen Actual terhadap Budget. Tanda "–" berarti belum ada budget yang bisa dibandingkan.'],
+                    ['Remaining dan Variance', 'Budget Allocation dikurangi Actual. Positif berarti masih ada sisa anggaran, negatif berarti melebihi anggaran dan ditandai "Melebihi budget".'],
+                    ['Utilization', 'persen Actual terhadap Budget Allocation. Tanda "–" berarti belum ada budget yang bisa dibandingkan.'],
                     ['Batang grafik', 'batang biru muda = Budget, batang biru tua = Actual. Batang Actual berubah merah kalau melebihi Budget.'],
                 ],
                 'Perlu diketahui' => [
-                    'Kategori dikelompokkan tanpa membedakan huruf besar/kecil, jadi "Marketing" dan "marketing" dihitung satu batang.',
+                    'Project Budget hanya diubah lewat tombol Isi/Edit Project Budget; angkanya tidak berubah otomatis saat item ditambah atau diubah.',
+                    'Kategori dikelompokkan tanpa membedakan huruf besar/kecil, jadi "Marketing" dan "marketing" dianggap satu kategori.',
+                    'Kategori hanya bisa dihapus kalau sudah kosong. Hapus atau pindahkan item-nya dulu.',
+                    'Jika kategori dibatasi, total Unallocated project tidak ditampilkan bagi orang yang tidak melihat semua kategori, supaya angkanya tidak menyesatkan.',
                     'Lagu adalah teks bebas (belum terhubung ke data Royalty). Tulis judul dengan ejaan yang sama agar terkelompok jadi satu di grafik Per Lagu.',
                     'Link Bukti Bayar sebaiknya link Google Drive ke bukti pembayaran. Hanya link http/https yang diterima.',
                 ],
@@ -767,12 +778,46 @@ return [
             'sections' => [
                 'Arti tiap isian' => [
                     ['Project', 'project yang memiliki biaya ini.'],
-                    ['Kategori dan Item', 'pengelompokan dan nama biaya, mis. kategori Marketing, item Iklan. Kategori yang sudah pernah dipakai muncul sebagai saran; pakai ejaan yang sama agar grafik per kategori tidak terpecah.'],
+                    ['Kategori', 'pilih kategori yang sudah ada di project itu, atau pilih "+ Kategori baru" untuk membuat yang baru. Kategori yang dibatasi dan tidak bisa kamu lihat tidak muncul dan tidak bisa dipakai.'],
+                    ['Item', 'nama biaya, mis. Iklan, Studio, Hosting.'],
                     ['Budget (Rp)', 'anggaran yang direncanakan.'],
                     ['Actual (Rp)', 'realisasi biaya. Boleh 0 kalau belum ada pengeluaran.'],
                     ['Lagu', 'judul lagu yang terkait dengan biaya ini (opsional). Dipakai untuk grafik Per Lagu.'],
                     ['Link Bukti Bayar', 'link ke bukti pembayaran, mis. Google Drive (opsional).'],
                     ['Catatan', 'keterangan tambahan (opsional).'],
+                ],
+            ],
+        ],
+
+        'budget-plan' => [
+            'title' => 'Project Budget',
+            'summary' => 'Anggaran awal satu project. Hanya bisa diubah di sini; tidak ada tambah atau hapus.',
+            'access' => 'budget',
+            'sections' => [
+                'Arti tiap isian' => [
+                    ['Project Budget (Rp)', 'anggaran awal untuk seluruh project. Isi 0 kalau ingin mengosongkannya.'],
+                    ['Budget Allocation saat ini', 'jumlah Budget semua item project. Hanya info untuk pembanding, tidak bisa diubah di sini.'],
+                ],
+                'Perlu diketahui' => [
+                    'Angka Project Budget tidak berubah otomatis saat item ditambah atau diubah.',
+                    'Setiap perubahan Project Budget tercatat di Audit Log.',
+                ],
+            ],
+        ],
+
+        'budget-access' => [
+            'title' => 'Akses Kategori Budget',
+            'summary' => 'Atur siapa saja yang boleh melihat satu kategori budget.',
+            'access' => 'budget',
+            'sections' => [
+                'Cara kerja' => [
+                    ['Tidak ada yang dicentang', 'kategori terbuka untuk semua orang yang punya akses modul Project Budgeting.'],
+                    ['Ada yang dicentang', 'hanya orang itu yang melihat kategori ini, ditambah Owner dan Developer yang selalu bisa melihat semuanya.'],
+                ],
+                'Perlu diketahui' => [
+                    'Kategori yang dibatasi hilang dari halaman, grafik, PDF, dan Excel orang yang tidak dicentang.',
+                    'Daftar hanya berisi orang yang punya akses modul Project Budgeting. Berikan akses modulnya dulu lewat Dashboard Access.',
+                    'Setiap perubahan akses tercatat di Audit Log.',
                 ],
             ],
         ],
