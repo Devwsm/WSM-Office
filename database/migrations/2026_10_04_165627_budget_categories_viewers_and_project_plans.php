@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * budget_categories_viewers_and_project_plans
+ * budget_categories_and_viewers
  * ---------------------------------------------------------------------
  * 2026-10-04 — Project Budgeting disamakan konsepnya dengan Work Tracker:
  * Project > Kategori (padanan "section") > Item.
@@ -19,10 +19,9 @@ use Illuminate\Support\Facades\Schema;
  *                               tanpa baris = terbuka untuk semua yang punya
  *                               akses modul Budgeting; dengan baris = hanya
  *                               orang itu + Owner/Developer.
- *  - project_budget_plans     : "Project Budget" = anggaran awal per project
- *                               (1 baris per project, hanya diubah lewat form
- *                               edit). Beda dari "Budget Allocation" yang
- *                               dihitung dari jumlah item.
+ *
+ * ("Project Budget" = dana keseluruhan project ada di migration berikutnya,
+ * `budget_funds`.)
  *
  * Aditif: tidak mengubah/menghapus baris `project_budgets` yang sudah ada
  * di production. Backfill kategori mengikuti urutan item pertama (MIN(id)),
@@ -51,20 +50,11 @@ return new class extends Migration
             $table->primary(['budget_category_id', 'user_id']);
         });
 
-        Schema::create('project_budget_plans', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('project_id')->unique()->constrained('projects')->cascadeOnDelete();
-            $table->decimal('project_budget', 14, 2)->default(0);
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-        });
-
         $this->backfillCategories();
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('project_budget_plans');
         Schema::dropIfExists('budget_category_viewers');
         Schema::dropIfExists('budget_categories');
     }

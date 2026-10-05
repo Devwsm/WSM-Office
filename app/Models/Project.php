@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -183,12 +182,6 @@ class Project extends Model
     public function budgets(): HasMany
     {
         return $this->hasMany(ProjectBudget::class);
-    }
-
-    /** "Project Budget" = anggaran awal project ini (null = belum diisi). */
-    public function budgetPlan(): HasOne
-    {
-        return $this->hasOne(ProjectBudgetPlan::class);
     }
 
     /** Total budget vs actual seluruh line item project ini (Fase 13). */

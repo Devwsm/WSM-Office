@@ -488,12 +488,13 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         Route::get('/create', [BudgetController::class, 'create'])->middleware('module:budget,manage')->name('create');
         Route::post('/', [BudgetController::class, 'store'])->middleware('module:budget,manage')->name('store');
 
-        // 2026-10-04 — Project Budget (anggaran awal, hanya diedit) & kategori
-        // (tambah, warna, urutan, hapus, akses per orang). SEMUA halaman
-        // sendiri, bukan modal (data sensitif). Literal 'proyek'/'kategori'
-        // didaftarkan sebelum '/{budget}/...' supaya tidak tertangkap binding item.
-        Route::get('/proyek/{project}/edit', [BudgetController::class, 'editPlan'])->middleware('module:budget,manage')->name('plan.edit');
-        Route::patch('/proyek/{project}', [BudgetController::class, 'updatePlan'])->middleware('module:budget,manage')->name('plan.update');
+        // 2026-10-04 — Project Budget = dana keseluruhan (satu angka, hanya diedit, bisa
+        // diisi walau belum ada project) & kategori (tambah, warna, urutan, hapus, akses
+        // per orang). SEMUA halaman sendiri, bukan modal (data sensitif). Literal 'dana'/
+        // 'proyek'/'kategori' didaftarkan sebelum '/{budget}/...' supaya tidak tertangkap
+        // binding item (PATCH '/dana' akan salah masuk ke update item kalau di bawahnya).
+        Route::get('/dana', [BudgetController::class, 'editFund'])->middleware('module:budget,manage')->name('fund.edit');
+        Route::patch('/dana', [BudgetController::class, 'updateFund'])->middleware('module:budget,manage')->name('fund.update');
         Route::post('/proyek/{project}/kategori', [BudgetController::class, 'storeCategory'])->middleware('module:budget,manage')->name('categories.store');
         Route::get('/kategori/{category}/akses', [BudgetController::class, 'accessCategory'])->middleware('module:budget,manage')->name('categories.access');
         Route::put('/kategori/{category}/akses', [BudgetController::class, 'updateCategoryViewers'])->middleware('module:budget,manage')->name('categories.viewers');

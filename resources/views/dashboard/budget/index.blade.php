@@ -10,9 +10,10 @@
          (edit satuan langsung di tabel),
       5. unduh PDF, Export/Import Excel (lewat Export & Import Center).
 
-    Istilah: "Project Budget" = anggaran awal project (hanya diedit, di
-    halaman sendiri). "Budget Allocation" = jumlah budget semua item
-    (dulu berlabel "Total Budget"). Selisih keduanya = belum dialokasikan.
+    Istilah: "Project Budget" = dana KESELURUHAN semua project (satu angka,
+    diinput manual, hanya diedit di halaman sendiri, bisa diisi walau belum
+    ada project). "Budget Allocation" = jumlah budget semua item (dulu
+    berlabel "Total Budget"). Selisih keduanya = Unallocated / Over-allocated.
 
     DATA SENSITIF: Tambah/Edit item, Project Budget, dan Akses kategori
     adalah halaman sendiri (link biasa), bukan modal. Kategori yang
@@ -47,6 +48,9 @@
             @if ($canManage)
                 <a href="{{ route('dashboard.export-import.import.show', ['key' => 'budget']) }}"
                     class="btn-wsm-white">Import Excel</a>
+                {{-- Dana keseluruhan: halaman sendiri (bukan modal), aktif walau belum ada project. --}}
+                <a href="{{ route('dashboard.budget.fund.edit') }}"
+                    class="btn-wsm-white">{{ $fund !== null ? 'Edit Project Budget' : 'Isi Project Budget' }}</a>
                 {{-- Item wajib masuk project: belum ada project -> jangan buka form, arahkan buat project dulu. --}}
                 @if ($projects->isEmpty())
                     <button type="button" onclick="bdNeedProject()" class="btn-wsm-black">+ Tambah Budget</button>
@@ -62,8 +66,15 @@
     <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <div class="card-wsm-white min-w-0">
             <p class="text-[10px] font-black uppercase tracking-wide text-muted">Project Budget</p>
-            <p class="mt-1 text-xl font-black tracking-tight sm:text-2xl">{{ $hasAnyPlan ? $rp($planTotal) : '–' }}</p>
-            <p class="mt-0.5 text-[10px] text-muted">{{ $hasAnyPlan ? 'anggaran awal project' : 'Belum diisi' }}</p>
+            <p class="mt-1 text-xl font-black tracking-tight sm:text-2xl">{{ $fund !== null ? $rp($fund) : '–' }}</p>
+            @if ($fund === null)
+                <p class="mt-0.5 text-[10px] text-muted">Belum diisi</p>
+            @elseif ($unallocated !== null)
+                <p class="mt-0.5 text-[10px] font-extrabold {{ $remainingClass($unallocated) }}">
+                    {{ $unallocated < 0 ? 'Over-allocated' : 'Unallocated' }}: {{ $rp(abs($unallocated)) }}</p>
+            @else
+                <p class="mt-0.5 text-[10px] text-muted">dana keseluruhan project</p>
+            @endif
         </div>
         <div class="card-wsm-white min-w-0">
             <p class="text-[10px] font-black uppercase tracking-wide text-muted">Budget Allocation</p>
@@ -176,11 +187,6 @@
                 $project = $card['project'];
                 $color = \App\Models\Project::colorFor($project);
                 $cardKey = 'p' . $project->id;
-                $plan = $card['plan'];
-                // Belum dialokasikan hanya dihitung kalau semua item project ini terlihat & tidak difilter —
-                // kalau ada kategori yang disembunyikan, angkanya akan menyesatkan.
-                $canCompare = $plan !== null && ! $card['has_hidden'] && ! $lineFiltering;
-                $unallocated = $canCompare ? $plan - $card['budget'] : null;
                 $utilBar = min(100, (int) ($card['utilization'] ?? 0));
             @endphp
             <article class="overflow-hidden rounded-3xl border border-line bg-[#fbf8f2]">
@@ -203,22 +209,14 @@
                                 <span class="text-sm font-black">{{ $pct($card['utilization']) }}</span>
                             </div>
                             <div class="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-                                <span>Project Budget: <strong>{{ $plan !== null ? $rp($plan) : 'Belum diisi' }}</strong></span>
                                 <span>Budget Allocation: <strong>{{ $rp($card['budget']) }}</strong></span>
                                 <span>Actual: <strong>{{ $rp($card['actual']) }}</strong></span>
                                 <span class="{{ $remainingClass($card['remaining']) }}">Variance: <strong>{{ $rp($card['remaining']) }}</strong></span>
-                                @if ($unallocated !== null)
-                                    <span class="{{ $remainingClass($unallocated) }}">
-                                        {{ $unallocated < 0 ? 'Over-allocated' : 'Unallocated' }}: <strong>{{ $rp(abs($unallocated)) }}</strong></span>
-                                @endif
                             </div>
                         </div>
                         <div class="flex flex-none flex-wrap items-center gap-1.5 sm:justify-end">
                             @if ($card['remaining'] < 0)
                                 <span class="badge-wsm-red">Melebihi budget</span>
-                            @endif
-                            @if ($unallocated !== null && $unallocated < 0)
-                                <span class="badge-wsm-red">Melebihi Project Budget</span>
                             @endif
                             <span class="grid h-8 w-8 place-items-center rounded-xl bg-white text-xs font-black transition group-open:rotate-180">⌄</span>
                         </div>
@@ -227,10 +225,6 @@
                     <div class="border-t border-line">
                         @if ($canManage)
                             <div class="flex flex-wrap items-center gap-2 border-b border-line bg-white/60 px-4 py-2.5">
-                                {{-- Halaman sendiri (bukan modal): data anggaran sensitif. --}}
-                                <a href="{{ route('dashboard.budget.plan.edit', $project) }}"
-                                    class="rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-extrabold">
-                                    {{ $plan !== null ? 'Edit Project Budget' : 'Isi Project Budget' }}</a>
                                 <a href="{{ route('dashboard.budget.create', ['project_id' => $project->id]) }}"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-1.5 text-[11px] font-extrabold">+ Item</a>
                             </div>

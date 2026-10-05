@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Models\BudgetCategory;
 use App\Models\Project;
 use App\Models\ProjectBudget;
-use App\Models\ProjectBudgetPlan;
 use App\Models\RoyaltyEntry;
 use App\Models\User;
 use App\Models\WorkItem;
@@ -94,13 +93,12 @@ class BudgetReport
     {
         BudgetCategory::syncMissing();
 
-        $plans = ProjectBudgetPlan::query()->whereIn('project_id', $projects->pluck('id'))->get()->keyBy('project_id');
         $categories = BudgetCategory::query()->with('viewers:id,name')
             ->whereIn('project_id', $projects->pluck('id'))
             ->orderBy('sort_order')->orderBy('id')->get()->groupBy('project_id');
         $byProject = $this->lines->groupBy('project_id');
 
-        return $projects->map(function (Project $project) use ($plans, $categories, $byProject, $viewer, $filtering) {
+        return $projects->map(function (Project $project) use ($categories, $byProject, $viewer, $filtering) {
             $lines = $byProject->get($project->id, collect());
             $registered = $categories->get($project->id, collect());
             $visible = $registered->filter(fn(BudgetCategory $c) => $c->isVisibleTo($viewer))->values();
@@ -120,11 +118,9 @@ class BudgetReport
                 ] + self::summarize($rows);
             })->filter(fn(array $s) => $s['rows']->isNotEmpty() || ! $filtering)->values();
 
-            $plan = $plans->get($project->id);
 
             return [
                 'project' => $project,
-                'plan' => $plan?->project_budget,
                 'has_hidden' => $registered->count() > $visible->count(),
                 'sections' => $sections,
                 'item_count' => $lines->count(),

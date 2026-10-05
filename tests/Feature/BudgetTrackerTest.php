@@ -6,7 +6,7 @@ use App\Models\AuditLog;
 use App\Models\BudgetCategory;
 use App\Models\Project;
 use App\Models\ProjectBudget;
-use App\Models\ProjectBudgetPlan;
+use App\Models\BudgetFund;
 use App\Models\User;
 use App\Support\BudgetReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,7 +21,7 @@ use Tests\TestCase;
 /**
  * Project Budgeting disamakan dengan Work Tracker (2026-10-04):
  * Project > Kategori > Item, filter, edit satuan, kelola kategori, akses
- * per kategori, "Project Budget" (anggaran awal) vs "Budget Allocation".
+ * per kategori, "Project Budget" (dana keseluruhan) vs "Budget Allocation".
  *
  * Kanaya (manajer) = budget manage; Viewer = budget view; Raka = budget manage
  * kedua (untuk menguji kategori yang disembunyikan dari sesama pengelola).
@@ -147,68 +147,110 @@ class BudgetTrackerTest extends TestCase
         $this->assertSame(['Mavnus'], $cards->pluck('project.name')->all());
     }
 
-    // ---- Project Budget vs Budget Allocation -----------------------------
+    // ---- Project Budget (dana keseluruhan) vs Budget Allocation ----------
 
-    public function test_project_budget_is_edit_only_and_saved_from_its_own_page(): void
+    public function test_project_budget_can_be_filled_before_any_project_exists(): void
     {
-        $project = $this->project('Map of Feelings');
-        $this->line($project, 'Marketing', 'Ads', 20000000);
+        $this->assertDatabaseCount('projects', 0);
         $kanaya = $this->actingAs($this->p['manajer']);
 
-        $kanaya->get(route('dashboard.budget.index'))->assertOk()->assertSee('Isi Project Budget')->assertSee('Belum diisi');
-        $kanaya->get(route('dashboard.budget.plan.edit', $project))->assertOk()->assertSee('Project Budget (Rp)')->assertSee('Budget Allocation saat ini');
+        // Tombolnya ada walau belum ada project, sejajar dengan Tambah Budget dan Export/Import.
+        $kanaya->get(route('dashboard.budget.index'))->assertOk()
+            ->assertSeeInOrder([
+                route('dashboard.export-import.import.show', ['key' => 'budget']),
+                route('dashboard.budget.fund.edit'),
+                'Tambah Budget',
+            ], false)
+            ->assertSee('Isi Project Budget')
+            ->assertSee('Belum diisi');
 
-        $kanaya->patch(route('dashboard.budget.plan.update', $project), ['project_budget' => 50000000])
-            ->assertRedirect(route('dashboard.budget.index', ['project_id' => $project->id]));
+        $kanaya->get(route('dashboard.budget.fund.edit'))->assertOk()->assertSee('Project Budget (Rp)')->assertSee('Budget Allocation saat ini');
 
-        $this->assertEquals(50000000, ProjectBudgetPlan::where('project_id', $project->id)->value('project_budget'));
-        $this->assertDatabaseCount('project_budget_plans', 1);
-        $this->assertTrue(AuditLog::where('action', 'Project Budget diubah')->where('detail', 'like', '%Map of Feelings%')->exists());
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => 500000000])
+            ->assertRedirect(route('dashboard.budget.index'));
 
-        // Diubah lagi: tetap 1 baris (tidak menambah), label berubah jadi "Edit".
-        $kanaya->patch(route('dashboard.budget.plan.update', $project), ['project_budget' => 60000000])->assertRedirect();
-        $this->assertDatabaseCount('project_budget_plans', 1);
-        $kanaya->get(route('dashboard.budget.index'))->assertOk()->assertSee('Edit Project Budget')->assertSee('Rp 60.000.000');
+        $this->assertEquals(500000000, BudgetFund::amount());
+        $this->assertTrue(AuditLog::where('action', 'Project Budget diubah')->where('detail', 'like', '%diisi menjadi 500.000.000%')->exists());
 
-        // Tidak ada jalur tambah/hapus (hanya edit).
-        $this->assertFalse(Route::has('dashboard.budget.plan.store'));
-        $this->assertFalse(Route::has('dashboard.budget.plan.destroy'));
+        $kanaya->get(route('dashboard.budget.index'))->assertOk()->assertSee('Edit Project Budget')->assertSee('Rp 500.000.000');
+    }
+
+    public function test_project_budget_is_a_single_edit_only_amount(): void
+    {
+        $kanaya = $this->actingAs($this->p['manajer']);
+
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => 50000000])->assertRedirect();
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => 60000000])->assertRedirect();
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => 0])->assertRedirect();
+
+        $this->assertDatabaseCount('budget_funds', 1);
+        $this->assertSame(0.0, BudgetFund::amount(), 'Rp 0 yang disimpan berbeda dari belum diisi (null).');
+        $this->assertSame($this->p['manajer']->id, BudgetFund::first()->updated_by);
+        $this->assertTrue(AuditLog::where('detail', 'like', '%diubah dari 60.000.000 menjadi 0%')->exists());
+
+        // Tidak ada jalur tambah/hapus, dan tidak ada lagi anggaran per project.
+        $this->assertFalse(Route::has('dashboard.budget.fund.store'));
+        $this->assertFalse(Route::has('dashboard.budget.fund.destroy'));
+        $this->assertFalse(Route::has('dashboard.budget.plan.edit'));
     }
 
     public function test_project_budget_validation_and_access(): void
     {
-        $project = $this->project('Map of Feelings');
         $kanaya = $this->actingAs($this->p['manajer']);
 
-        $kanaya->patch(route('dashboard.budget.plan.update', $project), ['project_budget' => -1])->assertSessionHasErrors('project_budget');
-        $kanaya->patch(route('dashboard.budget.plan.update', $project), ['project_budget' => 'abc'])->assertSessionHasErrors('project_budget');
-        $kanaya->patch(route('dashboard.budget.plan.update', $project), [])->assertSessionHasErrors('project_budget');
-        $this->assertDatabaseCount('project_budget_plans', 0);
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => -1])->assertSessionHasErrors('project_budget');
+        $kanaya->patch(route('dashboard.budget.fund.update'), ['project_budget' => 'abc'])->assertSessionHasErrors('project_budget');
+        $kanaya->patch(route('dashboard.budget.fund.update'), [])->assertSessionHasErrors('project_budget');
+        $this->assertNull(BudgetFund::amount());
 
-        // View saja = tidak bisa; tanpa akses budget = tidak bisa.
-        $this->actingAs($this->viewer)->get(route('dashboard.budget.plan.edit', $project))->assertForbidden();
-        $this->actingAs($this->viewer)->patch(route('dashboard.budget.plan.update', $project), ['project_budget' => 1])->assertForbidden();
-        $this->actingAs($this->p['hrd'])->get(route('dashboard.budget.plan.edit', $project))->assertForbidden();
-        $this->assertDatabaseCount('project_budget_plans', 0);
+        // View saja = tidak bisa (dan tombolnya tidak tampil); tanpa akses budget = tidak bisa.
+        $this->actingAs($this->viewer)->get(route('dashboard.budget.fund.edit'))->assertForbidden();
+        $this->actingAs($this->viewer)->patch(route('dashboard.budget.fund.update'), ['project_budget' => 1])->assertForbidden();
+        $this->actingAs($this->p['hrd'])->get(route('dashboard.budget.fund.edit'))->assertForbidden();
+        $this->actingAs($this->p['hrd'])->patch(route('dashboard.budget.fund.update'), ['project_budget' => 1])->assertForbidden();
+        $this->assertNull(BudgetFund::amount());
+
+        BudgetFund::set(1000, null);
+        $this->actingAs($this->viewer)->get(route('dashboard.budget.index'))->assertOk()
+            ->assertSee('Rp 1.000')
+            ->assertDontSee(route('dashboard.budget.fund.edit'), false);
     }
 
-    public function test_summary_labels_budget_allocation_and_compares_it_with_project_budget(): void
+    public function test_summary_labels_budget_allocation_and_compares_it_with_the_overall_fund(): void
     {
         $project = $this->project('Map of Feelings');
         $this->line($project, 'Marketing', 'Ads', 20000000, 5000000);
-        ProjectBudgetPlan::create(['project_id' => $project->id, 'project_budget' => 50000000]);
+        BudgetFund::set(50000000, null);
 
         $response = $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk();
-        $response->assertSeeInOrder(['Project Budget', 'Rp 50.000.000', 'Budget Allocation', 'Rp 20.000.000'])
-            ->assertSee('Unallocated')
-            ->assertSee('Rp 30.000.000');
-        $this->assertEquals(50000000, $response->viewData('planTotal'));
+        $response->assertSeeInOrder(['Project Budget', 'Rp 50.000.000', 'Unallocated: Rp 30.000.000', 'Budget Allocation', 'Rp 20.000.000'])
+            ->assertDontSee('Over-allocated:', false);
+        $this->assertEquals(50000000, $response->viewData('fund'));
+        $this->assertEquals(30000000, $response->viewData('unallocated'));
 
-        // Alokasi item melebihi Project Budget -> ditandai.
+        // Dana tidak ikut filter project/kategori; selisih selalu dihitung dari SEMUA item.
+        $other = $this->project('Mavnus');
+        $this->line($other, 'Website', 'Hosting', 10000000);
+        $filtered = $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index', ['project_id' => $project->id]))->assertOk();
+        $this->assertEquals(20000000, $filtered->viewData('unallocated'), '50jt dana - 30jt alokasi semua project.');
+        $this->assertEquals(20000000, $filtered->viewData('totals')['budget'], 'Budget Allocation kartu ringkasan mengikuti filter.');
+
+        // Alokasi item melebihi dana -> ditandai.
         $this->line($project, 'Creative', 'Konten', 40000000);
         $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk()
-            ->assertSee('Over-allocated')
-            ->assertSee('Melebihi Project Budget');
+            ->assertSee('Over-allocated: Rp 20.000.000', false);
+    }
+
+    public function test_no_comparison_is_shown_until_the_fund_is_filled(): void
+    {
+        $project = $this->project('Map of Feelings');
+        $this->line($project, 'Marketing', 'Ads', 20000000);
+
+        $response = $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk()
+            ->assertDontSee('Unallocated:', false)
+            ->assertDontSee('Over-allocated:', false);
+        $this->assertNull($response->viewData('fund'));
+        $this->assertNull($response->viewData('unallocated'));
     }
 
     public function test_unallocated_is_not_shown_when_a_category_is_hidden_from_the_viewer(): void
@@ -216,16 +258,28 @@ class BudgetTrackerTest extends TestCase
         $project = $this->project('Map of Feelings');
         $this->line($project, 'Marketing', 'Ads', 20000000);
         $this->line($project, 'Gaji Tim', 'Fee', 10000000);
-        ProjectBudgetPlan::create(['project_id' => $project->id, 'project_budget' => 50000000]);
+        BudgetFund::set(50000000, null);
         $this->restrict($this->category($project, 'Gaji Tim'), [$this->p['manajer']]);
 
-        // Raka tidak melihat "Gaji Tim": sisa yang dihitung dari item yang terlihat akan menyesatkan.
-        $this->actingAs($this->raka)->get(route('dashboard.budget.index'))->assertOk()
+        // Raka tidak melihat "Gaji Tim": selisih dana akan membocorkan total kategori itu.
+        $response = $this->actingAs($this->raka)->get(route('dashboard.budget.index'))->assertOk()
             ->assertDontSee('Unallocated:', false) // teks panduan halaman tetap memuat kata ini
             ->assertSee('Rp 50.000.000');
+        $this->assertNull($response->viewData('unallocated'));
 
         // Kanaya melihat semuanya.
-        $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk()->assertSee('Unallocated:', false);
+        $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk()->assertSee('Unallocated: Rp 20.000.000', false);
+    }
+
+    public function test_pdf_shows_the_overall_fund_only_for_an_unfiltered_report(): void
+    {
+        $project = $this->project('Map of Feelings');
+        $this->line($project, 'Marketing', 'Ads', 1000);
+        BudgetFund::set(5000, null);
+
+        $this->assertSame(5000.0, BudgetFund::amount());
+        $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.pdf'))->assertOk();
+        $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.pdf', ['project_id' => $project->id]))->assertOk();
     }
 
     // ---- edit satuan -----------------------------------------------------
@@ -296,7 +350,8 @@ class BudgetTrackerTest extends TestCase
             ->assertDontSee('onblur="bdSaveField(', false)
             ->assertDontSee('>+ Kategori<', false)
             ->assertDontSee('>Isi Project Budget<', false)
-            ->assertDontSee(route('dashboard.budget.plan.edit', $project), false);
+            ->assertDontSee('>Edit Project Budget<', false)
+            ->assertDontSee(route('dashboard.budget.fund.edit'), false);
 
         $this->actingAs($this->p['manajer'])->get(route('dashboard.budget.index'))->assertOk()
             ->assertSee('onblur="bdSaveField(', false)
@@ -377,7 +432,7 @@ class BudgetTrackerTest extends TestCase
         $index = $kanaya->get(route('dashboard.budget.index'))->assertOk();
         $index->assertSee(route('dashboard.budget.create', ['project_id' => $project->id]), false)
             ->assertSee(route('dashboard.budget.edit', $row), false)
-            ->assertSee(route('dashboard.budget.plan.edit', $project), false)
+            ->assertSee(route('dashboard.budget.fund.edit'), false)
             ->assertSee(route('dashboard.budget.categories.access', $this->category($project, 'Marketing')), false);
         // Tombol-tombol itu link biasa (halaman sendiri), bukan pemicu modal.
         $this->assertStringNotContainsString('wt-open-task-modal', $index->getContent());
@@ -566,19 +621,17 @@ class BudgetTrackerTest extends TestCase
         $this->assertDatabaseMissing('project_budgets', ['item' => 'Selundupan']);
     }
 
-    public function test_deleting_a_user_or_project_cleans_up_category_viewers_and_plan(): void
+    public function test_deleting_a_user_or_project_cleans_up_category_viewers(): void
     {
         $project = $this->project('Map of Feelings');
         $this->line($project, 'Gaji Tim', 'Fee');
         $category = $this->category($project, 'Gaji Tim');
         $this->restrict($category, [$this->viewer]);
-        ProjectBudgetPlan::create(['project_id' => $project->id, 'project_budget' => 1]);
 
         $this->viewer->delete();
         $this->assertCount(0, $category->fresh()->viewers);
 
         $project->delete();
         $this->assertDatabaseCount('budget_categories', 0);
-        $this->assertDatabaseCount('project_budget_plans', 0);
     }
 }

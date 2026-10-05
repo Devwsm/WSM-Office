@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Budget\BudgetRequest;
 use App\Models\AuditLog;
 use App\Models\BudgetCategory;
+use App\Models\BudgetFund;
 use App\Models\DashboardAccess;
 use App\Models\Project;
 use App\Models\ProjectBudget;
-use App\Models\ProjectBudgetPlan;
 use App\Models\User;
 use App\Support\BudgetReport;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -31,8 +31,10 @@ use Illuminate\Validation\Rule;
  *    bukti, catatan) lewat PATCH JSON `updateField()`,
  *  - kategori bisa diatur: warna, urutan, tambah, hapus (kosong saja),
  *  - akses per orang di level kategori (halaman sendiri),
- *  - "Project Budget" (anggaran awal, hanya diedit) vs "Budget Allocation"
- *    (jumlah budget item; dulu berlabel "Total Budget").
+ *  - "Project Budget" = dana KESELURUHAN semua project (satu angka, hanya
+ *    diedit, bisa diisi walau belum ada project) vs "Budget Allocation"
+ *    (jumlah budget semua item; dulu berlabel "Total Budget"). Selisihnya
+ *    = Unallocated, atau Over-allocated kalau item melebihi dana.
  *
  * DATA SENSITIF: Tambah/Edit item, edit Project Budget, dan atur akses
  * kategori semuanya halaman sendiri (BUKAN modal). Kategori terbatas
@@ -71,7 +73,12 @@ class BudgetController extends Controller
             ->when($lineFiltering, fn($c) => $c->filter(fn(array $card) => $card['item_count'] > 0))
             ->values();
 
-        $planTotal = ProjectBudgetPlan::query()->whereIn('project_id', $scoped->pluck('id'))->sum('project_budget');
+        // Dana keseluruhan vs total alokasi SEMUA item. Selisihnya hanya ditampilkan kalau peminta
+        // melihat semua kategori: kalau ada yang disembunyikan, selisih akan membocorkan total
+        // kategori itu (atau menyesatkan kalau dihitung dari yang terlihat saja).
+        $fund = BudgetFund::amount();
+        $allocationAll = (float) ProjectBudget::query()->sum('budget');
+        $unallocated = ($fund !== null && BudgetCategory::hiddenKeysFor($viewer) === []) ? $fund - $allocationAll : null;
 
         return view('dashboard.budget.index', [
             'report' => $report,
@@ -90,8 +97,8 @@ class BudgetController extends Controller
             'statusOptions' => BudgetReport::STATUSES,
             'filtering' => (bool) ($selectedProjectId || $lineFiltering),
             'lineFiltering' => $lineFiltering,
-            'planTotal' => (float) $planTotal,
-            'hasAnyPlan' => ProjectBudgetPlan::query()->whereIn('project_id', $scoped->pluck('id'))->exists(),
+            'fund' => $fund,
+            'unallocated' => $unallocated,
             'scope' => array_filter(array_intersect_key($filters + ['project_id' => $selectedProjectId], array_flip(self::FILTER_KEYS))),
         ]);
     }
@@ -118,9 +125,8 @@ class BudgetController extends Controller
             'groupLabel' => BudgetReport::GROUPS[$group],
             'entriesByProject' => $report->byProject(),
             'scopeLabel' => $project?->name ?? 'Semua project',
-            'projectBudget' => ProjectBudgetPlan::query()
-                ->when($selectedProjectId, fn($q) => $q->where('project_id', $selectedProjectId))
-                ->sum('project_budget'),
+            // Dana keseluruhan hanya relevan untuk laporan tanpa filter (cakupan = semua project).
+            'projectBudget' => array_filter($this->filters($request)) === [] ? BudgetFund::amount() : null,
         ])->setPaper('a4', 'landscape')->stream($filename);
     }
 
@@ -222,17 +228,17 @@ class BudgetController extends Controller
         return response()->json(['ok' => true, 'value' => $budget->fresh()->{$field}]);
     }
 
-    // --- Project Budget (anggaran awal) — hanya diedit, halaman sendiri ---
+    // --- Project Budget (dana keseluruhan) — hanya diedit, halaman sendiri ---
 
-    public function editPlan(Project $project)
+    public function editFund()
     {
-        return view('dashboard.budget.project-edit', [
-            'project' => $project,
-            'plan' => $project->budgetPlan,
+        return view('dashboard.budget.fund-edit', [
+            'fund' => BudgetFund::amount(),
+            'allocation' => (float) ProjectBudget::query()->sum('budget'),
         ]);
     }
 
-    public function updatePlan(Request $request, Project $project)
+    public function updateFund(Request $request)
     {
         $data = $request->validate(
             ['project_budget' => ['required', 'numeric', 'min:0', 'max:99999999999999']],
@@ -240,21 +246,17 @@ class BudgetController extends Controller
             ['project_budget' => 'Project Budget']
         );
 
-        $previous = $project->budgetPlan?->project_budget;
+        $previous = BudgetFund::amount();
 
-        ProjectBudgetPlan::updateOrCreate(
-            ['project_id' => $project->id],
-            ['project_budget' => $data['project_budget'], 'updated_by' => $request->user()->id]
-        );
+        BudgetFund::set((float) $data['project_budget'], $request->user()->id);
 
         AuditLog::record(
             'Project Budget diubah',
-            'Project "' . $project->name . '": ' . ($previous === null ? 'diisi' : 'diubah dari ' . number_format($previous, 0, ',', '.')) . ' menjadi ' . number_format((float) $data['project_budget'], 0, ',', '.') . ' oleh ' . $request->user()->name . '.',
+            'Dana Project Budget ' . ($previous === null ? 'diisi' : 'diubah dari ' . number_format($previous, 0, ',', '.')) . ' menjadi ' . number_format((float) $data['project_budget'], 0, ',', '.') . ' oleh ' . $request->user()->name . '.',
             $request->user()
         );
 
-        return redirect()->route('dashboard.budget.index', ['project_id' => $project->id])
-            ->with('status', 'Project Budget disimpan.');
+        return redirect()->route('dashboard.budget.index')->with('status', 'Project Budget disimpan.');
     }
 
     // --- Kategori: tambah, warna, urutan, hapus, akses ---
