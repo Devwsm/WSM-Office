@@ -1,12 +1,25 @@
 name: Deploy to cPanel (FTP)
 
+# Jalan di self-hosted runner (laptop Windows di Indonesia), bukan runner
+# GitHub: IP runner GitHub tidak bisa menjangkau port 21 Rumahweb sejak
+# 4 Okt 2026 (5 percobaan ulang di VM berbeda tetap timeout). Kalau jalur
+# itu sudah pulih, kembalikan `runs-on` ke ubuntu-latest dan step
+# deploy-hook ke `curl` biasa.
+
 on:
   push:
     branches: [main]
 
+# Satu deploy dalam satu waktu; kalau ada beberapa push beruntun, hanya yang
+# terbaru yang dijalankan setelah yang sedang berjalan selesai.
+concurrency:
+  group: deploy-wsm-office
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,10 +38,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install & build frontend assets
-        run: |
-          npm ci
-          npm run build
+      - name: Install dependencies frontend
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Upload kode aplikasi ke ~/wsm-office (percobaan 1)
         id: upload-app-1
@@ -119,5 +133,7 @@ jobs:
           server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
 
       - name: Trigger migrate & cache lewat deploy-hook
-        run: |
-          curl -sf "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
+        # curl.exe (bukan `curl`): di PowerShell `curl` adalah alias
+        # Invoke-WebRequest. --ssl-no-revoke menghindari error cek
+        # revocation Schannel di Windows; verifikasi sertifikat tetap aktif.
+        run: curl.exe -sSf --ssl-no-revoke "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
