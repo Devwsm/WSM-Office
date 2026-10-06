@@ -67,8 +67,9 @@ jobs:
             sum=$(sha256sum "$file" | cut -d' ' -f1)
             sig=$(printf '%s' "$ts.$target.$sum" | openssl dgst -sha256 -hmac "$DEPLOY_SECRET" -hex | awk '{print $NF}')
             echo "Mengirim $target ..."
-            curl --fail-with-body -sS --max-time 240 \
-              --retry 3 --retry-delay 5 --retry-all-errors \
+            curl --fail-with-body -sS \
+              --connect-timeout 20 --max-time 240 \
+              --retry 1 --retry-delay 5 \
               -X POST \
               -H "X-Timestamp: $ts" \
               -H "X-Signature: $sig" \
@@ -79,6 +80,19 @@ jobs:
           }
           send app /tmp/app.zip
           send build /tmp/build.zip
+
+      # Kalau runner ini tidak bisa menjangkau server, catat IP-nya (bahan untuk
+      # tiket Rumahweb) lalu gagal cepat; auto-retry-deploy.yml akan mengulang
+      # di runner baru.
+      - name: Diagnosa jika gagal (IP runner & jalur ke server)
+        if: failure()
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          echo "IP publik runner: $(curl -s --max-time 10 https://api.ipify.org)"
+          getent hosts "$APP_URL" || echo "DNS gagal"
+          curl -sS -o /dev/null -w "HTTP %{http_code} dalam %{time_total}s\n" \
+            --connect-timeout 10 "https://$APP_URL/" || true
 
       - name: Trigger migrate & cache lewat deploy-hook
         run: |
