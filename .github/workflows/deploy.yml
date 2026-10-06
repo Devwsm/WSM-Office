@@ -11,6 +11,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Info koneksi (IP runner & server FTP)
+        continue-on-error: true
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+        run: |
+          # Secret selalu disensor jadi *** di log. Supaya IP server tetap terbaca
+          # untuk perbandingan, titiknya diberi spasi (hanya alamat server, bukan password).
+          sp() { echo "$1" | sed 's/\./ . /g'; }
+          RUNNER_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "gagal")
+          RESOLVED=$(getent ahostsv4 "$FTP_HOST" | awk '{print $1}' | sort -u | tr '\n' ' ')
+          [ -z "$RESOLVED" ] && RESOLVED="DNS GAGAL (cek isi secret FTP_HOST)"
+          if timeout 8 bash -c "</dev/tcp/$FTP_HOST/21" 2>/dev/null; then PORT21="terbuka"; else PORT21="TIDAK merespons"; fi
+          echo "IP runner (pengirim)  : $RUNNER_IP"
+          echo "FTP host (isi secret) : $(sp "$FTP_HOST")"
+          echo "IP penerima (resolve) : $(sp "$RESOLVED")"
+          echo "Port 21 dari runner   : $PORT21"
+          {
+            echo "### Info koneksi deploy"
+            echo "- IP runner (pengirim): \`$RUNNER_IP\`"
+            echo "- FTP host (isi secret): \`$(sp "$FTP_HOST")\`"
+            echo "- IP penerima (resolve): \`$(sp "$RESOLVED")\`"
+            echo "- Port 21 dari runner: **$PORT21**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -38,7 +62,7 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           local-dir: ./
           server-dir: ${{ secrets.FTP_APP_DIR }}/
           exclude: |
@@ -72,7 +96,7 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           local-dir: ./
           server-dir: ${{ secrets.FTP_APP_DIR }}/
           exclude: |
@@ -103,7 +127,7 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           local-dir: ./public/build/
           server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
 
@@ -114,7 +138,7 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
           local-dir: ./public/build/
           server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
 
