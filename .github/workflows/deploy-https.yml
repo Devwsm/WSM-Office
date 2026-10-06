@@ -1,0 +1,85 @@
+name: Deploy to cPanel (HTTPS)
+
+# Pengganti FTP: kode & hasil build dikirim lewat HTTPS ke deploy-receiver.php
+# di server. Tidak memakai port 21, jadi tidak terpengaruh firewall FTP.
+#
+# Secret yang dibutuhkan (Settings -> Secrets and variables -> Actions):
+#   APP_URL        (sudah ada)  contoh: wos.whisnusantika.com  (tanpa https://)
+#   DEPLOY_TOKEN   (sudah ada)  dipakai langkah migrate di bawah
+#   DEPLOY_SECRET  (BARU)       sama persis dengan SECRET di deploy-receiver.php
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install Composer dependencies (cek validitas composer.json, vendor gak diupload)
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install & build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Siapkan zip (kode aplikasi & hasil build)
+        run: |
+          zip -rq /tmp/app.zip . \
+            -x ".git*" "*/.git*" \
+            -x "node_modules/*" "*/node_modules/*" \
+            -x "tests/*" "storage/*" "public/*" "vendor/*" \
+            -x ".env" ".env.example" \
+            -x "AGENTS.md" "CLAUDE.md" "README.md" \
+            -x "phpunit.xml" "package.json" "package-lock.json" \
+            -x "vite.config.js" ".editorconfig" ".npmrc"
+          (cd public/build && zip -rq /tmp/build.zip .)
+          ls -lh /tmp/app.zip /tmp/build.zip
+
+      - name: Kirim ke server lewat HTTPS
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+        run: |
+          send() {
+            target="$1"; file="$2"
+            ts=$(date +%s)
+            sum=$(sha256sum "$file" | cut -d' ' -f1)
+            sig=$(printf '%s' "$ts.$target.$sum" | openssl dgst -sha256 -hmac "$DEPLOY_SECRET" -hex | awk '{print $NF}')
+            echo "Mengirim $target ..."
+            curl --fail-with-body -sS --max-time 240 \
+              --retry 3 --retry-delay 5 --retry-all-errors \
+              -X POST \
+              -H "X-Timestamp: $ts" \
+              -H "X-Signature: $sig" \
+              -F "target=$target" \
+              -F "zip=@$file" \
+              "https://$APP_URL/deploy-receiver.php"
+            echo
+          }
+          send app /tmp/app.zip
+          send build /tmp/build.zip
+
+      - name: Trigger migrate & cache lewat deploy-hook
+        run: |
+          curl -sf "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"

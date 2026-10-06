@@ -1,8 +1,9 @@
 name: Deploy to cPanel (FTP)
 
+# Deploy FTP dinonaktifkan dari trigger push (diganti deploy-https.yml).
+# Masih bisa dijalankan manual: tab Actions -> Run workflow.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
