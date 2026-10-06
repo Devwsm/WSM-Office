@@ -7,6 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,14 +20,22 @@ jobs:
           # Secret selalu disensor jadi *** di log. Supaya IP server tetap terbaca
           # untuk perbandingan, titiknya diberi spasi (hanya alamat server, bukan password).
           sp() { echo "$1" | sed 's/\./ . /g'; }
+
           RUNNER_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "gagal")
           RESOLVED=$(getent ahostsv4 "$FTP_HOST" | awk '{print $1}' | sort -u | tr '\n' ' ')
           [ -z "$RESOLVED" ] && RESOLVED="DNS GAGAL (cek isi secret FTP_HOST)"
-          if timeout 8 bash -c "</dev/tcp/$FTP_HOST/21" 2>/dev/null; then PORT21="terbuka"; else PORT21="TIDAK merespons"; fi
+
+          if timeout 8 bash -c "</dev/tcp/$FTP_HOST/21" 2>/dev/null; then
+            PORT21="terbuka"
+          else
+            PORT21="TIDAK merespons"
+          fi
+
           echo "IP runner (pengirim)  : $RUNNER_IP"
           echo "FTP host (isi secret) : $(sp "$FTP_HOST")"
           echo "IP penerima (resolve) : $(sp "$RESOLVED")"
           echo "Port 21 dari runner   : $PORT21"
+
           {
             echo "### Info koneksi deploy"
             echo "- IP runner (pengirim): \`$RUNNER_IP\`"
@@ -41,7 +50,7 @@ jobs:
           php-version: '8.3'
           tools: composer
 
-      - name: Install Composer dependencies (cek validitas composer.json, vendor gak diupload)
+      - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
       - name: Setup Node
@@ -57,12 +66,15 @@ jobs:
       - name: Upload kode aplikasi ke ~/wsm-office (percobaan 1)
         id: upload-app-1
         continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          port: 21
+          timeout: 120000
+          log-level: verbose
           local-dir: ./
           server-dir: ${{ secrets.FTP_APP_DIR }}/
           exclude: |
@@ -85,18 +97,21 @@ jobs:
             **/.editorconfig
             **/.npmrc
 
-      # "Error: Timeout (control socket)" adalah bug flaky yang sudah lama dikenal
-      # di SamKirkland/FTP-Deploy-Action (lihat README 5.8 no. 1), gagal dalam
-      # hitungan detik lalu sukses kalau diulang. Retry otomatis di sini
-      # menggantikan re-run manual.
-      - name: Upload kode aplikasi ke ~/wsm-office (retry jika percobaan 1 gagal)
+      - name: Tunggu sebelum retry aplikasi
         if: steps.upload-app-1.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        run: sleep 20
+
+      - name: Upload kode aplikasi ke ~/wsm-office (retry)
+        if: steps.upload-app-1.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          port: 21
+          timeout: 120000
+          log-level: verbose
           local-dir: ./
           server-dir: ${{ secrets.FTP_APP_DIR }}/
           exclude: |
@@ -122,23 +137,33 @@ jobs:
       - name: Upload hasil build ke public_html (percobaan 1)
         id: upload-build-1
         continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          port: 21
+          timeout: 120000
+          log-level: verbose
           local-dir: ./public/build/
           server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
 
-      - name: Upload hasil build ke public_html (retry jika percobaan 1 gagal)
+      - name: Tunggu sebelum retry build
         if: steps.upload-build-1.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        run: sleep 20
+
+      - name: Upload hasil build ke public_html (retry)
+        if: steps.upload-build-1.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
+          port: 21
+          timeout: 120000
+          log-level: verbose
           local-dir: ./public/build/
           server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
 
