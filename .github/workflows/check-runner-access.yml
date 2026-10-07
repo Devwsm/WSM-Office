@@ -1,0 +1,74 @@
+name: Cek akses runner (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FTP_HOST: ${{ secrets.FTP_HOST }}
+      APP_URL: ${{ secrets.APP_URL }}
+    steps:
+      - name: Info runner (IP, negara, jaringan)
+        run: |
+          S="$GITHUB_STEP_SUMMARY"
+          INFO=$(curl -s --max-time 10 https://ipinfo.io/json | grep -E '"(ip|city|region|country|org)"' || echo "gagal ambil info IP")
+          echo "$INFO"
+          {
+            echo "### Info runner"
+            echo '```'
+            echo "$INFO"
+            echo '```'
+          } >> "$S"
+
+      - name: Resolve DNS server
+        run: |
+          sp() { echo "$1" | sed 's/\./ . /g'; }
+          A=$(getent ahostsv4 "$FTP_HOST" | awk '{print $1}' | sort -u | tr '\n' ' ')
+          B=$(getent ahostsv4 "$APP_URL" | awk '{print $1}' | sort -u | tr '\n' ' ')
+          echo "FTP_HOST -> $(sp "$A")"
+          echo "APP_URL  -> $(sp "$B")"
+
+      - name: Tes situs web dari runner (HTTPS dan HTTP)
+        run: |
+          S="$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "### Tes situs web"
+            echo ""
+            echo "| Protokol | Hasil |"
+            echo "| --- | --- |"
+          } >> "$S"
+          for scheme in https http; do
+            if RESULT=$(curl -sS -o /dev/null --max-time 20 -w "kode HTTP %{http_code}, waktu %{time_total}s" "$scheme://$APP_URL/" 2>&1); then
+              echo "$scheme: $RESULT"
+              echo "| $scheme | $RESULT |" >> "$S"
+            else
+              echo "$scheme: GAGAL - $RESULT"
+              echo "| $scheme | GAGAL: $RESULT |" >> "$S"
+            fi
+          done
+
+      - name: Tes port TCP ke server
+        run: |
+          S="$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "### Tes port TCP"
+            echo ""
+            echo "| Port | Hasil |"
+            echo "| --- | --- |"
+          } >> "$S"
+          for port in 21 22 80 443 2222 2223; do
+            code=0
+            timeout 8 bash -c "</dev/tcp/$FTP_HOST/$port" 2>/dev/null || code=$?
+            case $code in
+              0)   status="TERBUKA" ;;
+              124) status="TIMEOUT (kemungkinan diblokir/difilter firewall)" ;;
+              *)   status="DITOLAK (server terjangkau, tidak ada layanan di port ini)" ;;
+            esac
+            echo "port $port: $status"
+            echo "| $port | $status |" >> "$S"
+          done
