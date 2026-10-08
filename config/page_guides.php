@@ -99,6 +99,7 @@ return [
         'dashboard.it.changelog.index' => 'changelog',
         'dashboard.it.changelog.create' => 'changelog-form',
         'dashboard.it.changelog.edit' => 'changelog-form',
+        'dashboard.it.presence.*' => 'monitor-login',
         'dashboard.it.password-resets.*' => 'password-reset',
 
         // --- Recruitment ---
@@ -891,6 +892,29 @@ return [
         // =============================================================
         // IT
         // =============================================================
+
+        'monitor-login' => [
+            'title' => 'Monitor Login',
+            'summary' => 'Melihat siapa yang sedang online, sedang membuka halaman apa, dan kapan terakhir online. Hanya untuk dibaca.',
+            'access' => 'it',
+            'sections' => [
+                'Arti status' => [
+                    ['Online', 'karyawan aktif memakai aplikasi dalam 3 menit terakhir.'],
+                    ['Idle', 'tab masih terbuka tapi tidak ada aktivitas selama 3 sampai 15 menit.'],
+                    ['Offline', 'tidak ada aktivitas lebih dari 15 menit, sudah logout, atau belum pernah tercatat.'],
+                ],
+                'Yang bisa dilakukan' => [
+                    ['Kartu ringkasan', 'klik Online, Idle, atau Offline untuk memfilter daftar.'],
+                    ['Cari', 'cari berdasarkan nama, jabatan, atau divisi.'],
+                    'Daftar memperbarui dirinya sendiri tiap 15 detik selama tab ini terlihat.',
+                ],
+                'Perlu diketahui' => [
+                    'Yang tercatat hanya nama halaman (misalnya Work Tracker), bukan alamat lengkap atau isi pekerjaan karyawan.',
+                    'Karyawan yang belum membuka aplikasi sejak fitur ini aktif akan tampil "Belum ada data aktivitas".',
+                    'Waktu aktivitas hanya bertambah kalau karyawan benar-benar berinteraksi (klik, ketik, scroll), bukan sekadar membiarkan tab terbuka.',
+                ],
+            ],
+        ],
 
         'audit-log' => [
             'title' => 'Audit Log',

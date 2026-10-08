@@ -88,6 +88,10 @@ class User extends Authenticatable
             'birth_date' => 'date',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            // Monitor Login (2026-10-08) — lihat App\Support\Presence.
+            'last_login_at' => 'datetime',
+            'last_logout_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             // Fase 12 — field payroll (Gaji Pokok/Target Jam/Flat Overtime
             // Rate), ditunda dari Fase 7 sesuai keputusan README.
             'salary_base' => 'float',

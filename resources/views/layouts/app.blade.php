@@ -337,7 +337,7 @@
                     </a>
                 @endif
 
-                {{-- 7 · IT — Audit Log (read-only) + System Changelog. --}}
+                {{-- 7 · IT — Audit Log (read-only) + System Changelog + Monitor Login. --}}
                 @if ($u->canViewModule('it'))
                     @php $sectionNo++; @endphp
                     <p class="mt-3 rounded-2xl px-3.5 py-2.5 text-[11px] font-extrabold text-ink"
@@ -349,6 +349,10 @@
                     <a href="{{ route('dashboard.it.changelog.index') }}"
                         class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.changelog.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
                         <span class="mr-1.5 inline-block w-4 text-center">⟳</span>System Change Log
+                    </a>
+                    <a href="{{ route('dashboard.it.presence.index') }}"
+                        class="rounded-2xl px-3.5 py-3 font-extrabold {{ request()->routeIs('dashboard.it.presence.*') ? 'bg-ink text-white' : 'text-[#5e5951] hover:bg-white' }}">
+                        <span class="mr-1.5 inline-block w-4 text-center">●</span>Monitor Login
                     </a>
                     @if ($u->canManageModule('it'))
                         <a href="{{ route('dashboard.it.password-resets.index') }}"
@@ -455,6 +459,9 @@
     {{-- Tombol "? Panduan" + modal panduan halaman (config/page_guides.php).
         Tampil otomatis kalau route yang sedang dibuka punya panduan. --}}
     @include('partials.page-guide')
+
+    {{-- Heartbeat Monitor Login (hanya kirim saat ada interaksi). --}}
+    @include('partials.presence-heartbeat')
 </body>
 
 </html>

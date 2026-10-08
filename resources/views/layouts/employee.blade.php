@@ -242,6 +242,9 @@
             </a>
         </nav>
     </div>
+
+    {{-- Heartbeat Monitor Login (hanya kirim saat ada interaksi). --}}
+    @include('partials.presence-heartbeat')
 </body>
 
 </html>

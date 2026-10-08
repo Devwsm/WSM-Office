@@ -3,6 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Memo;
+use App\Models\User;
+use App\Support\Presence;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +27,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Monitor Login (2026-10-08) — catat login/logout buat status online.
+        Event::listen(Login::class, function (Login $event) {
+            if ($event->user instanceof User) {
+                Presence::recordLogin($event->user);
+            }
+        });
+        Event::listen(Logout::class, function (Logout $event) {
+            if ($event->user instanceof User) {
+                Presence::recordLogout($event->user);
+            }
+        });
+
         /**
          * Audit ronde 6 (2026-09-09) — Inbox header (ikon amplop + badge
          * unread), padanan `openEmployeeInboxV19`/`inboxUnreadCountV19`

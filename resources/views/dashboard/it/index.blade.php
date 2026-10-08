@@ -25,6 +25,9 @@
         <a href="{{ route('dashboard.it.changelog.index') }}"
             class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">System
             Changelog</a>
+        <a href="{{ route('dashboard.it.presence.index') }}"
+            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Monitor
+            Login</a>
         @if (auth()->user()->canManageModule('it'))
             <a href="{{ route('dashboard.it.password-resets.index') }}"
                 class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset

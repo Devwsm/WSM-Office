@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureDashboardUnlocked;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\TrackPresence;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // SEMUA route web, tanpa perlu ditempel per grup.
         $middleware->web(append: [
             EnsurePasswordChanged::class,
+            TrackPresence::class,
         ]);
 
         // Dipanggil GitHub Actions lewat curl (tanpa sesi browser), jadi

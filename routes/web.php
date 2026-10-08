@@ -42,6 +42,8 @@ use App\Http\Controllers\Dashboard\Kpi\KpiController;
 use App\Http\Controllers\Dashboard\Legal\LegalController;
 use App\Http\Controllers\Dashboard\It\AuditLogController;
 use App\Http\Controllers\Dashboard\It\PasswordResetController;
+use App\Http\Controllers\Dashboard\It\PresenceController;
+use App\Http\Controllers\PresenceHeartbeatController;
 use App\Http\Controllers\Dashboard\It\SystemChangelogController;
 use App\Http\Controllers\Dashboard\Payroll\PayrollController;
 use App\Http\Controllers\Dashboard\Royalty\RoyaltyController;
@@ -94,6 +96,11 @@ require __DIR__ . '/auth.php';
 // login (semua staf internal saling melihat foto di tim); file tetap di disk
 // private, tidak ada URL publik langsung.
 Route::get('/avatar/{user}', [ProfileController::class, 'avatar'])->middleware('auth')->whereNumber('user')->name('avatar.show');
+
+// --- Heartbeat Monitor Login (2026-10-08) ---
+// Dipanggil JS dari semua layout saat tab terlihat & ada interaksi. Lihat
+// partials/presence-heartbeat.blade.php dan App\Support\Presence.
+Route::post('/presence/ping', [PresenceHeartbeatController::class, 'ping'])->middleware(['auth', 'throttle:30,1'])->name('presence.ping');
 
 // --- Karyawan & Manajer (Manajer tetap karyawan; HRD juga staf internal) ---
 Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix('app')->name('employee.')->group(function () {
@@ -550,6 +557,9 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
             Route::patch('/{changelog}', [SystemChangelogController::class, 'update'])->middleware('module:it,manage')->name('update');
             Route::delete('/{changelog}', [SystemChangelogController::class, 'destroy'])->middleware('module:it,manage')->name('destroy');
         });
+
+        // Monitor Login (2026-10-08) — read-only, cukup akses View `it`.
+        Route::get('/monitor-login', [PresenceController::class, 'index'])->middleware('module:it,view')->name('presence.index');
 
         // Reset password karyawan (butuh Manage `it`). Aturan siapa boleh
         // mereset siapa ada di User::canResetPasswordOf().
