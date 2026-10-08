@@ -69,7 +69,9 @@ class DashboardController extends Controller
         // 2026-09-28 — rhythm (fokus/mode/jam per hari) dibaca dari
         // OfficeSetting::weeklyRhythm(), diubah lewat Weekly Rhythm
         // Settings di Timeline Calendar — tidak ada lagi salinan hardcode.
-        $weeklyRhythm = $office->weeklyRhythm();
+        // 2026-10-08 — 7 hari (Minggu-Sabtu) sama persis dengan header Timeline
+        // Calendar: Sabtu/Minggu berisi ritme "event" (OfficeSetting::calendarRhythm()).
+        $weeklyRhythm = $office->calendarRhythm();
 
         // Upcoming Birthday & Work Anniversary — semua karyawan
         // (termasuk Owner sendiri, prototype juga tidak exclude

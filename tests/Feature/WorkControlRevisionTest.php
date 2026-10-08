@@ -186,7 +186,13 @@ class WorkControlRevisionTest extends TestCase
         $this->assertSame([0, 1, 2, 3, 4, 5, 6], array_keys($rhythm));
         $this->assertSame('Event', $rhythm[6]['mode']);
         $this->assertSame('Event', $rhythm[0]['mode']);
-        $this->assertSame([1, 2, 3, 4, 5], array_keys(OfficeSetting::current()->weeklyRhythm())); // dashboard Owner tetap 5 hari
+        $this->assertSame([1, 2, 3, 4, 5], array_keys(OfficeSetting::current()->weeklyRhythm())); // App Mode tetap 5 hari kerja
+
+        // Dashboard Owner (Executive People Overview) 7 hari, sama dengan header kalender.
+        $ownerHtml = $this->actingAs($this->p['owner'])->get(route('owner.dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('Event &amp; Show', $ownerHtml);
+        $this->assertStringContainsString('Minggu', $ownerHtml);
+        $this->assertStringContainsString('Sabtu', $ownerHtml);
 
         $html = $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.calendar'))->assertOk()->getContent();
         $this->assertStringContainsString('Event &amp; Show', $html);

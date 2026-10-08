@@ -11,6 +11,11 @@
     Pengajuan Pending/Tugas Berjalan/Kontrak Akan Habis) SENGAJA
     dibiarkan seperti semula — link & datanya masih dipakai, cuma
     ditaruh di bawah hero + weekly rhythm sekarang, bukan diganti.
+
+    2026-10-08 — (1) chip ritme disamakan dengan header Timeline Calendar
+    (warna mode + penanda Today), (2) scrollbar daftar Service Length
+    dihapus (kartu memanjang mengikuti isi), (3) foto profil (<x-avatar>)
+    ditambahkan di Birthday & Work Anniversary dan Service Length.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Dashboard', 'navActive' => 'dashboard'])
@@ -29,15 +34,33 @@
         </span>
     </div>
 
-    {{-- Weekly Rhythm — 5 hari kerja (Senin-Jumat), padanan strip di
-        prototype. Jam WFO-nya sinkron sama Pengaturan Kantor
-        (lihat DashboardController). --}}
-    <div class="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-        @foreach ($weeklyRhythm as $day)
-            <div class="rounded-wsm-lg border border-line bg-white p-3.5">
-                <p class="text-[10px] font-black uppercase tracking-wide text-muted">{{ $day['day'] }}</p>
+    {{-- Weekly Rhythm — 7 hari (Minggu-Sabtu), sumber & urutan sama dengan header Timeline
+        Calendar (OfficeSetting::calendarRhythm(); Sabtu/Minggu = ritme event).
+        2026-10-08: tampilan disamakan dengan header kalender — chip mode berwarna
+        (WFO/WFH/Event) + penanda hari ini. --}}
+    <div class="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+        @foreach ($weeklyRhythm as $dow => $day)
+            @php
+                $modeClass = match ($day['mode']) {
+                    'WFO' => 'bg-[#e8efff] text-[#23498d]',
+                    'WFH' => 'bg-[#e8f8e8] text-[#286231]',
+                    'Event' => 'bg-[#fff0bd] text-[#6b4a00]',
+                    default => 'bg-[#eeeae3] text-[#4e4a43]',
+                };
+                $isToday = now()->dayOfWeek === $dow;
+            @endphp
+            <div class="rounded-wsm-lg border bg-white p-3.5 {{ $isToday ? 'border-[#111] ring-1 ring-[#111]' : 'border-line' }}"
+                title="{{ $day['focus'] }} · {{ $day['mode'] }} · {{ $day['hours'] }}">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-[10px] font-black uppercase tracking-wide text-muted">{{ $day['day'] }}</p>
+                    @if ($isToday)
+                        <small class="text-[10px] font-black">Today</small>
+                    @endif
+                </div>
                 <strong class="mt-1 block text-[13px] font-black leading-snug">{{ $day['focus'] }}</strong>
-                <span class="mt-1 block text-[10px] text-muted">{{ $day['mode'] }} · {{ $day['hours'] }}</span>
+                <span class="mt-1.5 block rounded-md px-1.5 py-1 text-[9px] font-black leading-tight {{ $modeClass }}">
+                    {{ $day['mode'] }} · {{ $day['hours'] }}
+                </span>
             </div>
         @endforeach
     </div>
@@ -95,21 +118,24 @@
             @else
                 <div class="mt-3.5 grid gap-2">
                     @foreach ($teamMoments as $row)
-                        <div class="rounded-2xl border border-line bg-[#faf8f3] px-3.5 py-2.5">
-                            <div class="flex items-center justify-between gap-2">
-                                <p class="text-[10px] font-extrabold text-muted">
-                                    + {{ $row['type'] === 'birthday' ? 'Birthday' : 'Work Anniversary' }}
-                                </p>
-                                <strong class="flex-none text-[11px]">{{ $row['date']->translatedFormat('d M') }}
-                                    ·
-                                    {{ $row['days'] }} hari lagi</strong>
+                        <div class="flex items-center gap-3 rounded-2xl border border-line bg-[#faf8f3] px-3.5 py-2.5">
+                            <x-avatar :user="$row['user']" class="h-9 w-9 rounded-xl text-xs" />
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-[10px] font-extrabold text-muted">
+                                        + {{ $row['type'] === 'birthday' ? 'Birthday' : 'Work Anniversary' }}
+                                    </p>
+                                    <strong class="flex-none text-[11px]">{{ $row['date']->translatedFormat('d M') }}
+                                        ·
+                                        {{ $row['days'] }} hari lagi</strong>
+                                </div>
+                                <strong class="mt-0.5 block truncate text-xs">
+                                    {{ $row['user']->name }}
+                                    @if ($row['years'])
+                                        · {{ $row['years'] }} tahun
+                                    @endif
+                                </strong>
                             </div>
-                            <strong class="mt-0.5 block text-xs">
-                                {{ $row['user']->name }}
-                                @if ($row['years'])
-                                    · {{ $row['years'] }} tahun
-                                @endif
-                            </strong>
                         </div>
                     @endforeach
                 </div>
@@ -128,13 +154,16 @@
                 <a href="{{ route('owner.employees.index') }}" class="badge-wsm-gray">People →</a>
             </div>
 
-            <div class="mt-3.5 grid max-h-96 gap-0.5 overflow-y-auto">
+            <div class="mt-3.5 grid gap-0.5">
                 @foreach ($serviceLengths as $employee)
                     <div class="flex items-center justify-between gap-3 border-b border-[#eee8df] py-2.5 last:border-0">
-                        <div class="min-w-0">
-                            <strong class="block truncate text-xs">{{ $employee->name }}</strong>
-                            <span
-                                class="text-[10px] text-muted">{{ $employee->job_title ?? $employee->roleLabel() }}</span>
+                        <div class="flex min-w-0 items-center gap-2.5">
+                            <x-avatar :user="$employee" class="h-9 w-9 rounded-xl text-xs" />
+                            <div class="min-w-0">
+                                <strong class="block truncate text-xs">{{ $employee->name }}</strong>
+                                <span
+                                    class="text-[10px] text-muted">{{ $employee->job_title ?? $employee->roleLabel() }}</span>
+                            </div>
                         </div>
                         <span
                             class="flex-none text-[11px] font-bold {{ $employee->join_date ? 'text-ink' : 'text-muted' }}">
