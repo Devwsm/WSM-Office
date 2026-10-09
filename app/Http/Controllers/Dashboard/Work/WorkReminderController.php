@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard\Work;
 
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\WorkReminderRequest;
 use App\Models\Memo;
@@ -75,6 +76,8 @@ class WorkReminderController extends Controller
             'created_by' => Auth::id(),
         ]);
         $memo->recipients()->attach($data['pic_employee_id']);
+
+        AuditLog::record('Reminder dikirim', "Reminder \"{$item->title}\" untuk " . (\App\Models\User::query()->find($data['pic_employee_id'])?->name ?? 'karyawan') . ($item->due_date ? ' (due ' . $item->due_date->translatedFormat('d M Y') . ')' : '') . '.', Auth::user());
 
         return back()->with('status', 'Reminder dikirim: masuk Work Tracker & Info dari Owner karyawan itu.');
     }

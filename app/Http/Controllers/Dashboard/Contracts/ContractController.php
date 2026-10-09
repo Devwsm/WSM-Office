@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Contracts;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Contracts\ContractRequest;
 use App\Models\EmployeeContract;
@@ -65,7 +67,9 @@ class ContractController extends Controller
         $data['uploaded_by'] = Auth::id();
         unset($data['file']);
 
-        EmployeeContract::create($data);
+        $created = EmployeeContract::create($data);
+
+        AuditLog::record('Kontrak diupload', 'Kontrak ' . Audit::summary($created, Audit::labels('contract')) . '.', Auth::user());
 
         return redirect()->route('dashboard.contracts.index')->with('status', 'Kontrak berhasil diupload.');
     }
@@ -102,15 +106,21 @@ class ContractController extends Controller
         }
         unset($data['file']);
 
+        $changes = Audit::changes($contract, $data, Audit::labels('contract'));
         $contract->update($data);
+
+        AuditLog::record('Kontrak diperbarui', "Kontrak #{$contract->id} ({$contract->employee?->name}): {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.contracts.index')->with('status', 'Kontrak berhasil diperbarui.');
     }
 
     public function destroy(EmployeeContract $contract)
     {
+        $summary = Audit::summary($contract, Audit::labels('contract'));
         PrivateFile::delete($contract->file_path);
         $contract->delete();
+
+        AuditLog::record('Kontrak dihapus', "Kontrak dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'Kontrak berhasil dihapus.');
     }

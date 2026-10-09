@@ -4,7 +4,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 
 **Stack:** Laravel 13.32 · PHP 8.3 (batas cPanel Rumahweb; `composer.json` mengunci platform ke 8.3.0) · MySQL · Tailwind CSS v4 + Vite · Alpine.js · Leaflet (peta geofence) · SweetAlert2 · `maatwebsite/excel` 4.0 · `barryvdh/laravel-dompdf` 3.1.
 
-**Ukuran kode:** 30 model · 37 FormRequest · 56 migrasi · 5 seeder · 127 view Blade · 53 panduan halaman · 204 route (`php artisan route:list`) · **591 tes otomatis**.
+**Ukuran kode:** 30 model · 37 FormRequest · 57 migrasi · 5 seeder · 127 view Blade · 53 panduan halaman · 204 route (`php artisan route:list`) · **606 tes otomatis**.
 
 **Legenda status:** ✅ ada & sesuai · ⚠️ ada tapi lebih sederhana / beda dari prototype · ❌ belum ada · ➕ tambahan (tidak ada di prototype)
 
@@ -22,7 +22,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 - `/app` untuk semua akun internal; `/owner` untuk role `owner` dan `developer` (Dashboard Access khusus `owner`); `/manajer` untuk manajer/owner; `/dashboard` dijaga akses **modul**.
 - Akses modul (`dashboard_access`, level `view`/`manage`) mengatur menu dan hak ubah di `/dashboard`, rekap, approval, dan rekrutmen. Ada 10 modul (sumber kebenaran: `DashboardAccess::MODULES`).
 - `throttle` dipasang pada login (5/menit), form kontak dan lamaran (5/menit), absen, pengajuan, lembur, koreksi presensi, foto profil, balasan memo, buka kunci dashboard, blast memo, Kirim Reminder, import, sinkron sheet, reset password, Weekly Rhythm, drag tanggal kalender, edit satuan Work Tracker, heartbeat Monitor Login (30/menit), dan deploy-hook Hook B.
-- Audit log untuk aksi penting: karyawan, akses modul, approval, payroll (termasuk buka kembali), penanda Absen, pengaturan kantor, Beranda Publik, Kelompok Tim, import karyawan, reset password, Weekly Rhythm, drag tanggal kalender, visibility section, dan sinkron sheet. **Belum:** edit satuan Work Tracker, import KPI/Budget/Work Tracker, CRUD KPI dan Budget. Sudah: perubahan Project Budget dan akses kategori budget. Monitor Login read-only dan tidak masuk Audit Log.
+- **Audit Log mencatat semua aksi yang mengubah data**, dengan nilai lama → baru bila memungkinkan (mis. `Progress: Pending → Done`), pelaku, area (nama halaman), IP, dan waktu: karyawan, akses modul, approval, payroll, pengaturan kantor, Work Tracker (project, section, task, edit cepat progress/note/judul/PIC/link), Project Budgeting, KPI, kontrak, legal, royalty, MoM, memo, reminder, changelog, rekrutmen (lowongan, status pelamar, konversi akun), koreksi manual absensi, pengajuan izin/cuti/lembur/koreksi beserta pembatalannya, ganti password, import, login berhasil/gagal, dan sesi absen yang ditutup otomatis. **Cara kerjanya:** pencatatan khusus lewat `AuditLog::record()` dan pembantu `App\Support\Audit` (label kolom di `Audit::labels()`); middleware `AuditUncoveredChanges` mencatat aksi berhasil yang belum punya catatan khusus sebagai "Perubahan data (tidak terinci)"; `AuditCoverageTest` gagal bila ada route POST/PUT/PATCH/DELETE yang tidak mencatat dan belum didaftarkan di `config/audit.php`. **Sengaja tidak dicatat** (alasan di `config/audit.php`): absen masuk/pulang (catatannya sendiri sudah jejak), baca/sembunyikan memo dan balasan, foto profil dan warna tema, kunci dashboard, pratinjau import/sinkron, form publik, tanda baca pesan kontak, heartbeat, logout, dan deploy hook. Monitor Login read-only. Kolom sensitif (path file, isi password, isi memo) tidak ikut ditulis. Halaman Audit Log bisa difilter menurut kata kunci/IP, pelaku, area, dan tanggal.
 
 ### Peran & akses
 
@@ -122,7 +122,7 @@ php artisan test
 
 SQLite `:memory:`; `public/hot` dan `public/build` tidak perlu ada. `phpunit.xml` mengunci `WOS_PREVIEW_MODE=true` dan `WOS_ENTRY_POPUPS=false`, jadi isi `.env` lokal tidak memengaruhi hasil. Untuk MySQL, buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` (jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya).
 
-**Hasil terakhir:** 591 tes lulus (dijalankan lokal, 2026-10-08). **Pipeline deploy tidak menjalankan tes** (5.1), jadi `php artisan test` wajib dijalankan manual sebelum push.
+**Hasil terakhir:** 606 tes lulus (dijalankan lokal, 2026-10-09). **Pipeline deploy tidak menjalankan tes** (5.1), jadi `php artisan test` wajib dijalankan manual sebelum push.
 
 | File tes (`tests/Feature`)                                                                    | Mencakup                                                                                                            |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -137,6 +137,7 @@ SQLite `:memory:`; `public/hot` dan `public/build` tidak perlu ada. `phpunit.xml
 | `BudgetReportTest`, `BudgetTrackerTest`, `ExportImportTest`                                   | Laporan dan tracker budget (akses per kategori), semua export/import                                                |
 | `AccessMatrixTest`, `PrivateFileAccessTest`, `PageGuideTest`, `EntryPopupsTest`               | Matriks akses URL × akun, akses file private, panduan di semua halaman dashboard, popup preview                     |
 | `PresenceMonitorTest`                                                                         | Monitor Login: akses, pelacakan halaman, heartbeat, status, login/logout, filter, respons AJAX                      |
+| `AuditTrailTest`, `AuditCoverageTest`                                                         | Audit Log: nilai lama → baru, login, auto-close, jaring pengaman, filter halaman; penjaga semua route pengubah data |
 | `ExampleTest` (Feature dan Unit)                                                              | Stub bawaan; versi Feature memakai `RefreshDatabase` karena Beranda membaca `office_settings`                       |
 
 Pendukung: `tests/TestCase.php` (mematikan Vite; meniru kolom `DATE` MySQL serta fungsi `FIELD()`/`DATE_FORMAT()` di SQLite, hanya di tes) dan `tests/Concerns/CreatesWsmFixtures.php` (5 akun standar + pengaturan kantor + waktu dibekukan ke Senin 2026-09-21).
@@ -173,17 +174,17 @@ app/
 │   │   ├── Recruitment/    # JobOpening, JobApplication
 │   │   ├── System/         # DeployHookController (Hook B, tidak dipakai workflow; 5.4)
 │   │   └── PresenceHeartbeatController.php   # POST /presence/ping (heartbeat Monitor Login)
-│   ├── Middleware/         # EnsureRole, EnsureModuleAccess, EnsureDashboardUnlocked, EnsurePasswordChanged, TrackPresence
+│   ├── Middleware/         # EnsureRole, EnsureModuleAccess, EnsureDashboardUnlocked, EnsurePasswordChanged, TrackPresence, AuditUncoveredChanges
 │   └── Requests/           # 37 FormRequest, dikelompokkan per area
 ├── Models/                 # 30 model (nama = tabel)
 ├── Providers/AppServiceProvider.php
-└── Support/                # ProjectSheet/ (SheetReader, SheetSync: sinkron tracker Excel/CSV per project), AttendanceReconciler, BudgetReport, Geo, PageGuide, PayrollCalculator, EntryPopups, PrivateFile, Presence,
+└── Support/                # ProjectSheet/ (SheetReader, SheetSync: sinkron tracker Excel/CSV per project), AttendanceReconciler, BudgetReport, Geo, PageGuide, PayrollCalculator, EntryPopups, PrivateFile, Presence, Audit,
                             # ExportImport/{ExportCatalog, ImportPreviewService}
 
-config/                     # + page_guides.php (panduan halaman), entry_popups.php (popup preview), presence.php (Monitor Login)
+config/                     # + page_guides.php (panduan halaman), entry_popups.php (popup preview), presence.php (Monitor Login), audit.php (pengecualian Audit Log)
 database/
 ├── factories/UserFactory.php
-├── migrations/             # 56 migrasi. Dua pasang bernama sama (`office_settings`, `attendances`:
+├── migrations/             # 57 migrasi. Dua pasang bernama sama (`office_settings`, `attendances`:
 │                           # create + alter) dibedakan hanya lewat timestamp
 └── seeders/                # DatabaseSeeder, OfficeSettingSeeder, ProductionSeeder (akun asli),
                             # DemoSeeder + TestingAccountsSeeder (hanya lokal)
@@ -205,7 +206,7 @@ routes/
 
 docs/server/index.php       # Salinan public/index.php versi server (sudah `usePublicPath`); ikut di-upload ke ~/wsm-office/docs
 .github/workflows/deploy.yml  # Auto-deploy GitHub Actions → FTPS cPanel (Bab 5)
-tests/                      # 33 file tes Feature + 1 Unit (Bab 3)
+tests/                      # 35 file tes Feature + 1 Unit (Bab 3)
 ```
 
 Di sisi server (tidak ada di repo): `public_html/<domain>/deploy-hook.php` (5.4).
@@ -418,7 +419,7 @@ Data di production adalah **data asli** (absensi, cuti, lembur, payroll, kontrak
 - Tidak ada lagi reset data. Data uji hanya di database lokal.
 - **Backup dulu sebelum push yang berisi migrasi baru**, terutama yang mengubah/menghapus kolom atau tabel: ekspor database lewat cPanel (Backup atau phpMyAdmin Export) dan simpan di luar server. Jadwal backup otomatis dan uji pemulihannya belum tercatat: ⬜ pastikan aktif dan pernah dicoba.
 - **Migrasi harus aman untuk data yang ada:** tambah kolom sebagai `nullable`/dengan default; jangan hapus atau ganti nama kolom dalam deploy yang sama dengan kode yang memakainya (pecah jadi dua deploy); jangan `truncate`.
-- **Import massal** (Karyawan, KPI, Budget, Work Tracker): coba dulu dengan file kecil. Hanya import Karyawan yang tercatat di Audit Log; KPI dan Budget belum.
+- **Import massal** (Karyawan, KPI, Budget, Work Tracker): coba dulu dengan file kecil. Setiap import tercatat di Audit Log sebagai ringkasan (jumlah baris berhasil dan dilewati); import Karyawan juga tercatat per baris.
 
 **Deploy**
 
@@ -483,7 +484,7 @@ Pipeline tidak menjalankan tes dan tidak bisa di-rollback otomatis (5.1, 5.9), j
 - Pengajuan cuti tumpang tindih belum diblokir (dikunci tes `test_overlapping_leave_requests_are_currently_not_blocked`). Perlu keputusan: blokir sistem atau biarkan atasan menolak manual.
 - Honeypot/captcha pada form kontak dan lamaran (sekarang hanya throttle per IP).
 - Security header (CSP, X-Frame-Options, HSTS) belum ada.
-- Audit Log untuk KPI dan Budget (CRUD maupun import).
+- Retensi Audit Log (tabel bertambah terus; arsip atau hapus data lama bila sudah besar).
 - Gerbang tes di workflow (5.1).
 - Monitor Login: riwayat aktivitas per hari (sekarang hanya status terakhir) dan rotasi/penghapusan data lama bila nanti ditambahkan.
 

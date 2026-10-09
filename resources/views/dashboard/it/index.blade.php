@@ -35,11 +35,30 @@
         @endif
     </div>
 
+    @php
+        $fieldClass = 'rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink';
+    @endphp
     <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-        <input type="text" name="q" value="{{ $search }}" placeholder="Cari aksi, detail, atau nama..."
-            class="w-full max-w-xs rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink sm:w-auto">
-        <button type="submit" class="btn-wsm-white py-2! px-3.5! text-xs">Cari</button>
-        @if ($search)
+        <input type="text" name="q" value="{{ $search }}" placeholder="Cari aksi, detail, nama, atau IP..."
+            class="{{ $fieldClass }} w-full max-w-xs sm:w-auto">
+        <select name="actor" class="{{ $fieldClass }}">
+            <option value="">Semua pelaku</option>
+            <option value="system" @selected($actor === 'system')>Sistem / tanpa login</option>
+            @foreach ($actors as $person)
+                <option value="{{ $person->id }}" @selected((string) $actor === (string) $person->id)>{{ $person->name }}</option>
+            @endforeach
+        </select>
+        <select name="area" class="{{ $fieldClass }}">
+            <option value="">Semua area</option>
+            @foreach ($areas as $name)
+                <option value="{{ $name }}" @selected($area === $name)>{{ $name }}</option>
+            @endforeach
+        </select>
+        <input type="date" name="from" value="{{ $from }}" class="{{ $fieldClass }}" title="Dari tanggal">
+        <input type="date" name="to" value="{{ $to }}" class="{{ $fieldClass }}"
+            title="Sampai tanggal">
+        <button type="submit" class="btn-wsm-white py-2! px-3.5! text-xs">Filter</button>
+        @if ($filtered)
             <a href="{{ route('dashboard.it.index') }}" class="text-[11px] font-extrabold text-muted">Reset</a>
         @endif
     </form>
@@ -47,8 +66,8 @@
     @if ($logs->isEmpty())
         <div class="card-wsm-white text-center">
             <p class="text-xs text-muted">
-                @if ($search)
-                    Gak ada log yang cocok dengan pencarian.
+                @if ($filtered)
+                    Gak ada log yang cocok dengan filter.
                 @else
                     Belum ada aktivitas tercatat.
                 @endif
@@ -62,12 +81,20 @@
                         <div class="min-w-0">
                             <strong class="text-sm">{{ $log->action }}</strong>
                             <span class="ml-1.5 text-[11px] font-bold text-muted">oleh {{ $log->actorName() }}</span>
+                            @if ($log->area)
+                                <span
+                                    class="ml-1.5 rounded-full bg-[#eeeae3] px-2 py-0.5 text-[9px] font-black text-[#4e4a43]">{{ $log->area }}</span>
+                            @endif
                             @if ($log->detail)
-                                <p class="mt-1 text-xs text-ink">{{ $log->detail }}</p>
+                                <p class="mt-1 wrap-break-word text-xs text-ink">{{ $log->detail }}</p>
                             @endif
                         </div>
-                        <span
-                            class="flex-none text-[10px] text-muted">{{ $log->created_at->translatedFormat('d M Y, H:i') }}</span>
+                        <div class="flex-none text-right text-[10px] text-muted">
+                            <span class="block">{{ $log->created_at->translatedFormat('d M Y, H:i:s') }}</span>
+                            @if ($log->ip_address)
+                                <span class="block">IP {{ $log->ip_address }}</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             @endforeach

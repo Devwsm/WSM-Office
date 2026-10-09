@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Employee;
 
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelLeaveRequestRequest;
 use App\Http\Requests\Employee\StoreLeaveRequestRequest;
@@ -40,7 +41,7 @@ class LeaveRequestController extends Controller
         $data = $request->validated();
         $workDays = LeaveRequest::countWorkDays($data['start_date'], $data['end_date']);
 
-        LeaveRequest::query()->create([
+        $created = LeaveRequest::query()->create([
             'user_id' => Auth::id(),
             'type' => $data['type'],
             'start_date' => $data['start_date'],
@@ -49,6 +50,8 @@ class LeaveRequestController extends Controller
             'reason' => $data['reason'],
             'status' => 'pending',
         ]);
+
+        AuditLog::record('Pengajuan izin/cuti dikirim', "{$created->type} {$created->start_date->translatedFormat('d M Y')} s/d {$created->end_date->translatedFormat('d M Y')} ({$workDays} hari kerja).", Auth::user());
 
         return back()->with('status', 'Pengajuan berhasil dikirim, tunggu persetujuan atasan.');
     }
@@ -65,6 +68,8 @@ class LeaveRequestController extends Controller
         }
 
         $leave->cancelBy($me, $request->validated('cancellation_reason'));
+
+        AuditLog::record('Pengajuan izin/cuti dibatalkan pemohon', "{$leave->type} {$leave->start_date->translatedFormat('d M Y')} s/d {$leave->end_date->translatedFormat('d M Y')} dibatalkan oleh pemohon. Alasan: " . ($request->validated('cancellation_reason') ?: '—'), $me);
 
         return back()->with('status', 'Pengajuan berhasil dibatalkan.');
     }

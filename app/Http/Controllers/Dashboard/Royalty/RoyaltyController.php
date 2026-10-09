@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Royalty;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Royalty\RoyaltyRequest;
 use App\Models\RoyaltyEntry;
@@ -50,7 +52,9 @@ class RoyaltyController extends Controller
         $data = $request->validated();
         $data['updated_by'] = Auth::id();
 
-        RoyaltyEntry::create($data);
+        $entry = RoyaltyEntry::create($data);
+
+        AuditLog::record('Royalty entry ditambahkan', 'Royalty ' . Audit::summary($entry, Audit::labels('royalty')) . '.', Auth::user());
 
         return redirect()->route('dashboard.royalty.index')->with('status', 'Royalty entry berhasil ditambahkan.');
     }
@@ -65,14 +69,20 @@ class RoyaltyController extends Controller
         $data = $request->validated();
         $data['updated_by'] = Auth::id();
 
+        $changes = Audit::changes($royalty, $data, Audit::labels('royalty'));
         $royalty->update($data);
+
+        AuditLog::record('Royalty entry diperbarui', "Royalty \"{$royalty->title}\": {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.royalty.index')->with('status', 'Royalty entry berhasil diperbarui.');
     }
 
     public function destroy(RoyaltyEntry $royalty)
     {
+        $summary = Audit::summary($royalty, Audit::labels('royalty'));
         $royalty->delete();
+
+        AuditLog::record('Royalty entry dihapus', "Royalty dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'Royalty entry berhasil dihapus.');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Employee;
 
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\UpdateAvatarRequest;
 use App\Http\Requests\Employee\UpdatePasswordRequest;
@@ -109,6 +110,8 @@ class ProfileController extends Controller
             'password' => Hash::make($request->validated('password')),
             'must_change_password' => false,
         ]);
+
+        AuditLog::record('Password diganti', "{$me->name} mengganti password akunnya sendiri.", $me);
 
         return back()->with('status', 'Password berhasil diganti.');
     }

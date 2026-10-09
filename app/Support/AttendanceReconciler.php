@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Attendance;
+use App\Models\AuditLog;
+use App\Models\User;
 use App\Models\OfficeSetting;
 use App\Models\OvertimeRequest;
 use Illuminate\Support\Carbon;
@@ -97,6 +99,13 @@ class AttendanceReconciler
                     'auto_closed' => true,
                 ]);
                 $attendance->save();
+
+                AuditLog::record(
+                    'Sesi absen ditutup otomatis',
+                    'Sesi ' . (User::query()->find($userId)?->name ?? "#{$userId}") . " tanggal {$attendance->date->translatedFormat('d M Y')} lupa pulang, ditutup otomatis pukul {$cutoff->format('H:i')}.",
+                    'System',
+                    'Absensi'
+                );
             }
         });
     }

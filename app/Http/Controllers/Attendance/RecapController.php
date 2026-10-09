@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Attendance;
 
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Attendance\CorrectAttendanceRequest;
 use App\Models\Attendance;
@@ -189,6 +190,10 @@ class RecapController extends Controller
         abort_unless($scopedIds->contains($attendance->user_id), 403, 'Kamu tidak punya akses ke absensi karyawan ini.');
 
         $data = $request->validated();
+        $before = [
+            'in' => $attendance->clock_in_at?->format('H:i') ?? '—',
+            'out' => $attendance->clock_out_at?->format('H:i') ?? '—',
+        ];
 
         if (! empty($data['clock_in_time'])) {
             if ($attendance->original_clock_in_at === null && $attendance->clock_in_at) {
@@ -208,6 +213,12 @@ class RecapController extends Controller
         $attendance->corrected_at = now();
         $attendance->correction_note = $data['correction_note'];
         $attendance->save();
+
+        AuditLog::record(
+            'Absensi dikoreksi manual',
+            "Absensi {$attendance->user?->name} tanggal {$attendance->date->translatedFormat('d M Y')}: masuk {$before['in']} → " . ($attendance->clock_in_at?->format('H:i') ?? '—') . ", pulang {$before['out']} → " . ($attendance->clock_out_at?->format('H:i') ?? '—') . ". Alasan: {$attendance->correction_note}",
+            Auth::user()
+        );
 
         return back()->with('status', 'Absensi berhasil dikoreksi.');
     }

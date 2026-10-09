@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureDashboardUnlocked;
 use App\Http\Middleware\EnsureModuleAccess;
 use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\AuditUncoveredChanges;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\TrackPresence;
 use Illuminate\Foundation\Application;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             EnsurePasswordChanged::class,
             TrackPresence::class,
+            AuditUncoveredChanges::class,
         ]);
 
         // Dipanggil GitHub Actions lewat curl (tanpa sesi browser), jadi

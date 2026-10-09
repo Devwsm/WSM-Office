@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Support\Presence;
 
 /**
  * Model AuditLog
@@ -18,10 +19,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'actor_label',
     'action',
     'detail',
+    'ip_address',
+    'area',
 ])]
 class AuditLog extends Model
 {
     public const UPDATED_AT = null;
+
+    /** Jumlah catatan yang ditulis dalam request ini (dibaca middleware AuditUncoveredChanges). */
+    public static int $recorded = 0;
 
     protected function casts(): array
     {
@@ -40,9 +46,16 @@ class AuditLog extends Model
      * detail, actor)` di prototype. `$actor` boleh instance User (nyimpen
      * ke `actor_id`) atau string (nyimpen ke `actor_label`, mis. 'System').
      */
-    public static function record(string $action, string $detail = '', User|string|null $actor = null): self
+    public static function record(string $action, string $detail = '', User|string|null $actor = null, ?string $area = null): self
     {
+        static::$recorded++;
+
+        // IP dan area (nama halaman) otomatis dari request yang sedang berjalan.
+        $request = app()->bound('request') ? request() : null;
+
         return static::create([
+            'ip_address' => $request?->ip(),
+            'area' => $area ?? Presence::labelFor($request?->route()?->getName()),
             'actor_id' => $actor instanceof User ? $actor->id : null,
             'actor_label' => is_string($actor) ? $actor : ($actor === null ? 'System' : null),
             'action' => $action,

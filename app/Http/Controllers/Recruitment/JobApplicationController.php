@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Recruitment;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Recruitment\ConvertJobApplicationRequest;
 use App\Http\Requests\Recruitment\UpdateJobApplicationStatusRequest;
@@ -65,7 +67,10 @@ class JobApplicationController extends Controller
 
     public function updateStatus(UpdateJobApplicationStatusRequest $request, JobApplication $application)
     {
+        $changes = Audit::changes($application, $request->validated(), Audit::labels('job_application'));
         $application->update($request->validated());
+
+        AuditLog::record('Status pelamar diubah', "Pelamar {$application->name}: {$changes}.", $request->user());
 
         return back()->with('status', 'Status pelamar berhasil diperbarui.');
     }
@@ -98,6 +103,8 @@ class JobApplicationController extends Controller
             'converted_user_id' => $user->id,
             'status' => 'diterima',
         ]);
+
+        AuditLog::record('Pelamar dikonversi jadi karyawan', "Pelamar {$application->name} dibuatkan akun karyawan ({$user->email}, role {$user->role}).", $request->user());
 
         return redirect()->route('recruitment.applications.show', $application)
             ->with('status', "{$user->name} berhasil dibuatkan akun karyawan.");

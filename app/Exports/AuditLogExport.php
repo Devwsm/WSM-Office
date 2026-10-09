@@ -29,16 +29,18 @@ class AuditLogExport extends BaseExport
 
     public function headings(): array
     {
-        return ['Waktu', 'Pelaku', 'Aksi', 'Detail'];
+        return ['Waktu', 'Pelaku', 'Aksi', 'Area', 'Detail', 'IP'];
     }
 
     public function map($row): array
     {
         return [
-            $row->created_at->format('d/m/Y H:i'),
+            $row->created_at->format('d/m/Y H:i:s'),
             $row->actorName(),
             $row->action,
+            $row->area,
             $row->detail,
+            $row->ip_address,
         ];
     }
 }

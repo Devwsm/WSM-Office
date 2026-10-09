@@ -177,6 +177,8 @@ class ImportController extends Controller
         $this->previewService->forget($request->user(), $key, $token);
 
         $skipped = count($payload['invalid']);
+
+        AuditLog::record('Import data', "Import {$entry['label']}: {$imported} baris berhasil diimport, {$skipped} baris dilewati karena error.", $request->user());
         $status = "{$imported} baris berhasil diimport ke {$entry['label']}.";
         if ($skipped > 0) {
             $status .= " {$skipped} baris error tadi TIDAK ikut masuk (lihat lagi di halaman preview kalau mau perbaiki & upload ulang).";

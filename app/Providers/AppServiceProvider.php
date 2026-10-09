@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Models\Memo;
 use App\Models\User;
 use App\Support\Presence;
+use App\Models\AuditLog;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
@@ -31,7 +33,15 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User) {
                 Presence::recordLogin($event->user);
+                AuditLog::record('Login berhasil', "{$event->user->name} masuk ke aplikasi.", $event->user, 'Login');
             }
+        });
+        // Percobaan login yang gagal (password salah / email tidak terdaftar) — jejak keamanan.
+        Event::listen(Failed::class, function (Failed $event) {
+            $email = (string) ($event->credentials['email'] ?? '—');
+            $reason = $event->user ? 'password salah' : 'email tidak terdaftar';
+
+            AuditLog::record('Login gagal', "Percobaan login gagal untuk {$email} ({$reason}).", 'System', 'Login');
         });
         Event::listen(Logout::class, function (Logout $event) {
             if ($event->user instanceof User) {

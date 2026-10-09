@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\It;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\It\SystemChangelogRequest;
 use App\Models\SystemChangelog;
@@ -52,7 +54,9 @@ class SystemChangelogController extends Controller
         $data['changes'] = $this->splitLines($data['changes']);
         $data['created_by'] = Auth::id();
 
-        SystemChangelog::create($data);
+        $changelog = SystemChangelog::create($data);
+
+        AuditLog::record('Changelog ditambahkan', 'Changelog ' . Audit::summary($changelog, Audit::labels('changelog')) . '.', Auth::user());
 
         return redirect()->route('dashboard.it.changelog.index')->with('status', 'Changelog berhasil ditambahkan.');
     }
@@ -68,14 +72,20 @@ class SystemChangelogController extends Controller
         $data['modules'] = $this->splitCommaList($data['modules'] ?? '');
         $data['changes'] = $this->splitLines($data['changes']);
 
+        $changes = Audit::changes($changelog, $data, Audit::labels('changelog'));
         $changelog->update($data);
+
+        AuditLog::record('Changelog diperbarui', "Changelog {$changelog->version}: {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.it.changelog.index')->with('status', 'Changelog berhasil diperbarui.');
     }
 
     public function destroy(SystemChangelog $changelog)
     {
+        $summary = Audit::summary($changelog, Audit::labels('changelog'));
         $changelog->delete();
+
+        AuditLog::record('Changelog dihapus', "Changelog dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'Changelog berhasil dihapus.');
     }

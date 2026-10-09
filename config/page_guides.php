@@ -922,20 +922,22 @@ return [
             'access' => 'it',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['Cari', 'cari berdasarkan nama aksi, detail, atau nama pelaku, lalu klik Cari. Tombol Reset menghapus pencarian.'],
+                    ['Cari dan filter', 'cari berdasarkan aksi, detail, nama pelaku, atau alamat IP. Persempit lewat pilihan pelaku, area (nama halaman), dan rentang tanggal, lalu klik Filter. Tombol Reset menghapus semua filter.'],
                     ['Tab System Changelog', 'pindah ke catatan rilis fitur.'],
                     ['Tab Reset Password', 'reset password karyawan (hanya muncul untuk akses Manage).'],
                 ],
-                'Yang saat ini tercatat' => [
-                    'Tambah, ubah, nonaktifkan, dan aktifkan kembali karyawan.',
-                    'Perubahan Dashboard Access dan Pengaturan Kantor.',
-                    'Reset password karyawan (password sementaranya tidak dicatat).',
-                    'Keputusan izin/cuti, lembur, dan koreksi presensi.',
+                'Yang tercatat' => [
+                    'Semua perubahan data: tambah, ubah, dan hapus di Work Tracker (termasuk edit cepat progress, catatan, judul, dan PIC), Project Budgeting, KPI, kontrak, legal, royalty, MoM, memo, changelog, dan rekrutmen. Untuk perubahan, tertulis nilai lama dan barunya, misalnya Progress: Pending → Done.',
+                    'Karyawan, Dashboard Access, Pengaturan Kantor, reset dan ganti password, serta import data.',
+                    'Pengajuan izin/cuti, lembur, dan koreksi presensi (kirim, batalkan, setujui, tolak), koreksi manual absensi, dan sesi absen yang ditutup otomatis oleh sistem.',
                     'Payroll: generate, penyesuaian, finalisasi, tandai dibayar, dan hapus draft.',
+                    'Login berhasil dan percobaan login yang gagal (password salah atau email tidak terdaftar).',
                 ],
                 'Perlu diketahui' => [
-                    'Belum semua aksi tercatat. Contohnya pengelolaan Work Tracker, KPI, Budget, Royalty, dan Legal belum masuk log.',
-                    'Log ditampilkan 20 per halaman, yang terbaru di atas. Rekapnya bisa diunduh sebagai Excel lewat Export & Import.',
+                    'Yang tidak dicatat: absen masuk/pulang (sudah ada di catatan absensi), membaca memo, foto profil dan warna tema, serta kunci dashboard.',
+                    'Aksi yang belum punya catatan rinci tetap muncul sebagai "Perubahan data (tidak terinci)", jadi tidak ada perubahan yang hilang dari jejak.',
+                    'Isi password, file, dan isi memo tidak pernah ditulis di log. Kolom IP kosong untuk aksi yang dilakukan sistem.',
+                    'Log ditampilkan 25 per halaman, yang terbaru di atas. Rekapnya (termasuk area dan IP) bisa diunduh sebagai Excel lewat Export & Import.',
                 ],
             ],
         ],

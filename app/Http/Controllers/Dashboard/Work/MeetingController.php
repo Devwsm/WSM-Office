@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Work;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\MeetingRequest;
 use App\Models\Memo;
@@ -73,6 +75,8 @@ class MeetingController extends Controller
             $this->createActionItem($meeting, $row, $syncToTracker);
         }
 
+        AuditLog::record('MoM ditambahkan', 'MoM ' . Audit::summary($meeting, Audit::labels('meeting')) . '; ' . count($actionItemsInput) . ' action item' . ($syncToTracker ? ', disinkronkan ke Work Tracker' : '') . '.', Auth::user());
+
         return redirect()->route('dashboard.work.meetings.index')->with('status', 'MoM berhasil ditambahkan.');
     }
 
@@ -98,6 +102,7 @@ class MeetingController extends Controller
         $syncToTracker = $request->boolean('sync_to_tracker');
         unset($data['attendees'], $data['action_items'], $data['sync_to_tracker']);
 
+        $changes = Audit::changes($meeting, $data, Audit::labels('meeting'));
         $meeting->update($data);
         $meeting->attendees()->sync($attendeeIds);
 
@@ -126,12 +131,17 @@ class MeetingController extends Controller
             }
         }
 
+        AuditLog::record('MoM diperbarui', "MoM \"{$meeting->agenda}\": {$changes}; total " . count($actionItemsInput) . ' action item.', Auth::user());
+
         return redirect()->route('dashboard.work.meetings.index')->with('status', 'MoM berhasil diperbarui.');
     }
 
     public function destroy(Meeting $meeting)
     {
+        $summary = Audit::summary($meeting, Audit::labels('meeting'));
         $meeting->delete();
+
+        AuditLog::record('MoM dihapus', "MoM dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'MoM berhasil dihapus.');
     }
@@ -177,6 +187,8 @@ class MeetingController extends Controller
         ]);
 
         $meeting->update(['blasted_at' => now()]);
+
+        AuditLog::record('MoM di-blast jadi memo', "MoM \"{$meeting->agenda}\" dikirim sebagai memo ke semua karyawan.", Auth::user());
 
         return redirect()->route('dashboard.work.meetings.index')
             ->with('status', 'Ringkasan MoM berhasil di-blast jadi Memo ke semua karyawan.');

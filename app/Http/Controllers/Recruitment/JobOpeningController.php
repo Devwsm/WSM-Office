@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Recruitment;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Recruitment\StoreJobOpeningRequest;
 use App\Http\Requests\Recruitment\UpdateJobOpeningRequest;
@@ -59,7 +61,9 @@ class JobOpeningController extends Controller
             $data['published_at'] = now();
         }
 
-        JobOpening::create($data);
+        $opening = JobOpening::create($data);
+
+        AuditLog::record('Lowongan dibuat', 'Lowongan ' . Audit::summary($opening, Audit::labels('job_opening')) . '.', $request->user());
 
         return redirect()->route('recruitment.openings.index')->with('status', 'Lowongan baru berhasil dibuat.');
     }
@@ -81,7 +85,10 @@ class JobOpeningController extends Controller
             $data['closed_at'] = now();
         }
 
+        $changes = Audit::changes($opening, $data, Audit::labels('job_opening'));
         $opening->update($data);
+
+        AuditLog::record('Lowongan diperbarui', "Lowongan \"{$opening->title}\": {$changes}.", $request->user());
 
         return redirect()->route('recruitment.openings.index')->with('status', 'Lowongan berhasil diperbarui.');
     }

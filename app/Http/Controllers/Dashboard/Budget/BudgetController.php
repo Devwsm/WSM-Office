@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard\Budget;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Budget\BudgetRequest;
 use App\Models\AuditLog;
+use App\Support\Audit;
 use App\Models\BudgetCategory;
 use App\Models\BudgetFund;
 use App\Models\DashboardAccess;
@@ -148,7 +149,9 @@ class BudgetController extends Controller
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
 
-        ProjectBudget::create($data);
+        $line = ProjectBudget::create($data);
+
+        AuditLog::record('Budget item ditambahkan', 'Budget ' . Audit::summary($line, Audit::labels('budget')) . '.', $request->user());
 
         return redirect()->route('dashboard.budget.index')->with('status', 'Baris budget berhasil ditambahkan.');
     }
@@ -171,7 +174,10 @@ class BudgetController extends Controller
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
 
+        $changes = Audit::changes($budget, $data, Audit::labels('budget'));
         $budget->update($data);
+
+        AuditLog::record('Budget item diperbarui', "Budget \"{$budget->item}\": {$changes}.", $request->user());
 
         return redirect()->route('dashboard.budget.index')->with('status', 'Baris budget berhasil diperbarui.');
     }
@@ -180,7 +186,10 @@ class BudgetController extends Controller
     {
         $this->authorizeLine($request, $budget);
 
+        $summary = Audit::summary($budget, Audit::labels('budget'));
         $budget->delete();
+
+        AuditLog::record('Budget item dihapus', "Budget dihapus: {$summary}.", $request->user());
 
         return back()->with('status', 'Baris budget berhasil dihapus.');
     }
@@ -223,7 +232,10 @@ class BudgetController extends Controller
             $value ??= 0;
         }
 
+        $changes = Audit::changes($budget, [$field => $value], Audit::labels('budget'));
         $budget->update([$field => $value, 'updated_by' => $request->user()->id]);
+
+        AuditLog::record('Budget item diubah (edit cepat)', "Budget \"{$budget->item}\": {$changes}.", $request->user());
 
         return response()->json(['ok' => true, 'value' => $budget->fresh()->{$field}]);
     }
@@ -271,6 +283,8 @@ class BudgetController extends Controller
 
         BudgetCategory::canonicalName($project->id, $name);
 
+        AuditLog::record('Kategori budget ditambahkan', "Kategori \"{$name}\" ditambahkan di project \"{$project->name}\".", $request->user());
+
         return back()->with('status', 'Kategori ditambahkan.');
     }
 
@@ -279,7 +293,10 @@ class BudgetController extends Controller
         $this->authorizeCategory($request, $category);
 
         $data = $request->validate(['color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/']]);
+        $oldColor = $category->color ?? 'bawaan';
         $category->update(['color' => strtolower($data['color'])]);
+
+        AuditLog::record('Warna kategori budget diubah', "Kategori \"{$category->name}\" (project #{$category->project_id}): warna {$oldColor} → {$category->color}.", $request->user());
 
         return $request->wantsJson() ? response()->json(['ok' => true]) : back()->with('status', 'Warna kategori diperbarui.');
     }
@@ -302,6 +319,8 @@ class BudgetController extends Controller
             [$a, $b] = [$visible[$index]->sort_order, $neighbor->sort_order];
             $visible[$index]->update(['sort_order' => $b]);
             $neighbor->update(['sort_order' => $a]);
+
+            AuditLog::record('Urutan kategori budget diubah', "Kategori \"{$category->name}\" (project #{$category->project_id}) digeser " . ($data['direction'] === 'up' ? 'ke atas' : 'ke bawah') . '.', $viewer);
         }
 
         return back();
@@ -326,6 +345,8 @@ class BudgetController extends Controller
         }
 
         $category->delete();
+
+        AuditLog::record('Kategori budget dihapus', "Kategori \"{$category->name}\" (project #{$category->project_id}) dihapus.", $request->user());
 
         return back()->with('status', 'Kategori "' . $category->name . '" dihapus.');
     }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Legal;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Legal\LegalDocumentRequest;
 use App\Models\LegalDocument;
@@ -59,7 +61,9 @@ class LegalController extends Controller
         $data['created_by'] = Auth::id();
         unset($data['file']);
 
-        LegalDocument::create($data);
+        $document = LegalDocument::create($data);
+
+        AuditLog::record('Dokumen legal diupload', 'Dokumen ' . Audit::summary($document, Audit::labels('legal')) . '.', Auth::user());
 
         return redirect()->route('dashboard.legal.index')->with('status', 'Dokumen legal berhasil diupload.');
     }
@@ -96,15 +100,21 @@ class LegalController extends Controller
         }
         unset($data['file']);
 
+        $changes = Audit::changes($legal, $data, Audit::labels('legal'));
         $legal->update($data);
+
+        AuditLog::record('Dokumen legal diperbarui', "Dokumen \"{$legal->title}\": {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.legal.index')->with('status', 'Dokumen legal berhasil diperbarui.');
     }
 
     public function destroy(LegalDocument $legal)
     {
+        $summary = Audit::summary($legal, Audit::labels('legal'));
         PrivateFile::delete($legal->file_path);
         $legal->delete();
+
+        AuditLog::record('Dokumen legal dihapus', "Dokumen dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'Dokumen legal berhasil dihapus.');
     }

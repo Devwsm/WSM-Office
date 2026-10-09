@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Kpi;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Kpi\KpiRequest;
 use App\Models\Kpi;
@@ -56,7 +58,9 @@ class KpiController extends Controller
         $data = $request->validated();
         $data['created_by'] = Auth::id();
 
-        Kpi::create($data);
+        $kpi = Kpi::create($data);
+
+        AuditLog::record('KPI ditambahkan', 'KPI ' . Audit::summary($kpi, Audit::labels('kpi')) . '.', Auth::user());
 
         return redirect()->route('dashboard.kpi.index')->with('status', 'KPI berhasil ditambahkan.');
     }
@@ -68,14 +72,20 @@ class KpiController extends Controller
 
     public function update(KpiRequest $request, Kpi $kpi)
     {
+        $changes = Audit::changes($kpi, $request->validated(), Audit::labels('kpi'));
         $kpi->update($request->validated());
+
+        AuditLog::record('KPI diperbarui', "KPI \"{$kpi->title}\" ({$kpi->employee?->name}): {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.kpi.index')->with('status', 'KPI berhasil diperbarui.');
     }
 
     public function destroy(Kpi $kpi)
     {
+        $summary = Audit::summary($kpi, Audit::labels('kpi'));
         $kpi->delete();
+
+        AuditLog::record('KPI dihapus', "KPI dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'KPI berhasil dihapus.');
     }

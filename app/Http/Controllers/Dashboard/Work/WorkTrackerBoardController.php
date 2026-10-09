@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\ProjectRequest;
 use App\Http\Requests\Dashboard\Work\WorkItemRequest;
 use App\Models\AuditLog;
+use App\Support\Audit;
 use App\Models\Project;
 use App\Models\ProjectSection;
 use App\Models\User;
@@ -243,25 +244,33 @@ class WorkTrackerBoardController extends Controller
         $data['color'] = $data['color'] ?: Project::nextPaletteColor();
         $data['created_by'] = $request->user()->id;
 
-        Project::create($data);
+        $project = Project::create($data);
+
+        AuditLog::record('Project ditambahkan', "Project \"{$project->name}\" dibuat. " . Audit::summary($project, Audit::labels('project')), $request->user());
 
         return back()->with('status', 'Project ditambahkan.');
     }
 
     public function updateProject(ProjectRequest $request, Project $project)
     {
+        $changes = Audit::changes($project, $request->validated(), Audit::labels('project'));
         $project->update($request->validated());
+
+        AuditLog::record('Project diperbarui', "Project \"{$project->name}\": {$changes}.", $request->user());
 
         return back()->with('status', 'Project diperbarui.');
     }
 
-    public function destroyProject(Project $project)
+    public function destroyProject(Request $request, Project $project)
     {
         // WorkItem.project_id nullable (lihat migration) — hapus
         // project TIDAK ikut hapus task-nya, cuma lepas ikatan,
         // konsisten sama cara Meeting/ProjectBudget nunjuk ke Project.
+        $taskCount = $project->workItems()->count();
         $project->workItems()->update(['project_id' => null]);
         $project->delete();
+
+        AuditLog::record('Project dihapus', "Project \"{$project->name}\" dihapus; {$taskCount} task dipindah ke Tanpa Project.", $request->user());
 
         return back()->with('status', 'Project dihapus. Task yang nempel dipindah jadi "Tanpa Project".');
     }
@@ -283,6 +292,8 @@ class WorkTrackerBoardController extends Controller
 
         ProjectSection::ensure($project->id, $name);
 
+        AuditLog::record('Section ditambahkan', "Section \"{$name}\" ditambahkan di project \"{$project->name}\".", $request->user());
+
         return back()->with('status', 'Section ditambahkan.');
     }
 
@@ -290,7 +301,10 @@ class WorkTrackerBoardController extends Controller
     {
         $data = $request->validate(['color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/']]);
 
+        $oldColor = $section->color ?? 'bawaan';
         $section->update(['color' => strtolower($data['color'])]);
+
+        AuditLog::record('Warna section diubah', "Section \"{$section->name}\" (project #{$section->project_id}): warna {$oldColor} → {$section->color}.", $request->user());
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true]);
@@ -331,7 +345,9 @@ class WorkTrackerBoardController extends Controller
     {
         $data = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]]);
 
-        DB::transaction(function () use ($section, $data) {
+        $moved = false;
+
+        DB::transaction(function () use ($section, $data, &$moved) {
             $ordered = ProjectSection::orderedFor($section->project_id);
             $index = $ordered->search(fn($s) => $s->id === $section->id);
 
@@ -350,7 +366,12 @@ class WorkTrackerBoardController extends Controller
             [$a, $b] = [$current->sort_order, $neighbor->sort_order];
             $current->update(['sort_order' => $b]);
             $neighbor->update(['sort_order' => $a]);
+            $moved = true;
         });
+
+        if ($moved) {
+            AuditLog::record('Urutan section diubah', "Section \"{$section->name}\" (project #{$section->project_id}) digeser " . ($data['direction'] === 'up' ? 'ke atas' : 'ke bawah') . '.', $request->user());
+        }
 
         return back();
     }
@@ -377,6 +398,8 @@ class WorkTrackerBoardController extends Controller
             $section->delete();
         });
 
+        AuditLog::record('Section dihapus', "Section \"{$section->name}\" (project #{$section->project_id}) dihapus bersama {$count} item di dalamnya.", $request->user());
+
         return back()->with('status', $count > 0
             ? 'Section "' . $section->name . '" dan ' . $count . ' item di dalamnya dihapus.'
             : 'Section "' . $section->name . '" dihapus.');
@@ -394,6 +417,8 @@ class WorkTrackerBoardController extends Controller
         $item = WorkItem::create($data);
         $this->syncAdditionalPics($item, $extraPicIds);
 
+        AuditLog::record('Task ditambahkan', 'Task ' . Audit::summary($item, Audit::labels('work_item')) . '.', $request->user());
+
         return back()->with('status', 'Task ditambahkan.');
     }
 
@@ -402,15 +427,21 @@ class WorkTrackerBoardController extends Controller
         $data = $request->validated();
         $extraPicIds = $this->pullAdditionalPicIds($data);
 
+        $changes = Audit::changes($item, $data, Audit::labels('work_item'));
         $item->update($data);
         $this->syncAdditionalPics($item, $extraPicIds);
+
+        AuditLog::record('Task diperbarui', "Task \"{$item->title}\": {$changes}.", $request->user());
 
         return back()->with('status', 'Task diperbarui.');
     }
 
-    public function destroyItem(WorkItem $item)
+    public function destroyItem(Request $request, WorkItem $item)
     {
+        $summary = Audit::summary($item, Audit::labels('work_item'));
         $item->delete();
+
+        AuditLog::record('Task dihapus', "Task dihapus: {$summary}.", $request->user());
 
         return back()->with('status', 'Task dihapus.');
     }
@@ -428,7 +459,10 @@ class WorkTrackerBoardController extends Controller
             'progress' => ['required', Rule::in(WorkItem::PROGRESS_OPTIONS)],
         ]);
 
+        $changes = Audit::changes($item, $data, Audit::labels('work_item'));
         $item->update($data);
+
+        AuditLog::record('Progress task diubah', "Task \"{$item->title}\": {$changes}.", $request->user());
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true]);
@@ -463,6 +497,8 @@ class WorkTrackerBoardController extends Controller
             return response()->json(['message' => 'Judul tidak boleh kosong.'], 422);
         }
 
+        $changes = Audit::changes($item, [$field => $value], Audit::labels('work_item'));
+
         DB::transaction(function () use ($item, $field, $value) {
             $item->update([$field => $value]);
 
@@ -471,6 +507,8 @@ class WorkTrackerBoardController extends Controller
                 $item->additionalPics()->detach((int) $value);
             }
         });
+
+        AuditLog::record('Task diubah (edit cepat)', "Task \"{$item->title}\": {$changes}.", $request->user());
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true, 'value' => $item->fresh()->{$field}]);
@@ -484,7 +522,10 @@ class WorkTrackerBoardController extends Controller
     {
         $data = $request->validate(['notes' => ['nullable', 'string', 'max:5000']]);
 
+        $changes = Audit::changes($item, ['notes' => $data['notes'] ?? null], Audit::labels('work_item'));
         $item->update(['notes' => $data['notes'] ?? null]);
+
+        AuditLog::record('Catatan task diubah', "Task \"{$item->title}\": {$changes}.", $request->user());
 
         if ($request->wantsJson()) {
             return response()->json(['ok' => true]);

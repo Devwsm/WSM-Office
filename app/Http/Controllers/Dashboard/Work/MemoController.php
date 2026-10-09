@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard\Work;
 
+use App\Support\Audit;
+use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dashboard\Work\MemoRequest;
 use App\Http\Requests\Memo\ReplyMemoThreadRequest;
@@ -80,6 +82,8 @@ class MemoController extends Controller
         // memo_recipients dari percobaan sebelumnya.
         $memo->recipients()->sync($recipients);
 
+        AuditLog::record('Memo ditambahkan', 'Memo ' . Audit::summary($memo, Audit::labels('memo')) . ($memo->audience === 'tertentu' ? '; ' . count($recipients) . ' penerima' : '') . '.', Auth::user());
+
         return redirect()->route('dashboard.work.index')->with('status', 'Memo/MoM berhasil ditambahkan.');
     }
 
@@ -100,15 +104,21 @@ class MemoController extends Controller
         unset($data['recipients']);
         $data['pinned'] = $request->boolean('pinned');
 
+        $changes = Audit::changes($memo, $data, Audit::labels('memo'));
         $memo->update($data);
         $memo->recipients()->sync($recipients);
+
+        AuditLog::record('Memo diperbarui', "Memo \"{$memo->title}\": {$changes}.", Auth::user());
 
         return redirect()->route('dashboard.work.index')->with('status', 'Memo/MoM berhasil diperbarui.');
     }
 
     public function destroy(Memo $memo)
     {
+        $summary = Audit::summary($memo, Audit::labels('memo'));
         $memo->delete();
+
+        AuditLog::record('Memo dihapus', "Memo dihapus: {$summary}.", Auth::user());
 
         return back()->with('status', 'Memo/MoM berhasil dihapus.');
     }
@@ -123,6 +133,8 @@ class MemoController extends Controller
     public function toggleActive(Memo $memo)
     {
         $memo->update(['active' => ! $memo->active]);
+
+        AuditLog::record($memo->active ? 'Memo diaktifkan' : 'Memo dinonaktifkan', "Memo \"{$memo->title}\" " . ($memo->active ? 'diaktifkan lagi.' : 'dinonaktifkan.'), Auth::user());
 
         return back()->with('status', $memo->active
             ? 'Memo/MoM diaktifkan lagi — muncul lagi di Home karyawan.'
