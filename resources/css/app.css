@@ -377,3 +377,141 @@
 [x-cloak] {
     display: none !important;
 }
+
+/*
+ * Beranda publik — animasi ease-in-out (README Bab 2, "Halaman publik").
+ * Kurva ease-in-out cubic dipakai di semua gerakan supaya terasa
+ * seragam. Logika masuk-layar ada di resources/js/public-motion.js.
+ * Elemen baru disembunyikan hanya bila JS jalan (kelas `js` di <html>),
+ * jadi tanpa JavaScript halaman tetap tampil penuh.
+ */
+:root {
+    --wsm-ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes wsm-rise {
+    from {
+        opacity: 0;
+        transform: translateY(22px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes wsm-float {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-8px);
+    }
+}
+
+/* Muncul saat halaman dibuka (hero). Jeda lewat --d. */
+.wsm-rise {
+    animation: wsm-rise 900ms var(--wsm-ease) both;
+    animation-delay: var(--d, 0ms);
+}
+
+/* Kartu hero melayang pelan. Jeda awal lewat --f supaya tidak serempak. */
+.wsm-float {
+    animation: wsm-float 4.5s ease-in-out infinite alternate;
+    animation-delay: var(--f, 0ms);
+}
+
+/* Muncul saat discroll ke layar. */
+.js [data-reveal] {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+        opacity 800ms var(--wsm-ease),
+        transform 800ms var(--wsm-ease);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+/* Kartu terangkat saat disentuh/di-hover. Pakai `translate` (bukan
+   `transform`) supaya tidak bentrok dengan animasi masuk. */
+.wsm-lift {
+    transition:
+        translate 500ms ease-in-out,
+        box-shadow 500ms ease-in-out;
+}
+
+.wsm-lift:hover {
+    translate: 0 -6px;
+    box-shadow: var(--shadow-wsm);
+}
+
+.wsm-chip-dark,
+.wsm-chip-light {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 12px;
+    font-weight: 800;
+    transition:
+        background-color 500ms ease-in-out,
+        color 500ms ease-in-out;
+}
+
+.wsm-chip-dark {
+    border: 1px solid rgb(255 255 255 / 0.22);
+    color: rgb(255 255 255 / 0.85);
+}
+
+.wsm-chip-dark:hover {
+    background-color: rgb(255 255 255 / 0.14);
+}
+
+.wsm-chip-light {
+    background-color: rgb(255 255 255 / 0.16);
+    color: #fff;
+}
+
+.wsm-chip-light:hover {
+    background-color: #fff;
+    color: var(--color-brand-blue);
+}
+
+.wsm-link-arrow > span,
+.wsm-link-arrow-glyph {
+    transition: transform 500ms ease-in-out;
+}
+
+.wsm-link-arrow:hover > span,
+.group:hover .wsm-link-arrow-glyph {
+    transform: translateX(5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wsm-rise,
+    .wsm-float {
+        animation: none;
+    }
+
+    .js [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .wsm-lift,
+    .wsm-chip-dark,
+    .wsm-chip-light,
+    .wsm-link-arrow > span,
+    .wsm-link-arrow-glyph {
+        transition: none;
+    }
+
+    .wsm-lift:hover {
+        translate: none;
+    }
+}

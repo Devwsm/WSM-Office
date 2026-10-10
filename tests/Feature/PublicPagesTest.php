@@ -42,6 +42,99 @@ class PublicPagesTest extends TestCase
         }
     }
 
+    public function test_home_shows_artist_profile_album_and_selected_releases(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Pionir Indonesian Bounce')
+            ->assertSee('Map of Feelings')
+            ->assertSee('Ari Lesmana')
+            ->assertSee('Tomorrowland Belgium')
+            ->assertSee('Rilisan pilihan')
+            ->assertSee('Aku Harus Pergi')
+            ->assertSee('https://mapoffeelings.com/', false)
+            ->assertSee('593', false)
+            ->assertSee('3.3', false);
+    }
+
+    public function test_home_keeps_owner_editable_headline_and_cards(): void
+    {
+        $setting = \App\Models\OfficeSetting::current();
+        $setting->landing_content = [
+            'headline' => 'Judul buatan Owner',
+            'tagline' => 'Tagline buatan Owner',
+            'cards' => [['label' => 'Label A', 'title' => 'Judul A', 'color' => '#112233']],
+        ];
+        $setting->save();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Judul buatan Owner')
+            ->assertSee('Tagline buatan Owner')
+            ->assertSee('Judul A');
+    }
+
+    public function test_home_motion_hooks_are_present_and_no_remote_images_are_hotlinked(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        // Hook animasi dipakai di markup, dan layout publik memasang penanda `js`.
+        $this->assertStringContainsString('data-reveal', $html);
+        $this->assertStringContainsString('data-countup', $html);
+        $this->assertStringContainsString("classList.add('js')", $html);
+
+        // Tanpa gambar yang ditautkan langsung dari situs lain.
+        $this->assertStringNotContainsString('<img', $html);
+    }
+
+    public function test_home_content_config_has_valid_https_links_and_stats(): void
+    {
+        $site = config('public_site');
+
+        $links = array_merge(
+            [$site['artist']['official_site'], $site['album']['url']],
+            array_column($site['releases'], 'url'),
+            array_column($site['socials'], 'url'),
+        );
+
+        foreach ($links as $url) {
+            $this->assertStringStartsWith('https://', $url);
+        }
+
+        foreach ($site['stats'] as $stat) {
+            $this->assertIsNumeric($stat['value']);
+            $this->assertContains($stat['decimals'], [0, 1, 2]);
+        }
+
+        $this->assertNotEmpty($site['release_colors']);
+    }
+
+    public function test_about_and_services_pages_are_filled_without_placeholder_text(): void
+    {
+        $about = $this->get('/tentang-kami')->assertOk();
+        $about->assertSee('Visi')
+            ->assertSee('Misi')
+            ->assertSee('Perjalanan Kami')
+            ->assertSee('Tomorrowland Belgium')
+            ->assertSee('2012');
+        $this->assertStringNotContainsString('laceholder', $about->getContent());
+
+        $services = $this->get('/layanan')->assertOk();
+        $services->assertSee('Produksi Musik')
+            ->assertSee('Kampanye & Promosi')
+            ->assertSee('Arahan Kreatif')
+            ->assertSee('Manajemen Tim')
+            ->assertSee('Roblox');
+        $this->assertStringNotContainsString('laceholder', $services->getContent());
+    }
+
+    public function test_home_work_section_is_filled_from_config(): void
+    {
+        foreach (config('public_site.work') as $item) {
+            $this->get('/')->assertSee($item['title'])->assertSee($item['text']);
+        }
+    }
+
     public function test_public_pages_have_named_routes(): void
     {
         $this->assertSame(url('/'), route('public.home'));

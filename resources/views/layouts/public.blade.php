@@ -15,6 +15,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? 'WSM Office System' }} — Whisnu Santika Musik</title>
+    {{-- Penanda JS: animasi masuk (data-reveal) cuma menyembunyikan elemen kalau JS jalan. --}}
+    <script>
+        document.documentElement.classList.add('js')
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
