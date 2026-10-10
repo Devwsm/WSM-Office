@@ -83,7 +83,7 @@ jobs:
             **/node_modules/**
             **/tests/**
             **/storage/**
-            **/public/**
+            public/**
             **/vendor/**
             **/.env
             **/.env.example
@@ -120,7 +120,7 @@ jobs:
             **/node_modules/**
             **/tests/**
             **/storage/**
-            **/public/**
+            public/**
             **/vendor/**
             **/.env
             **/.env.example
