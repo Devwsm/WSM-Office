@@ -201,6 +201,40 @@ class PresenceMonitorTest extends TestCase
         $this->assertStringNotContainsString($this->p['aldora']->name, $search);
     }
 
+    /** Ratakan spasi/baris baru supaya tes tidak pecah kalau editor merapikan (membungkus) teks di Blade. */
+    private function squish(string $html): string
+    {
+        return preg_replace('/\s+/', ' ', $html);
+    }
+
+    public function test_akun_yang_belum_ganti_password_sementara_ditandai_dan_bisa_difilter(): void
+    {
+        $this->p['aldora']->forceFill(['must_change_password' => true])->saveQuietly();
+        $this->p['gepeng']->forceFill(['must_change_password' => false])->saveQuietly();
+        $owner = $this->p['owner'];
+
+        $all = $this->squish($this->actingAs($owner)->get(route('dashboard.it.presence.index'))->assertOk()->getContent());
+        $this->assertStringContainsString('masih memakai password sementara', $all);
+        $this->assertStringContainsString('Belum ganti password', $all);
+        $this->assertStringContainsString($this->p['gepeng']->name, $all);
+
+        $pending = $this->squish($this->actingAs($owner)->get(route('dashboard.it.presence.index', ['password' => 'pending']))
+            ->assertOk()->getContent());
+        $this->assertStringContainsString($this->p['aldora']->name, $pending);
+        $this->assertStringNotContainsString($this->p['gepeng']->name, $pending);
+    }
+
+    public function test_peringatan_password_sementara_hilang_kalau_semua_akun_sudah_ganti(): void
+    {
+        User::query()->update(['must_change_password' => false]);
+
+        $html = $this->squish($this->actingAs($this->p['owner'])->get(route('dashboard.it.presence.index'))
+            ->assertOk()->getContent());
+
+        $this->assertStringNotContainsString('masih memakai password sementara', $html);
+        $this->assertStringNotContainsString('Belum ganti password', $html);
+    }
+
     public function test_permintaan_ajax_hanya_mengembalikan_bagian_daftar_tanpa_layout(): void
     {
         $html = $this->actingAs($this->p['owner'])

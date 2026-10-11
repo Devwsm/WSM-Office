@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -26,6 +28,11 @@ use Illuminate\Validation\ValidationException;
  */
 class LoginController extends Controller
 {
+    /** Batas salah password per kombinasi email + IP, dan lama blokirnya (detik). */
+    private const MAX_FAILED_ATTEMPTS = 5;
+
+    private const LOCKOUT_SECONDS = 60;
+
     public function create()
     {
         return view('auth.login');
@@ -38,15 +45,39 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
+        // 2026-10-11 — batas percobaan sekarang dihitung per email + IP dan HANYA
+        // untuk login yang gagal. Dulu `throttle:5,1` per IP menghitung semua
+        // request, jadi karyawan yang login bersamaan lewat WiFi kantor yang
+        // sama bisa saling memblokir. Pelindung per IP (lebih longgar) tetap
+        // ada di routes/auth.php.
+        $key = $this->throttleKey($request, $credentials['email']);
+
+        if (RateLimiter::tooManyAttempts($key, self::MAX_FAILED_ATTEMPTS)) {
+            $seconds = RateLimiter::availableIn($key);
+
+            throw ValidationException::withMessages([
+                'email' => "Terlalu banyak percobaan login yang salah. Coba lagi dalam {$seconds} detik.",
+            ]);
+        }
+
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::hit($key, self::LOCKOUT_SECONDS);
+
             throw ValidationException::withMessages([
                 'email' => 'Email atau password salah.',
             ]);
         }
 
+        RateLimiter::clear($key);
+
         $request->session()->regenerate();
 
         return redirect()->intended($this->redirectPath());
+    }
+
+    private function throttleKey(Request $request, string $email): string
+    {
+        return 'login|' . Str::lower($email) . '|' . $request->ip();
     }
 
     public function destroy(Request $request)

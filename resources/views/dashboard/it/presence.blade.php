@@ -37,10 +37,13 @@
         @if ($filter)
             <input type="hidden" name="status" value="{{ $filter }}">
         @endif
+        @if ($pendingPassword)
+            <input type="hidden" name="password" value="pending">
+        @endif
         <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama, jabatan, atau divisi..."
             class="w-full max-w-xs rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink sm:w-auto">
         <button type="submit" class="btn-wsm-white py-2! px-3.5! text-xs">Cari</button>
-        @if ($search || $filter)
+        @if ($search || $filter || $pendingPassword)
             <a href="{{ route('dashboard.it.presence.index') }}" class="text-[11px] font-extrabold text-muted">Reset</a>
         @endif
         <span class="ml-auto text-[10px] text-muted">Online = aktif dalam

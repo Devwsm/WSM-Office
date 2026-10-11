@@ -53,7 +53,7 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_login_is_throttled_after_five_attempts_per_minute(): void
+    public function test_login_is_blocked_after_five_wrong_passwords_for_the_same_email(): void
     {
         $user = $this->makeUser('karyawan');
 
@@ -61,9 +61,70 @@ class AuthenticationTest extends TestCase
             $this->post('/login', ['email' => $user->email, 'password' => 'salah'])->assertSessionHasErrors('email');
         }
 
-        // Percobaan ke-6 diblokir walau passwordnya benar.
-        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertStatus(429);
+        // Percobaan ke-6 diblokir walau passwordnya benar, dengan pesan yang jelas.
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasErrors('email');
+        $this->assertStringContainsString('Terlalu banyak percobaan', session('errors')->first('email'));
         $this->assertGuest();
+    }
+
+    public function test_blocked_login_works_again_after_the_wait_time(): void
+    {
+        $this->freezeWorkday();
+        $user = $this->makeUser('karyawan');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->post('/login', ['email' => $user->email, 'password' => 'salah']);
+        }
+
+        $this->travel(61)->seconds();
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_successful_logins_from_the_same_ip_do_not_block_each_other(): void
+    {
+        // Banyak karyawan login bersamaan dari WiFi kantor yang sama (IP sama).
+        $users = collect(range(1, 8))->map(fn() => $this->makeUser('karyawan'));
+
+        foreach ($users as $user) {
+            $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+            $this->assertAuthenticatedAs($user);
+            $this->post('/logout');
+        }
+    }
+
+    public function test_wrong_passwords_on_one_email_do_not_block_another_email(): void
+    {
+        $victim = $this->makeUser('karyawan');
+        $other = $this->makeUser('karyawan');
+
+        for ($i = 0; $i < 6; $i++) {
+            $this->post('/login', ['email' => $victim->email, 'password' => 'salah']);
+        }
+
+        $this->post('/login', ['email' => $other->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($other);
+    }
+
+    public function test_a_successful_login_resets_the_failed_attempt_counter(): void
+    {
+        $user = $this->makeUser('karyawan');
+
+        for ($i = 0; $i < 4; $i++) {
+            $this->post('/login', ['email' => $user->email, 'password' => 'salah']);
+        }
+
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->post('/logout');
+
+        // Hitungan mulai dari nol lagi: 4 salah berikutnya belum memblokir.
+        for ($i = 0; $i < 4; $i++) {
+            $this->post('/login', ['email' => $user->email, 'password' => 'salah']);
+        }
+        $this->post('/login', ['email' => $user->email, 'password' => 'password'])->assertRedirect();
+        $this->assertAuthenticatedAs($user);
     }
 
     // ---- B3 / B4 --------------------------------------------------------

@@ -13,7 +13,11 @@
         Presence::IDLE => ['label' => 'Idle', 'pill' => 'bg-[#fff0bd] text-[#6b4a00]', 'dot' => 'bg-[#e0a800]'],
         Presence::OFFLINE => ['label' => 'Offline', 'pill' => 'bg-[#eeeae3] text-[#4e4a43]', 'dot' => 'bg-[#a8a298]'],
     ];
-    $query = fn(?string $status) => array_filter(['status' => $status, 'q' => $search]);
+    $query = fn(?string $status) => array_filter([
+        'status' => $status,
+        'q' => $search,
+        'password' => $pendingPassword ? 'pending' : null,
+    ]);
     $cards = [
         [null, 'Semua', $counts['total']],
         [Presence::ONLINE, 'Online', $counts[Presence::ONLINE]],
@@ -21,6 +25,30 @@
         [Presence::OFFLINE, 'Offline', $counts[Presence::OFFLINE]],
     ];
 @endphp
+
+{{-- 2026-10-11 — akun yang belum mengganti password sementara. Password awal akun
+    tertulis di repo, jadi akun yang masih berstatus ini paling rentan diambil alih. --}}
+@if ($counts['password_pending'] > 0)
+    <div
+        class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-wsm-lg border border-[#f3e3ae] bg-[#fffdf6] p-3.5">
+        <p class="min-w-0 flex-1 text-xs">
+            <strong>{{ $counts['password_pending'] }} akun</strong> masih memakai password sementara.
+            Minta mereka login dan ganti password, atau reset lewat menu Reset Password.
+        </p>
+        @if ($pendingPassword)
+            <a href="{{ route('dashboard.it.presence.index', array_filter(['status' => $filter, 'q' => $search])) }}"
+                class="flex-none text-[11px] font-extrabold text-muted">Tampilkan semua</a>
+        @else
+            <a href="{{ route('dashboard.it.presence.index', array_filter(['status' => $filter, 'q' => $search, 'password' => 'pending'])) }}"
+                class="btn-wsm-white flex-none py-2! px-3.5! text-xs">Lihat akunnya</a>
+        @endif
+    </div>
+@elseif ($pendingPassword)
+    <div class="mb-4 rounded-wsm-lg border border-line bg-white p-3.5 text-xs text-muted">
+        Semua akun sudah mengganti password sementara.
+        <a href="{{ route('dashboard.it.presence.index') }}" class="font-extrabold text-ink">Tampilkan semua</a>
+    </div>
+@endif
 
 <div class="mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
     @foreach ($cards as [$key, $label, $total])
@@ -64,6 +92,11 @@
                         <strong class="block truncate text-sm">{{ $u->name }}</strong>
                         <span
                             class="block truncate text-[11px] text-muted">{{ $u->job_title ?? $u->roleLabel() }}</span>
+                        @if ($u->must_change_password)
+                            <span
+                                class="mt-1 inline-flex rounded-full bg-[#fff0bd] px-2 py-0.5 text-[9px] font-black text-[#6b4a00]">Belum
+                                ganti password</span>
+                        @endif
                     </div>
                 </div>
 

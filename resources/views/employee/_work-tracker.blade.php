@@ -19,7 +19,7 @@
     notifikasi kondisional kayak Team Moments.
     ---------------------------------------------------------------------
 --}}
-<div class="employee-section mb-3.5">
+<div id="my-work-tracker" class="employee-section mb-3.5 scroll-mt-4">
     <div class="employee-section-head mb-2.5 flex items-center justify-between gap-3">
         <div>
             <h2 class="text-lg font-black">My Work Tracker</h2>
@@ -42,4 +42,18 @@
             </div>
         @endforelse
     </div>
+
+    {{-- 2026-10-11 — riwayat task selesai. Ubah statusnya untuk membuka kembali
+        task yang tidak sengaja ditandai Done. --}}
+    @if (($doneWorkItems ?? collect())->isNotEmpty())
+        <details class="mt-2 rounded-2xl border border-line bg-white/60 p-3">
+            <summary class="cursor-pointer text-[11px] font-extrabold text-muted">
+                Lihat item selesai ({{ $doneWorkItems->count() }} terbaru dari {{ $doneWorkItemsCount }})
+            </summary>
+            <p class="mb-2 mt-2 text-[10px] text-muted">Salah tandai selesai? Ubah statusnya untuk membuka kembali.</p>
+            @foreach ($doneWorkItems as $item)
+                @include('employee._work-item-card', ['item' => $item])
+            @endforeach
+        </details>
+    @endif
 </div>

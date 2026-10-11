@@ -226,6 +226,14 @@ class HomeController extends Controller
         $openWorkItems = $myWorkItems->where('progress', '!=', 'Done')->values();
         $doneWorkItemsCount = $myWorkItems->where('progress', '=', 'Done')->count();
 
+        // 2026-10-11 — riwayat task selesai (10 terbaru) supaya task yang tidak
+        // sengaja ditandai Done bisa dibuka lagi dengan mengubah statusnya.
+        $doneWorkItems = $myWorkItems
+            ->where('progress', '=', 'Done')
+            ->sortByDesc(fn(WorkItem $w) => $w->updated_at?->timestamp ?? 0)
+            ->take(10)
+            ->values();
+
         // Polish (2026-09-13) — "metric-grid" (Working Hours Today / This
         // Month), padanan 2 kartu kecil di prototype (renderEmployeeHome
         // v18) yang ternyata belum ada sama sekali di Home: langsung
@@ -275,6 +283,7 @@ class HomeController extends Controller
             'teamMoments' => $teamMoments,
             'openWorkItems' => $openWorkItems,
             'doneWorkItemsCount' => $doneWorkItemsCount,
+            'doneWorkItems' => $doneWorkItems,
             'workedMinutesToday' => $workedMinutesToday,
             'workedMinutesTodayBase' => $workedMinutesTodayBase,
             'openSessionClockInAt' => $openSessionClockInAt,

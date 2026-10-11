@@ -68,6 +68,7 @@ use App\Http\Controllers\Employee\AttendanceCorrectionController;
 use App\Http\Controllers\Employee\HomeController;
 use App\Http\Controllers\Employee\LeaveRequestController;
 use App\Http\Controllers\Employee\MemoInteractionController;
+use App\Http\Controllers\Employee\MyWorkItemController;
 use App\Http\Controllers\Employee\OvertimeRequestController;
 use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\WorkTrackerController;
@@ -137,6 +138,11 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer'])->prefix
     // sendiri — dia embedded langsung di /home (sama pola Milestones/
     // My KPI/Team Moments), dihitung di HomeController.
     Route::get('/kalender-tim', [WorkTrackerController::class, 'calendar'])->name('workTracker.calendar');
+
+    // --- 2026-10-11: PIC mengubah status & catatan task miliknya dari kartu
+    // My Work Tracker di Home (tanpa akses dashboard Work). Lihat MyWorkItemController.
+    Route::patch('/task/{item}/status', [MyWorkItemController::class, 'updateProgress'])->middleware('throttle:60,1')->name('workItems.progress');
+    Route::patch('/task/{item}/catatan', [MyWorkItemController::class, 'updateNote'])->middleware('throttle:30,1')->name('workItems.note');
 
     // --- Tab Profile (bottom-nav) — sebelumnya placeholder "TODO Fase 1" ---
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');

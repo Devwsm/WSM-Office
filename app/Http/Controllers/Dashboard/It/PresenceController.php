@@ -31,6 +31,10 @@ class PresenceController extends Controller
             ? $request->query('status')
             : null;
 
+        // 2026-10-11 — filter akun yang masih memakai password sementara
+        // (belum ganti password sejak dibuat, di-import, atau di-reset IT).
+        $pendingPassword = $request->query('password') === 'pending';
+
         $rows = User::query()
             ->orderBy('name')
             ->get()
@@ -41,12 +45,14 @@ class PresenceController extends Controller
             Presence::ONLINE => $rows->where('status', Presence::ONLINE)->count(),
             Presence::IDLE => $rows->where('status', Presence::IDLE)->count(),
             Presence::OFFLINE => $rows->where('status', Presence::OFFLINE)->count(),
+            'password_pending' => $rows->filter(fn($row) => $row['user']->must_change_password)->count(),
         ];
 
         $order = [Presence::ONLINE => 0, Presence::IDLE => 1, Presence::OFFLINE => 2];
 
         $rows = $rows
             ->when($filter, fn($c) => $c->where('status', $filter))
+            ->when($pendingPassword, fn($c) => $c->filter(fn($row) => $row['user']->must_change_password))
             ->when($search, function ($c) use ($search) {
                 $needle = mb_strtolower($search);
 
@@ -70,6 +76,7 @@ class PresenceController extends Controller
             'counts' => $counts,
             'search' => $search,
             'filter' => $filter,
+            'pendingPassword' => $pendingPassword,
         ];
 
         if ($request->ajax()) {
