@@ -64,7 +64,7 @@ class AttendanceCorrectionRequestController extends Controller
 
         $correction->approveBy($me);
 
-        AuditLog::record('Koreksi presensi disetujui', "Pengajuan koreksi presensi {$correction->user->name} ({$correction->date->translatedFormat('d M Y')}) disetujui oleh {$me->name}.", $me);
+        AuditLog::record('Koreksi presensi disetujui', "Pengajuan koreksi presensi {$correction->user->name} ({$this->detail($correction)}) disetujui oleh {$me->name}.", $me);
 
         return back()->with('status', "Koreksi presensi {$correction->user->name} disetujui & sudah diterapkan.");
     }
@@ -81,7 +81,7 @@ class AttendanceCorrectionRequestController extends Controller
 
         $correction->rejectBy($me, $request->validated('decision_note'));
 
-        AuditLog::record('Koreksi presensi ditolak', "Pengajuan koreksi presensi {$correction->user->name} ({$correction->date->translatedFormat('d M Y')}) ditolak oleh {$me->name}.", $me);
+        AuditLog::record('Koreksi presensi ditolak', "Pengajuan koreksi presensi {$correction->user->name} ({$this->detail($correction)}) ditolak oleh {$me->name}.", $me);
 
         return back()->with('status', "Koreksi presensi {$correction->user->name} ditolak.");
     }
@@ -98,9 +98,24 @@ class AttendanceCorrectionRequestController extends Controller
 
         $correction->cancelBy($me, $request->validated('cancellation_reason'));
 
-        AuditLog::record('Koreksi presensi dibatalkan', "Pengajuan koreksi presensi {$correction->user->name} dibatalkan oleh {$me->name}.", $me);
+        AuditLog::record('Koreksi presensi dibatalkan', "Pengajuan koreksi presensi {$correction->user->name} ({$this->detail($correction)}) dibatalkan oleh {$me->name}.", $me);
 
         return back()->with('status', "Pengajuan koreksi presensi {$correction->user->name} dibatalkan.");
+    }
+
+    /**
+     * Rincian untuk Audit Log (2026-10-11): tanggal beserta jam masuk dan pulang
+     * yang diajukan sampai menit, karena nilai inilah yang mengubah absensi dan payroll.
+     */
+    private function detail(AttendanceCorrectionRequest $correction): string
+    {
+        return sprintf(
+            '%s, masuk %s, pulang %s, mode %s',
+            $correction->date->translatedFormat('d M Y'),
+            $correction->requested_clock_in ?: '—',
+            $correction->requested_clock_out ?: '—',
+            $correction->requested_mode,
+        );
     }
 
     /** Owner bisa memutuskan siapa aja. Manajer cuma bawahan langsungnya — sama pola LeaveRequestController::canDecide(). */

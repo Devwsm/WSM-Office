@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Employee;
 
-use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelLeaveRequestRequest;
 use App\Http\Requests\Employee\StoreAttendanceCorrectionRequestRequest;
@@ -53,8 +52,6 @@ class AttendanceCorrectionController extends Controller
             'status' => 'pending',
         ]);
 
-        AuditLog::record('Pengajuan koreksi presensi dikirim', "Koreksi tanggal {$created->date->translatedFormat('d M Y')} (mode {$created->requested_mode}). Alasan: {$created->reason}", Auth::user());
-
         return back()->with('status', 'Pengajuan koreksi presensi berhasil dikirim, tunggu persetujuan atasan.');
     }
 
@@ -70,8 +67,6 @@ class AttendanceCorrectionController extends Controller
         }
 
         $correction->cancelBy($me, $request->validated('cancellation_reason'));
-
-        AuditLog::record('Pengajuan koreksi presensi dibatalkan pemohon', "Koreksi tanggal {$correction->date->translatedFormat('d M Y')} dibatalkan oleh pemohon. Alasan: " . ($request->validated('cancellation_reason') ?: '—'), $me);
 
         return back()->with('status', 'Pengajuan berhasil dibatalkan.');
     }

@@ -74,7 +74,7 @@ class AuditTrailTest extends TestCase
         $this->assertStringContainsString('Progress: Pending → On Development', $log->detail);
         $this->assertSame($this->p['aldora']->id, $log->actor_id);
         $this->assertSame('Work Tracker', $log->area);
-        $this->assertNotNull($log->ip_address);
+        $this->assertNull($log->ip_address, 'pekerjaan harian tidak menyimpan IP');
     }
 
     public function test_edit_cepat_judul_dan_pic_mencatat_nama_bukan_id(): void
@@ -95,7 +95,9 @@ class AuditTrailTest extends TestCase
         $item = $this->item();
 
         $this->actingAs($this->p['aldora'])->patchJson(route('dashboard.work.tracker.items.note', $item), ['notes' => 'Tunggu revisi label'])->assertOk();
-        $this->assertStringContainsString('Catatan: — → Tunggu revisi label', $this->lastLog('Catatan task diubah')->detail);
+        $detail = $this->lastLog('Catatan task diubah')->detail;
+        $this->assertStringContainsString('Catatan: diubah', $detail);
+        $this->assertStringNotContainsString('Tunggu revisi label', $detail, 'isi catatan tidak ditulis ke log');
 
         $this->actingAs($this->p['aldora'])->delete(route('dashboard.work.tracker.items.destroy', $item))->assertRedirect();
         $this->assertStringContainsString('Approval lirik', $this->lastLog('Task dihapus')->detail);
@@ -134,15 +136,18 @@ class AuditTrailTest extends TestCase
 
     // --- Pengajuan karyawan, password, auto-close ---
 
-    public function test_pengajuan_lembur_dan_pembatalannya_tercatat(): void
+    public function test_pengajuan_dan_pembatalan_oleh_karyawan_sendiri_tidak_dicatat_ganda(): void
     {
         $aldora = $this->actingAs($this->p['aldora']);
         $aldora->post(route('employee.overtime.store'), ['date' => '2026-09-22', 'reason' => 'Mengejar deadline rilis'])->assertRedirect();
-        $this->assertStringContainsString('Mengejar deadline rilis', $this->lastLog('Pengajuan lembur dikirim')->detail);
 
         $overtime = \App\Models\OvertimeRequest::sole();
         $aldora->post(route('employee.overtime.cancel', $overtime), ['cancellation_reason' => 'Batal lembur'])->assertRedirect();
-        $this->assertStringContainsString('Batal lembur', $this->lastLog('Pengajuan lembur dibatalkan pemohon')->detail);
+
+        // Pengajuannya tersimpan di tabel pengajuan; Audit Log tidak menduplikasi,
+        // dan jaring pengaman juga tidak mencatatnya sebagai "tidak terinci".
+        $this->assertSame(0, AuditLog::query()->count());
+        $this->assertSame('dibatalkan', $overtime->fresh()->status);
     }
 
     public function test_ganti_password_tercatat_tanpa_menyimpan_passwordnya(): void
@@ -172,20 +177,25 @@ class AuditTrailTest extends TestCase
 
     // --- Login ---
 
-    public function test_login_berhasil_dan_gagal_tercatat(): void
+    public function test_login_gagal_tercatat_tapi_login_berhasil_tidak(): void
     {
         $this->post('/login', ['email' => 'aldora@wsm.local', 'password' => 'salah'])->assertSessionHasErrors('email');
         $failed = $this->lastLog('Login gagal');
         $this->assertStringContainsString('aldora@wsm.local', $failed->detail);
         $this->assertStringContainsString('password salah', $failed->detail);
         $this->assertSame('Login', $failed->area);
+        $this->assertNotNull($failed->ip_address, 'kejadian keamanan menyimpan IP');
 
-        $this->post('/login', ['email' => 'tidakada@wsm.local', 'password' => 'x'])->assertSessionHasErrors('email');
-        $this->assertStringContainsString('email tidak terdaftar', AuditLog::query()->where('action', 'Login gagal')->latest('id')->value('detail'));
+        // Email yang tidak terdaftar: teks yang diketik TIDAK disimpan (bisa saja itu passwordnya).
+        $this->post('/login', ['email' => 'rahasia-banget@wsm.local', 'password' => 'x'])->assertSessionHasErrors('email');
+        $detail = AuditLog::query()->where('action', 'Login gagal')->latest('id')->value('detail');
+        $this->assertStringContainsString('email tidak terdaftar', $detail);
+        $this->assertStringNotContainsString('rahasia-banget', $detail);
 
         $this->post('/login', ['email' => 'aldora@wsm.local', 'password' => 'password']);
-        $ok = $this->lastLog('Login berhasil');
-        $this->assertSame($this->p['aldora']->id, $ok->actor_id);
+        $this->assertAuthenticatedAs($this->p['aldora']);
+        $this->assertFalse(AuditLog::query()->where('action', 'Login berhasil')->exists(), 'login berhasil tidak masuk Audit Log');
+        $this->assertNotNull($this->p['aldora']->fresh()->last_login_at, 'jam login terakhir tetap ada di Monitor Login');
         $this->assertSame(0, AuditLog::query()->where('action', 'Perubahan data (tidak terinci)')->count(), 'login tidak dicatat ganda oleh jaring pengaman');
     }
 

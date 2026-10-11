@@ -929,14 +929,14 @@ return [
                 'Yang tercatat' => [
                     'Semua perubahan data: tambah, ubah, dan hapus di Work Tracker (termasuk edit cepat progress, catatan, judul, dan PIC), Project Budgeting, KPI, kontrak, legal, royalty, MoM, memo, changelog, dan rekrutmen. Untuk perubahan, tertulis nilai lama dan barunya, misalnya Progress: Pending → Done.',
                     'Karyawan, Dashboard Access, Pengaturan Kantor, reset dan ganti password, serta import data.',
-                    'Pengajuan izin/cuti, lembur, dan koreksi presensi (kirim, batalkan, setujui, tolak), koreksi manual absensi, dan sesi absen yang ditutup otomatis oleh sistem.',
+                    'Keputusan atasan atas izin/cuti, lembur, dan koreksi presensi (setujui, tolak, batalkan), koreksi manual absensi, dan sesi absen yang ditutup otomatis oleh sistem. Koreksi presensi dan koreksi manual menulis jam dan menitnya.',
                     'Payroll: generate, penyesuaian, finalisasi, tandai dibayar, dan hapus draft.',
-                    'Login berhasil dan percobaan login yang gagal (password salah atau email tidak terdaftar).',
+                    'Percobaan login yang gagal (password salah atau email tidak terdaftar). Login yang berhasil tidak dicatat di sini; lihat Monitor Login untuk login terakhir.',
                 ],
                 'Perlu diketahui' => [
                     'Yang tidak dicatat: absen masuk/pulang (sudah ada di catatan absensi), membaca memo, foto profil dan warna tema, serta kunci dashboard.',
                     'Aksi yang belum punya catatan rinci tetap muncul sebagai "Perubahan data (tidak terinci)", jadi tidak ada perubahan yang hilang dari jejak.',
-                    'Isi password, file, dan isi memo tidak pernah ditulis di log. Kolom IP kosong untuk aksi yang dilakukan sistem.',
+                    'Isi password, file, dan isi memo tidak pernah ditulis di log. Alamat IP hanya disimpan untuk kejadian keamanan (login gagal, password, akses dashboard). Isi catatan task tidak ditulis. Pengajuan karyawan sendiri tidak diulang di sini karena sudah ada di Riwayat Pengajuan. Log lebih dari 12 bulan dihapus otomatis.',
                     'Log ditampilkan 25 per halaman, yang terbaru di atas. Rekapnya (termasuk area dan IP) bisa diunduh sebagai Excel lewat Export & Import.',
                 ],
             ],

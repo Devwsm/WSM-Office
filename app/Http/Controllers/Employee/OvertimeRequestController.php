@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Employee;
 
-use App\Models\AuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelLeaveRequestRequest;
 use App\Http\Requests\Employee\StoreOvertimeRequestRequest;
@@ -49,8 +48,6 @@ class OvertimeRequestController extends Controller
             'status' => 'pending',
         ]);
 
-        AuditLog::record('Pengajuan lembur dikirim', "Lembur tanggal {$created->date->translatedFormat('d M Y')}. Alasan: {$created->reason}", Auth::user());
-
         return back()->with('status', 'Pengajuan lembur berhasil dikirim, tunggu persetujuan atasan.');
     }
 
@@ -66,8 +63,6 @@ class OvertimeRequestController extends Controller
         }
 
         $overtime->cancelBy($me, $request->validated('cancellation_reason'));
-
-        AuditLog::record('Pengajuan lembur dibatalkan pemohon', "Lembur tanggal {$overtime->date->translatedFormat('d M Y')} dibatalkan oleh pemohon. Alasan: " . ($request->validated('cancellation_reason') ?: '—'), $me);
 
         return back()->with('status', 'Pengajuan lembur berhasil dibatalkan.');
     }

@@ -70,7 +70,7 @@ class OvertimeRequestController extends Controller
 
         $overtime->approveBy($me);
 
-        AuditLog::record('Lembur disetujui', "Pengajuan lembur {$overtime->user->name} disetujui oleh {$me->name}.", $me);
+        AuditLog::record('Lembur disetujui', "Pengajuan lembur {$overtime->user->name} (tanggal {$overtime->date->translatedFormat('d M Y')}) disetujui oleh {$me->name}.", $me);
 
         return back()->with('status', "Pengajuan lembur {$overtime->user->name} disetujui.");
     }
@@ -87,7 +87,7 @@ class OvertimeRequestController extends Controller
 
         $overtime->rejectBy($me, $request->validated('decision_note'));
 
-        AuditLog::record('Lembur ditolak', "Pengajuan lembur {$overtime->user->name} ditolak oleh {$me->name}.", $me);
+        AuditLog::record('Lembur ditolak', "Pengajuan lembur {$overtime->user->name} (tanggal {$overtime->date->translatedFormat('d M Y')}) ditolak oleh {$me->name}.", $me);
 
         return back()->with('status', "Pengajuan lembur {$overtime->user->name} ditolak.");
     }
@@ -104,7 +104,7 @@ class OvertimeRequestController extends Controller
 
         $overtime->cancelBy($me, $request->validated('cancellation_reason'));
 
-        AuditLog::record('Lembur dibatalkan', "Lembur {$overtime->user->name} dibatalkan oleh {$me->name}.", $me);
+        AuditLog::record('Lembur dibatalkan', "Lembur {$overtime->user->name} (tanggal {$overtime->date->translatedFormat('d M Y')}) dibatalkan oleh {$me->name}.", $me);
 
         return back()->with('status', "Lembur {$overtime->user->name} dibatalkan.");
     }

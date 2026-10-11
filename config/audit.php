@@ -18,7 +18,19 @@
  */
 
 return [
+    // Log lebih tua dari ini (bulan) dihapus otomatis saat halaman Audit Log dibuka
+    // (maksimal sekali sehari) atau lewat `php artisan audit:prune`.
+    'retention_months' => 12,
+
     'ignore' => [
+        // Pengajuan karyawan sendiri (kirim/batalkan): sudah tersimpan lengkap di Riwayat Pengajuan,
+        // jadi tidak diduplikasi di Audit Log. Keputusan atasan (setujui/tolak) tetap dicatat.
+        'employee.leave.store',
+        'employee.leave.cancel',
+        'employee.overtime.store',
+        'employee.overtime.cancel',
+        'employee.attendanceCorrection.store',
+        'employee.attendanceCorrection.cancel',
         // Catatan absensinya sendiri sudah menjadi jejak (tabel attendances); volume tinggi.
         'employee.attendance.clockIn',
         'employee.attendance.clockOut',

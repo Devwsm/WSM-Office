@@ -32,16 +32,20 @@ class AppServiceProvider extends ServiceProvider
         // Monitor Login (2026-10-08) — catat login/logout buat status online.
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User) {
+                // 2026-10-11 — login berhasil TIDAK masuk Audit Log (privasi): jam login
+                // terakhir sudah ada di Monitor Login (users.last_login_at).
                 Presence::recordLogin($event->user);
-                AuditLog::record('Login berhasil', "{$event->user->name} masuk ke aplikasi.", $event->user, 'Login');
             }
         });
         // Percobaan login yang gagal (password salah / email tidak terdaftar) — jejak keamanan.
         Event::listen(Failed::class, function (Failed $event) {
-            $email = (string) ($event->credentials['email'] ?? '—');
-            $reason = $event->user ? 'password salah' : 'email tidak terdaftar';
+            // 2026-10-11 — teks email yang tidak terdaftar sengaja TIDAK disimpan: sering
+            // salah ketik, dan kadang yang terketik di kolom itu justru passwordnya.
+            $detail = $event->user
+                ? 'Percobaan login gagal untuk ' . (string) ($event->credentials['email'] ?? '—') . ' (password salah).'
+                : 'Percobaan login gagal: email tidak terdaftar.';
 
-            AuditLog::record('Login gagal', "Percobaan login gagal untuk {$email} ({$reason}).", 'System', 'Login');
+            AuditLog::record('Login gagal', $detail, 'System', 'Login');
         });
         Event::listen(Logout::class, function (Logout $event) {
             if ($event->user instanceof User) {

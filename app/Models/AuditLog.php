@@ -26,6 +26,20 @@ class AuditLog extends Model
 {
     public const UPDATED_AT = null;
 
+    /**
+     * Hanya kejadian keamanan yang menyimpan alamat IP. Pekerjaan harian
+     * (task, approval, dan sebagainya) tidak menyimpan IP supaya Audit Log
+     * tidak menjadi jejak lokasi karyawan.
+     *
+     * @var list<string>
+     */
+    public const IP_ACTIONS = [
+        'Login gagal',
+        'Password direset',
+        'Password diganti',
+        'Dashboard access diubah',
+    ];
+
     /** Jumlah catatan yang ditulis dalam request ini (dibaca middleware AuditUncoveredChanges). */
     public static int $recorded = 0;
 
@@ -50,17 +64,29 @@ class AuditLog extends Model
     {
         static::$recorded++;
 
-        // IP dan area (nama halaman) otomatis dari request yang sedang berjalan.
+        // Area (nama halaman) otomatis dari request yang sedang berjalan. IP hanya
+        // disimpan untuk kejadian keamanan (lihat IP_ACTIONS), bukan pekerjaan harian.
         $request = app()->bound('request') ? request() : null;
 
         return static::create([
-            'ip_address' => $request?->ip(),
+            'ip_address' => in_array($action, static::IP_ACTIONS, true) ? $request?->ip() : null,
             'area' => $area ?? Presence::labelFor($request?->route()?->getName()),
             'actor_id' => $actor instanceof User ? $actor->id : null,
             'actor_label' => is_string($actor) ? $actor : ($actor === null ? 'System' : null),
             'action' => $action,
             'detail' => $detail,
         ]);
+    }
+
+    /**
+     * Pembersihan otomatis (2026-10-11): hapus log yang lebih tua dari
+     * `config('audit.retention_months')` bulan. Mengembalikan jumlah baris yang dihapus.
+     */
+    public static function pruneExpired(): int
+    {
+        $months = max(1, (int) config('audit.retention_months', 12));
+
+        return static::query()->where('created_at', '<', now()->subMonths($months))->delete();
     }
 
     public function actorName(): string

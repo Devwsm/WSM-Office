@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * AuditLogController (Dashboard > IT > Audit Log)
@@ -20,6 +21,11 @@ use Illuminate\Http\Request;
  * `AuditUncoveredChanges` ("Perubahan data (tidak terinci)"), dan
  * `AuditCoverageTest` mengingatkan kalau ada route baru yang terlewat.
  *
+ * Privasi (2026-10-11): login berhasil tidak dicatat (sudah ada di Monitor
+ * Login); IP hanya untuk kejadian keamanan (`AuditLog::IP_ACTIONS`); isi
+ * catatan task tidak ditulis; pengajuan karyawan sendiri tidak diduplikasi.
+ * Log lebih tua dari `config('audit.retention_months')` bulan dihapus otomatis.
+ *
  * Filter: kata kunci, pelaku, area (nama halaman), dan rentang tanggal.
  * ---------------------------------------------------------------------
  */
@@ -27,6 +33,11 @@ class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
+        // Hosting tanpa cron: bersihkan log lama di sini, maksimal sekali sehari.
+        if (Cache::add('audit-log:pruned', true, now()->addDay())) {
+            AuditLog::pruneExpired();
+        }
+
         $search = $request->string('q')->toString() ?: null;
         $actor = $request->string('actor')->toString() ?: null;
         $area = $request->string('area')->toString() ?: null;

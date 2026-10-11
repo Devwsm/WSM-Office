@@ -27,6 +27,13 @@ class Audit
 {
     private const MAX_VALUE_LENGTH = 80;
 
+    /**
+     * Kolom yang isinya TIDAK ditulis ke log (hanya "diubah"). Catatan task bisa
+     * berisi hal sensitif (kendala dengan klien, soal orang), jadi cukup
+     * dicatat bahwa catatan berubah. Berlaku untuk model WorkItem.
+     */
+    private const REDACTED_WORK_ITEM_COLUMNS = ['notes'];
+
     /** "Label: lama → baru; ..." untuk kolom berlabel yang benar-benar berubah. */
     public static function changes(Model $model, array $data, array $labels): string
     {
@@ -42,6 +49,15 @@ class Audit
             }
 
             [$label, $resolve] = self::unpack($definition);
+
+            if (self::isRedacted($model, $column)) {
+                if (($model->getAttribute($column) ?? '') !== ($next->getAttribute($column) ?? '')) {
+                    $parts[] = "{$label}: diubah";
+                }
+
+                continue;
+            }
+
             $old = self::value($model->getAttribute($column), $resolve);
             $new = self::value($next->getAttribute($column), $resolve);
 
@@ -68,10 +84,15 @@ class Audit
                 continue;
             }
 
-            $parts[] = "{$label}: " . self::value($value, $resolve);
+            $parts[] = self::isRedacted($model, $column) ? "{$label}: diisi" : "{$label}: " . self::value($value, $resolve);
         }
 
         return implode('; ', $parts);
+    }
+
+    private static function isRedacted(Model $model, string $column): bool
+    {
+        return $model instanceof \App\Models\WorkItem && in_array($column, self::REDACTED_WORK_ITEM_COLUMNS, true);
     }
 
     /** Nilai ringkas yang aman ditampilkan di log. */
@@ -90,12 +111,10 @@ class Audit
             return $value ? 'ya' : 'tidak';
         }
 
-        if ($value instanceof CarbonInterface) {
-            return $value->format('d M Y');
-        }
-
-        if ($value instanceof DateTimeInterface) {
-            return $value->format('d M Y');
+        // Nilai waktu yang punya jam (bukan tengah malam) ditulis lengkap sampai menit,
+        // supaya perubahan jam masuk/pulang atau waktu keputusan tidak tampak sebagai tanggal saja.
+        if ($value instanceof CarbonInterface || $value instanceof DateTimeInterface) {
+            return $value->format('H:i:s') === '00:00:00' ? $value->format('d M Y') : $value->format('d M Y, H:i');
         }
 
         if (is_array($value)) {

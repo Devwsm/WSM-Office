@@ -67,7 +67,7 @@ class LeaveRequestController extends Controller
 
         $leave->approveBy($me);
 
-        AuditLog::record('Izin/cuti disetujui', "Pengajuan {$leave->user->name} ({$leave->type}) disetujui oleh {$me->name}.", $me);
+        AuditLog::record('Izin/cuti disetujui', "Pengajuan {$leave->user->name} ({$leave->type}, {$leave->start_date->translatedFormat('d M Y')} s/d {$leave->end_date->translatedFormat('d M Y')}, {$leave->work_days} hari kerja) disetujui oleh {$me->name}.", $me);
 
         return back()->with('status', "Pengajuan {$leave->user->name} disetujui.");
     }
@@ -84,7 +84,7 @@ class LeaveRequestController extends Controller
 
         $leave->rejectBy($me, $request->validated('decision_note'));
 
-        AuditLog::record('Izin/cuti ditolak', "Pengajuan {$leave->user->name} ({$leave->type}) ditolak oleh {$me->name}.", $me);
+        AuditLog::record('Izin/cuti ditolak', "Pengajuan {$leave->user->name} ({$leave->type}, {$leave->start_date->translatedFormat('d M Y')} s/d {$leave->end_date->translatedFormat('d M Y')}, {$leave->work_days} hari kerja) ditolak oleh {$me->name}.", $me);
 
         return back()->with('status', "Pengajuan {$leave->user->name} ditolak.");
     }
@@ -101,7 +101,7 @@ class LeaveRequestController extends Controller
 
         $leave->cancelBy($me, $request->validated('cancellation_reason'));
 
-        AuditLog::record('Izin/cuti dibatalkan', "Izin/cuti {$leave->user->name} ({$leave->type}) dibatalkan oleh {$me->name}.", $me);
+        AuditLog::record('Izin/cuti dibatalkan', "Izin/cuti {$leave->user->name} ({$leave->type}, {$leave->start_date->translatedFormat('d M Y')} s/d {$leave->end_date->translatedFormat('d M Y')}, {$leave->work_days} hari kerja) dibatalkan oleh {$me->name}.", $me);
 
         return back()->with('status', "Izin/cuti {$leave->user->name} dibatalkan.");
     }
