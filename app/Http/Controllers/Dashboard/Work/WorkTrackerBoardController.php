@@ -319,6 +319,10 @@ class WorkTrackerBoardController extends Controller
      */
     public function updateSectionViewers(Request $request, ProjectSection $section)
     {
+        // Assign visibility section = hak Owner & Developer saja. Akses `work,manage`
+        // (mengelola task/section) sengaja TIDAK cukup untuk mengubah siapa yang boleh melihat.
+        abort_unless($request->user()->isOwnerOrDeveloper(), 403, 'Hanya Owner dan Developer yang boleh mengatur visibility section.');
+
         $data = $request->validate([
             'user_ids' => ['nullable', 'array'],
             'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],

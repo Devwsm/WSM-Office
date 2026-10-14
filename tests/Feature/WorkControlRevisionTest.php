@@ -126,10 +126,10 @@ class WorkControlRevisionTest extends TestCase
 
     // --- Visibility section per orang ---
 
-    public function test_manage_can_set_and_clear_section_viewers_and_it_is_audited(): void
+    public function test_owner_can_set_and_clear_section_viewers_and_it_is_audited(): void
     {
         $section = $this->section();
-        $a = $this->actingAs($this->p['aldora']);
+        $a = $this->actingAs($this->p['owner']);
 
         $a->put(route('dashboard.work.tracker.sections.viewers', $section), ['user_ids' => [$this->p['hrd']->id]])->assertRedirect();
         $this->assertSame([$this->p['hrd']->id], $section->viewers()->pluck('users.id')->all());
@@ -137,6 +137,69 @@ class WorkControlRevisionTest extends TestCase
 
         $a->put(route('dashboard.work.tracker.sections.viewers', $section), [])->assertRedirect();
         $this->assertSame([], $section->viewers()->pluck('users.id')->all());
+    }
+
+    public function test_developer_can_set_section_viewers(): void
+    {
+        $section = $this->section();
+        $dev = $this->makeDeveloper($this->p['owner']);
+
+        $this->actingAs($dev)
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), ['user_ids' => [$this->p['gepeng']->id]])
+            ->assertRedirect();
+        $this->assertSame([$this->p['gepeng']->id], $section->viewers()->pluck('users.id')->all());
+    }
+
+    public function test_work_manage_who_is_not_owner_or_developer_cannot_set_section_viewers(): void
+    {
+        $section = $this->section();
+        $section->viewers()->sync([$this->p['hrd']->id]);
+
+        // Aldora punya work=manage (boleh kelola task/section), tapi bukan Owner/Developer.
+        $this->actingAs($this->p['aldora'])
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), ['user_ids' => [$this->p['aldora']->id]])
+            ->assertForbidden();
+        $this->actingAs($this->p['aldora'])
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), [])
+            ->assertForbidden();
+
+        // Tidak ada yang berubah dan tidak ada jejak audit perubahan.
+        $this->assertSame([$this->p['hrd']->id], $section->viewers()->pluck('users.id')->all());
+        $this->assertFalse(AuditLog::query()->where('action', 'Visibility section diubah')->exists());
+    }
+
+    public function test_visibility_button_is_only_shown_to_owner_and_developer(): void
+    {
+        $this->item(['title' => 'Item pemicu section']);
+        $dev = $this->makeDeveloper($this->p['owner']);
+
+        foreach ([$this->p['owner'], $dev] as $user) {
+            $this->actingAs($user)->get(route('dashboard.work.tracker.index'))
+                ->assertOk()->assertSee('Atur siapa yang bisa melihat section ini')->assertSee('Siapa yang bisa lihat?');
+        }
+
+        // work=manage biasa tetap bisa mengelola section (warna/urutan), tapi tidak melihat kontrol visibility.
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))
+            ->assertOk()->assertSee('Ubah warna section')
+            ->assertDontSee('Atur siapa yang bisa melihat section ini')->assertDontSee('Siapa yang bisa lihat?');
+    }
+
+    public function test_tracker_marks_project_and_pic_dropdowns_as_searchable(): void
+    {
+        $this->item(['title' => 'Item pemicu section']);
+
+        $html = $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))->assertOk()->getContent();
+
+        // Filter Project & PIC, form Tambah Task (Project, PIC 1-3), dan PIC per baris memakai dropdown pencarian.
+        $this->assertStringContainsString('wtSsPanel', $html);
+        $this->assertStringContainsString('data-search-placeholder="Cari project…"', $html);
+        $this->assertStringContainsString('data-search-placeholder="Cari pic…"', $html);
+        $this->assertStringContainsString('data-search-placeholder="Cari nama PIC…"', $html);
+        $this->assertGreaterThanOrEqual(7, substr_count($html, 'data-searchable'));
+
+        // Progress & Focus hanya beberapa pilihan: tetap dropdown biasa.
+        $this->assertDoesNotMatchRegularExpression('/<select name="progress"[^>]*data-searchable/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<select name="focus"[^>]*data-searchable/', $html);
     }
 
     public function test_view_only_user_cannot_change_section_viewers(): void

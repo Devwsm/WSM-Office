@@ -412,10 +412,11 @@ return [
             'sections' => [
                 'Yang bisa dilakukan' => [
                     ['Filter', 'tampilkan satu project, satu PIC, satu progress, atau satu fokus (KELEWAT, HARI INI, BESOK, dst.) saja. Expand All / Collapse All membuka atau menutup semua section.'],
+                    ['Kolom cari di pilihan Project dan PIC', 'klik pilihan Project atau PIC (di filter, form Tambah Task, dan kolom PIC di baris), lalu ketik sebagian nama; daftar menyempit langsung. Panah atas/bawah + Enter untuk memilih, Esc untuk menutup.'],
                     ['Progress', 'ubah langsung lewat pilihan di kolom Progress (akses Manage), tersimpan otomatis.'],
                     ['Note', 'ketik di kolom Note, tersimpan otomatis saat kamu klik di luar kolom.'],
                     ['Judul, Date, PIC, Link', 'bisa diubah langsung di barisnya tanpa membuka Edit (akses Manage). Judul tersimpan saat kamu selesai mengetik, Link diubah lewat jendela kecil (kosongkan untuk menghapus), dan ubah Date atau PIC memuat ulang halaman supaya badge fokus ikut berubah.'],
-                    ['👁 di judul section', 'atur siapa saja yang boleh melihat section itu. Kosongkan semua centang agar terbuka untuk semua orang.'],
+                    ['👁 di judul section', 'atur siapa saja yang boleh melihat section itu. Kosongkan semua centang agar terbuka untuk semua orang. Tombol ini hanya muncul untuk Owner dan Developer.'],
                     ['+ di judul section', 'tambah item baru langsung ke section itu.'],
                     ['+ Tambah Task', 'pilih project (harus sudah ada) dan section yang sudah ada di project itu, atau pilih "+ Section baru". Project yang belum punya section langsung diminta membuat section pertamanya. Lalu isi PIC, due date, progress, priority, link, dan notes. Satu task bisa punya sampai 3 PIC (PIC 1, PIC 2, PIC 3), dan semuanya melihat task itu di daftar kerjanya.'],
                     ['Edit / Hapus', 'tombol di ujung kanan tiap baris.'],
@@ -430,7 +431,7 @@ return [
                     'Semua project dan section tertutup saat halaman dibuka. Menutup project ikut menutup semua section di dalamnya.',
                     'Task wajib masuk project dan section. Kalau belum ada project, tombol + Tambah Task mengarahkan ke menu Projects. Task lama tanpa project tampil di kartu "Tanpa Project" — buka Edit dan pilih project supaya rapi.',
                     'Task tanpa project muncul di kartu "Tanpa Project" paling bawah.',
-                    'Section dengan label 🔒 hanya terlihat oleh orang yang dipilih, Owner/Developer, dan PIC item di dalamnya. Orang lain tidak melihat section maupun item-nya, di tracker maupun di kalender.',
+                    'Section dengan label 🔒 hanya terlihat oleh orang yang dipilih, Owner/Developer, dan PIC item di dalamnya. Orang lain tidak melihat section maupun item-nya, di tracker maupun di kalender. Yang boleh mengubah pembatasan ini hanya Owner dan Developer; akses Manage biasa tidak cukup.',
                     'Akses View hanya bisa melihat tabel. Mengubah progress/note/judul/tanggal/PIC/link, menambah, dan menghapus butuh Manage.',
                     'Untuk memasukkan banyak task dari Excel, pakai Export & Import, kartu Work Tracker.',
                 ],

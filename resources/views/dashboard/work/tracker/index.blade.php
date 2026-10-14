@@ -23,6 +23,8 @@
 @section('content')
     @php
         $canManage = auth()->user()->canManageModule('work');
+        // Assign visibility section: khusus Owner & Developer (bukan sekadar `work,manage`).
+        $canAssignVisibility = auth()->user()->isOwnerOrDeveloper();
         $progressClass = fn(string $p) => match ($p) {
             'Done' => 'bg-[#ccebd5] text-[#176c37]',
             'Follow Up' => 'bg-[#ffe876] text-[#392f00]',
@@ -92,6 +94,7 @@
                 <label class="grid min-w-34 flex-1 gap-1 sm:flex-none">
                     <span class="text-[10px] font-extrabold uppercase text-muted">{{ $label }}</span>
                     <select name="{{ $name }}" onchange="this.form.submit()"
+                        @if (in_array($name, ['project_id', 'pic'], true)) data-searchable data-search-placeholder="Cari {{ strtolower($label) }}…" @endif
                         class="w-full rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink sm:max-w-52">
                         <option value="">{{ $all }}</option>
                         @foreach ($options as $value => $text)
@@ -217,10 +220,12 @@
                                                     {{ count($section['viewer_ids']) }} orang</span>
                                             @endif
                                             @if ($canManage && $sec)
-                                                {{-- Visibility per orang (kosong = semua orang boleh lihat). --}}
-                                                <button type="button" title="Atur siapa yang bisa melihat section ini"
-                                                    @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids']])"
-                                                    class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
+                                                @if ($canAssignVisibility)
+                                                    {{-- Visibility per orang (kosong = semua orang boleh lihat). Hanya Owner & Developer. --}}
+                                                    <button type="button" title="Atur siapa yang bisa melihat section ini"
+                                                        @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids']])"
+                                                        class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
+                                                @endif
                                                 {{-- Warna: simpan langsung (PATCH JSON), tanpa reload. --}}
                                                 <label title="Ubah warna section" onclick="event.stopPropagation()"
                                                     class="relative grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-white/70">
@@ -321,6 +326,7 @@
                                                                 class="px-3 py-2.5 font-bold text-[#5e5952]">
                                                                 @if ($canManage)
                                                                     <select data-orig="{{ $item->pic_employee_id }}" onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
+                                                                        data-searchable data-search-placeholder="Cari nama PIC…"
                                                                         aria-label="PIC utama"
                                                                         class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] font-bold hover:border-line focus:border-line focus:bg-white">
                                                                         <option value="">Belum di-assign</option>
@@ -452,6 +458,7 @@
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Project</label>
                                 <select name="project_id" id="wtTaskProject" required onchange="wtRebuildSections('')"
+                                    data-searchable data-search-placeholder="Cari project…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     <option value="" disabled selected>Pilih project…</option>
                                     @foreach ($projects as $project)
@@ -479,6 +486,7 @@
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">PIC 1</label>
                                 <select name="pic_employee_id" id="wtTaskPic" onchange="wtSyncPicOptions()"
+                                    data-searchable data-search-placeholder="Cari nama PIC…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     <option value="">Belum di-assign</option>
                                     @foreach ($employees as $employee)
@@ -500,6 +508,7 @@
                                     </label>
                                     <select name="additional_pic_ids[]" id="wtTaskPic{{ $picNo }}"
                                         onchange="wtSyncPicOptions()"
+                                        data-searchable data-search-placeholder="Cari nama PIC…"
                                         class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                         <option value="">Tidak ada</option>
                                         @foreach ($employees as $employee)
@@ -548,7 +557,8 @@
                 </div>
             </div>
 
-            {{-- Modal visibility section: pilih orang yang boleh melihat; kosong = semua. --}}
+            {{-- Modal visibility section: pilih orang yang boleh melihat; kosong = semua. Hanya Owner & Developer. --}}
+            @if ($canAssignVisibility)
             <div x-show="viewersModal" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
                 <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
                     <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
@@ -575,6 +585,7 @@
                     </form>
                 </div>
             </div>
+            @endif
 
             {{-- Modal hapus section: section berisi item -> nama section harus diketik persis. --}}
             <div x-show="sectionDelete" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
@@ -1091,4 +1102,6 @@
             window.dispatchEvent(new CustomEvent('wt-open-task-modal'));
         }
     </script>
+
+    @include('dashboard.work.tracker._searchable-select')
 @endsection
