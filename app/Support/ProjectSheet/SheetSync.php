@@ -59,7 +59,7 @@ final class SheetSync
     /** @var Collection<int, User> */
     private Collection $users;
 
-    public function __construct(private readonly Project $project)
+    public function __construct(private readonly Project $project, private readonly ?User $viewer = null)
     {
         $this->users = User::query()->orderBy('id')->get(['id', 'name', 'email']);
     }
@@ -70,9 +70,11 @@ final class SheetSync
      */
     public function plan(array $sheetRows): array
     {
+        // Section terbatas yang tidak bisa dibuka pengguna ini tidak ikut dicocokkan sama sekali.
         $items = WorkItem::query()
             ->with(['pic:id,name', 'additionalPics:id,name'])
             ->where('project_id', $this->project->id)
+            ->when($this->viewer, fn($q) => $q->sectionVisibleTo($this->viewer))
             ->orderBy('id')
             ->get()
             ->keyBy('id');
@@ -129,6 +131,13 @@ final class SheetSync
                     $data = $row['apply'];
                     $pics = $row['pics'] ?? null;
 
+                    // Tidak boleh membuat task di section terbatas yang tidak bisa dibuka pembuatnya.
+                    if (! ProjectSection::userHasAccess($actor, $this->project->id, $data['section'] ?? '')) {
+                        $skipped++;
+
+                        continue;
+                    }
+
                     if (($data['item_no'] ?? '') === '') {
                         $data['item_no'] = $this->nextItemNo($data['section']);
                     }
@@ -142,7 +151,7 @@ final class SheetSync
                     $this->writePics($item, $pics);
                     $created++;
                 } elseif ($row['action'] === 'update') {
-                    $item = WorkItem::query()->where('project_id', $this->project->id)->find($row['id']);
+                    $item = WorkItem::query()->where('project_id', $this->project->id)->sectionVisibleTo($actor)->find($row['id']);
 
                     if ($item === null) {
                         $skipped++;

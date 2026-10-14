@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Project;
+use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
@@ -12,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /** Sheet "Project" — pasangan Field / Value, isinya sama dengan info project di prototype. */
 class ProjectInfoSheet implements FromArray, ShouldAutoSize, WithStyles, WithTitle
 {
-    public function __construct(private readonly Project $project, private readonly ?string $exportedBy = null) {}
+    public function __construct(private readonly Project $project, private readonly ?string $exportedBy = null, private readonly ?User $viewer = null) {}
 
     public function title(): string
     {
@@ -23,8 +24,9 @@ class ProjectInfoSheet implements FromArray, ShouldAutoSize, WithStyles, WithTit
     {
         $p = $this->project->loadMissing('lead:id,name');
 
-        $total = $p->workItems()->count();
-        $done = $p->workItems()->where('progress', 'Done')->count();
+        $visible = fn() => $p->workItems()->when($this->viewer, fn($q) => $q->sectionVisibleTo($this->viewer));
+        $total = $visible()->count();
+        $done = $visible()->where('progress', 'Done')->count();
 
         return [
             ['Field', 'Value'],

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Project;
+use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
@@ -28,7 +29,7 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
  */
 class ProjectWorkbookExport implements FromArray, WithMultipleSheets
 {
-    public function __construct(private readonly Project $project, private readonly ?string $exportedBy = null) {}
+    public function __construct(private readonly Project $project, private readonly ?string $exportedBy = null, private readonly ?User $viewer = null) {}
 
     /**
      * Excel::download() mewajibkan tipe Export; WithMultipleSheets saja tidak
@@ -42,8 +43,8 @@ class ProjectWorkbookExport implements FromArray, WithMultipleSheets
     public function sheets(): array
     {
         return [
-            new ProjectInfoSheet($this->project, $this->exportedBy),
-            new ProjectTrackerSheet($this->project),
+            new ProjectInfoSheet($this->project, $this->exportedBy, $this->viewer),
+            new ProjectTrackerSheet($this->project, $this->viewer),
         ];
     }
 }

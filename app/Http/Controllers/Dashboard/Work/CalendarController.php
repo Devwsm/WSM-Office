@@ -67,6 +67,7 @@ class CalendarController extends Controller
         $range = [$gridStart->toDateString(), $gridEnd->toDateString()];
 
         $itemsByDate = WorkItem::query()
+            ->sectionVisibleTo($request->user()) // section terbatas tidak muncul untuk yang tidak berhak
             ->whereBetween('due_date', $range)
             ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
             ->when($picUser, fn($q) => $this->wherePic($q, $picUser))
@@ -190,6 +191,8 @@ class CalendarController extends Controller
      */
     public function moveItem(Request $request, WorkItem $item)
     {
+        abort_unless($item->isAccessibleTo($request->user()), 403, 'Tidak ada akses ke item di dalam section ini.');
+
         $data = $request->validate(['due_date' => ['required', 'date_format:Y-m-d']]);
 
         $oldDate = $item->due_date?->toDateString();

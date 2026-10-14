@@ -54,7 +54,7 @@
         };
     @endphp
 
-    <div x-data="{ taskModalOpen: false, sectionDelete: null, typed: '', viewersModal: null }" @wt-open-task-modal.window="taskModalOpen = true"
+    <div x-data="{ taskModalOpen: false, sectionDelete: null, typed: '', viewersModal: null, viewersAccess: 'all' }" @wt-open-task-modal.window="taskModalOpen = true"
         @keydown.escape.window="taskModalOpen = false; sectionDelete = null; viewersModal = null">
         <div class="mb-5 flex flex-wrap items-center justify-between gap-3.5">
             <div>
@@ -86,6 +86,20 @@
                     <p class="mt-1 text-[11px] text-[#5e5952]">{{ $hint }}</p>
                 </div>
             @endforeach
+        </div>
+
+        {{-- Pencarian universal: menyaring semua task yang tampil (judul, catatan, PIC, section, project, ...) secara realtime. --}}
+        <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <label class="relative block min-w-0 flex-1">
+                <span class="sr-only">Cari di Work Tracker</span>
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" aria-hidden="true">🔍</span>
+                <input type="search" id="wtSearch" autocomplete="off" spellcheck="false"
+                    placeholder="Cari task, PIC, section, project, catatan…   (tekan / untuk mulai)"
+                    class="w-full rounded-2xl border border-line bg-white py-2.5 pl-10 pr-10 text-[13px] font-bold text-ink">
+                <button type="button" id="wtSearchClear" hidden aria-label="Hapus pencarian"
+                    class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg bg-[#ece7dd] text-xs font-black">✕</button>
+            </label>
+            <p id="wtSearchInfo" class="text-[11px] font-extrabold text-muted" aria-live="polite"></p>
         </div>
 
         {{-- Filter --}}
@@ -201,6 +215,7 @@
                                     $secColor = $section['color'];
                                     $secInk = \App\Models\Project::contrastTextFor($secColor);
                                     $sec = $section['model'];
+                                    $locked = $section['locked'] ?? false; // section terbatas yang tidak boleh dibuka pengguna ini
                                     $secKey = $cardKey . ':' . md5($section['name']);
                                 @endphp
                                 <details class="wt-section border-b border-line last:border-b-0"
@@ -214,16 +229,20 @@
                                             <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
                                         </span>
                                         <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
-                                            @if (! empty($section['viewer_ids']))
+                                            @if ($locked)
+                                                <span title="Kamu tidak punya akses ke item di dalam section ini"
+                                                    class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
+                                                    Terkunci</span>
+                                            @elseif (! empty($section['viewer_ids']))
                                                 <span title="Hanya orang tertentu yang bisa melihat section ini"
                                                     class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
                                                     {{ count($section['viewer_ids']) }} orang</span>
                                             @endif
-                                            @if ($canManage && $sec)
+                                            @if ($canManage && $sec && ! $locked)
                                                 @if ($canAssignVisibility)
                                                     {{-- Visibility per orang (kosong = semua orang boleh lihat). Hanya Owner & Developer. --}}
                                                     <button type="button" title="Atur siapa yang bisa melihat section ini"
-                                                        @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids']])"
+                                                        @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids'], 'pics' => $section['pic_ids'] ?? [], 'access' => empty($section['viewer_ids']) ? 'all' : 'selected']); viewersAccess = viewersModal.access"
                                                         class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
                                                 @endif
                                                 {{-- Warna: simpan langsung (PATCH JSON), tanpa reload. --}}
@@ -255,18 +274,23 @@
                                                         class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black text-[#9b392f]">×</button>
                                                 @endunless
                                             @endif
-                                            @if ($canManage && $project)
+                                            @if ($canManage && $project && ! $locked)
                                                 <button type="button" title="Tambah item di section ini"
                                                     onclick="event.preventDefault();event.stopPropagation();wtOpenAddTask('{{ $project?->id }}', @js($section['name'] === 'TANPA SECTION' ? '' : $section['name']))"
                                                     class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black">+</button>
                                             @endif
-                                            <span
-                                                class="rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-extrabold">{{ $section['rows']->count() }}
-                                                item</span>
+                                            @unless ($locked)
+                                                <span
+                                                    class="rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-extrabold">{{ $section['rows']->count() }}
+                                                    item</span>
+                                            @endunless
                                         </span>
                                     </summary>
 
-                                    @if ($section['rows']->isEmpty())
+                                    @if ($locked)
+                                        <p class="wt-locked bg-white px-4 py-5 text-center text-[12px] font-bold text-muted">
+                                            🔒 Tidak ada akses ke item di dalam section ini.</p>
+                                    @elseif ($section['rows']->isEmpty())
                                         <p class="bg-white px-4 py-3 text-[11px] text-muted">Section ini masih kosong.
                                             @if ($canManage && $project)
                                                 Tambah item lewat tombol <b>+</b> di header.
@@ -294,8 +318,14 @@
                                                         @php
                                                             $focus = $item->computedFocus();
                                                             [$fbg, $ftx] = $focusColors($focus);
+                                                            // Bahan pencarian universal: semua teks yang terlihat/relevan di baris ini.
+                                                            $searchText = mb_strtolower(implode(' ', array_filter([
+                                                                $item->item_no, $item->title, $item->notes, $item->progress, $item->priority,
+                                                                $focus, $item->picLabel(''), $item->additional_pic, $item->link,
+                                                                $section['name'], $project?->name ?? 'tanpa project',
+                                                            ], fn($v) => $v !== null && $v !== '')));
                                                         @endphp
-                                                        <tr
+                                                        <tr data-search="{{ $searchText }}"
                                                             class="border-t border-line align-middle {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
                                                             <td data-label="No"
                                                                 class="wt-no px-3 py-2.5 font-bold text-muted">
@@ -433,6 +463,9 @@
                 </p>
             @endforelse
         </div>
+        <p id="wtSearchEmpty" hidden
+            class="mt-3 rounded-3xl border border-dashed border-line p-6 text-sm text-muted">Tidak ada task yang cocok
+            dengan pencarian ini.</p>
 
         @if ($canManage && $projects->isNotEmpty())
             {{-- Modal Tambah/Edit Task --}}
@@ -563,18 +596,34 @@
                 <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
                     <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
                     <p class="mt-1 text-[12px] text-muted">Section <b x-text="viewersModal ? viewersModal.name : ''"></b>.
-                        Kosongkan semua centang agar terbuka untuk semua orang. Owner/Developer dan PIC item di section ini
-                        selalu tetap bisa melihat.</p>
+                        Owner dan Developer selalu bisa membuka section. <b>PIC</b> item di section ini otomatis tercentang
+                        dan tidak bisa dilepas selama masih jadi PIC. Orang lain yang tidak dicentang melihat section ini
+                        terkunci.</p>
                     <form method="POST" :action="viewersModal ? viewersModal.action : '#'" onsubmit="wtRememberOpen()"
                         class="mt-3 grid gap-3">
                         @csrf
                         @method('PUT')
-                        <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2">
+                        <div class="grid gap-1.5 text-[12px] font-extrabold">
+                            <label class="flex cursor-pointer items-center gap-2">
+                                <input type="radio" name="access" value="all" x-model="viewersAccess">
+                                Terbuka untuk semua orang
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2">
+                                <input type="radio" name="access" value="selected" x-model="viewersAccess">
+                                Hanya orang tertentu
+                            </label>
+                        </div>
+                        <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2"
+                            :class="viewersAccess === 'all' ? 'opacity-50' : ''">
                             @foreach ($employees as $emp)
-                                <label class="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]">
+                                <label class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]"
+                                    :class="viewersAccess === 'all' || (viewersModal && viewersModal.pics.includes({{ $emp->id }})) ? 'cursor-not-allowed' : 'cursor-pointer'">
                                     <input type="checkbox" name="user_ids[]" value="{{ $emp->id }}"
-                                        :checked="viewersModal && viewersModal.ids.includes({{ $emp->id }})">
-                                    {{ $emp->name }}
+                                        :checked="viewersModal && (viewersModal.ids.includes({{ $emp->id }}) || viewersModal.pics.includes({{ $emp->id }}))"
+                                        :disabled="viewersAccess === 'all' || (viewersModal && viewersModal.pics.includes({{ $emp->id }}))">
+                                    <span class="min-w-0 flex-1">{{ $emp->name }}</span>
+                                    <span x-show="viewersModal && viewersModal.pics.includes({{ $emp->id }})" x-cloak
+                                        class="rounded-full bg-[#e6f4e9] px-2 py-0.5 text-[9px] font-extrabold text-[#1c6c39]">PIC</span>
                                 </label>
                             @endforeach
                         </div>
@@ -1104,4 +1153,5 @@
     </script>
 
     @include('dashboard.work.tracker._searchable-select')
+    @include('dashboard.work.tracker._universal-search')
 @endsection

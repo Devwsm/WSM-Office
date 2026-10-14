@@ -52,14 +52,27 @@ class WorkTrackerBoardController extends Controller
     /** Pilihan filter Focus — urutan = dari yang paling mendesak. */
     public const FOCUS_OPTIONS = ['KELEWAT', 'HARI INI', 'BESOK', 'MINGGU INI', 'MINGGU DEPAN', 'AMAN', 'NOT URGENT', 'SELESAI'];
 
-    /** PIC item di section terbatas tetap boleh melihat section itu (task sendiri tidak disembunyikan). */
-    private function picsOfSection(ProjectSection $section, User $user): bool
+    private const NO_ACCESS = 'Tidak ada akses ke item di dalam section ini.';
+
+    /**
+     * Penjaga endpoint tulis: section terbatas tidak boleh diubah oleh orang yang
+     * tidak punya akses, walau punya akses `work` Manage (Owner/Developer selalu
+     * lolos). Tombolnya memang tidak tampil, tapi request langsung (ID ditebak)
+     * harus tetap ditolak.
+     */
+    private function guardItem(Request $request, WorkItem $item): void
     {
-        return WorkItem::query()
-            ->where('project_id', $section->project_id)
-            ->where('section', $section->name)
-            ->forPic($user->id)
-            ->exists();
+        abort_unless($item->isAccessibleTo($request->user()), 403, self::NO_ACCESS);
+    }
+
+    private function guardSectionByName(Request $request, ?int $projectId, ?string $name): void
+    {
+        abort_unless(ProjectSection::userHasAccess($request->user(), $projectId, $name), 403, self::NO_ACCESS);
+    }
+
+    private function guardSection(Request $request, ProjectSection $section): void
+    {
+        $this->guardSectionByName($request, $section->project_id, $section->name);
     }
 
     /**
@@ -77,10 +90,16 @@ class WorkTrackerBoardController extends Controller
         // baca sekali: [project_id => [nama => ProjectSection]] terurut.
         ProjectSection::syncMissing();
         $viewer = $request->user();
-        // Section terbatas (visibility per orang) disembunyikan dari yang tidak berhak;
-        // daftar viewer ikut dimuat untuk dialog "Siapa yang bisa lihat" (Owner/manage).
+        // Section terbatas (visibility per orang) tetap tampil sebagai baris TERKUNCI bagi yang tidak
+        // berhak (isinya tidak dikirim sama sekali). PIC item di section itu otomatis berhak.
+        // Daftar viewer ikut dimuat untuk dialog "Siapa yang bisa lihat" (Owner/Developer).
+        $picMap = ProjectSection::picMap();
         $meta = ProjectSection::query()->with('viewers:id,name')->orderBy('sort_order')->orderBy('id')->get()
-            ->filter(fn(ProjectSection $s) => $s->isVisibleTo($viewer) || $this->picsOfSection($s, $viewer))
+            ->each(function (ProjectSection $s) use ($viewer, $picMap) {
+                $pics = $picMap[ProjectSection::picKey($s->project_id, $s->name)] ?? [];
+                $s->setAttribute('pic_ids', $pics);
+                $s->setAttribute('locked', ! $s->isVisibleTo($viewer, $pics));
+            })
             ->groupBy('project_id')
             ->map(fn($rows) => $rows->keyBy('name'));
 
@@ -115,12 +134,12 @@ class WorkTrackerBoardController extends Controller
         // Section terdaftar (urutan yang diatur, termasuk yang masih kosong)
         // lebih dulu, lalu section yang dipakai item tapi belum terdaftar.
         $sectionsByProject = $totals->map(
-            fn($rows, $projectId) => collect($meta->get($projectId, collect())->keys())
+            fn($rows, $projectId) => collect($meta->get($projectId, collect())->reject(fn($s) => $s->locked)->keys())
                 ->merge($rows->sortBy('id')->pluck('section')->filter(fn($s) => $s !== ''))
                 ->unique()->values()->all()
         )->all();
         foreach ($meta as $projectId => $rows) {
-            $sectionsByProject[$projectId] ??= $rows->keys()->values()->all();
+            $sectionsByProject[$projectId] ??= $rows->reject(fn($s) => $s->locked)->keys()->values()->all();
         }
 
         $visible = $all
@@ -198,13 +217,35 @@ class WorkTrackerBoardController extends Controller
             $name = $section->name;
             $rows = $groups->get($name, collect());
 
+            // Section terkunci: tampil sebagai baris "tidak ada akses" (tanpa isi, tanpa jumlah item),
+            // disembunyikan saat filter aktif karena memang tidak ada yang bisa ditampilkan darinya.
+            if ($section->locked) {
+                if (! $filtering) {
+                    $sections->push([
+                        'name' => (string) $name,
+                        'rows' => collect(),
+                        'model' => $section,
+                        'color' => $section->effectiveColor(),
+                        'locked' => true,
+                        'viewer_ids' => [],
+                        'pic_ids' => [],
+                        'is_first' => $index === 0,
+                        'is_last' => $index === $lastManaged,
+                    ]);
+                }
+
+                continue;
+            }
+
             if ($rows->isNotEmpty() || ! $filtering) {
                 $sections->push([
                     'name' => (string) $name,
                     'rows' => $rows,
                     'model' => $section,
                     'color' => $section->effectiveColor(),
+                    'locked' => false,
                     'viewer_ids' => $section->viewers->pluck('id')->all(),
+                    'pic_ids' => $section->pic_ids ?? [],
                     'is_first' => $index === 0,
                     'is_last' => $index === $lastManaged,
                 ]);
@@ -263,6 +304,13 @@ class WorkTrackerBoardController extends Controller
 
     public function destroyProject(Request $request, Project $project)
     {
+        // Menghapus project melepas SEMUA task-nya ke "Tanpa Project" (di sana tidak ada visibility
+        // section), jadi ditolak kalau ada section terkunci yang tidak boleh dibuka pengguna ini.
+        $picMap = ProjectSection::picMap();
+        $hasLocked = ProjectSection::query()->with('viewers:id')->where('project_id', $project->id)->get()
+            ->contains(fn(ProjectSection $s) => ! $s->isVisibleTo($request->user(), $picMap[ProjectSection::picKey($s->project_id, $s->name)] ?? []));
+        abort_if($hasLocked, 403, 'Project ini punya section terbatas yang tidak bisa kamu buka, jadi tidak bisa dihapus.');
+
         // WorkItem.project_id nullable (lihat migration) — hapus
         // project TIDAK ikut hapus task-nya, cuma lepas ikatan,
         // konsisten sama cara Meeting/ProjectBudget nunjuk ke Project.
@@ -299,6 +347,8 @@ class WorkTrackerBoardController extends Controller
 
     public function updateSection(Request $request, ProjectSection $section)
     {
+        $this->guardSection($request, $section);
+
         $data = $request->validate(['color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/']]);
 
         $oldColor = $section->color ?? 'bawaan';
@@ -324,16 +374,31 @@ class WorkTrackerBoardController extends Controller
         abort_unless($request->user()->isOwnerOrDeveloper(), 403, 'Hanya Owner dan Developer yang boleh mengatur visibility section.');
 
         $data = $request->validate([
+            'access' => ['nullable', Rule::in(['all', 'selected'])],
             'user_ids' => ['nullable', 'array'],
             'user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
         ]);
 
-        $ids = array_map('intval', $data['user_ids'] ?? []);
+        $submitted = array_map('intval', $data['user_ids'] ?? []);
+        // Tanpa pilihan `access`: daftar kosong = terbuka untuk semua (perilaku lama).
+        $access = $data['access'] ?? ($submitted === [] ? 'all' : 'selected');
+
+        // PIC item di section ini otomatis jadi viewer (di UI tercentang & terkunci), jadi
+        // selalu ikut tersimpan walau checkbox-nya disabled dan tidak ikut terkirim.
+        $ids = $access === 'all'
+            ? []
+            : array_values(array_unique(array_merge($submitted, $section->picUserIds())));
+
+        // "Hanya orang tertentu" tapi tidak ada satu pun yang dipilih/PIC: jangan diam-diam membuka section.
+        if ($access === 'selected' && $ids === []) {
+            return back()->withErrors(['user_ids' => 'Pilih minimal satu orang, atau pilih "Terbuka untuk semua orang".']);
+        }
+
         $section->viewers()->sync($ids);
 
         AuditLog::record(
             'Visibility section diubah',
-            'Section "' . $section->name . '" (project #' . $section->project_id . ') ' . ($ids === [] ? 'dibuka untuk semua' : 'dibatasi untuk ' . count($ids) . ' orang') . ' oleh ' . $request->user()->name . '.',
+            'Section "' . $section->name . '" (project #' . $section->project_id . ') ' . ($ids === [] ? 'dibuka untuk semua' : 'dibatasi untuk ' . count($ids) . ' orang (termasuk PIC)') . ' oleh ' . $request->user()->name . '.',
             $request->user()
         );
 
@@ -347,6 +412,8 @@ class WorkTrackerBoardController extends Controller
     /** Geser 1 posisi ke atas/bawah dalam urutan section project itu. */
     public function moveSection(Request $request, ProjectSection $section)
     {
+        $this->guardSection($request, $section);
+
         $data = $request->validate(['direction' => ['required', Rule::in(['up', 'down'])]]);
 
         $moved = false;
@@ -387,6 +454,8 @@ class WorkTrackerBoardController extends Controller
      */
     public function destroySection(Request $request, ProjectSection $section)
     {
+        $this->guardSection($request, $section);
+
         $items = WorkItem::query()->where('project_id', $section->project_id)->where('section', $section->name);
         $count = (clone $items)->count();
 
@@ -414,6 +483,7 @@ class WorkTrackerBoardController extends Controller
     public function storeItem(WorkItemRequest $request)
     {
         $data = $request->validated();
+        $this->guardSectionByName($request, $data['project_id'] ?? null, $data['section'] ?? null);
         $extraPicIds = $this->pullAdditionalPicIds($data);
         $data['created_by'] = $request->user()->id;
         $data['item_no'] = $this->nextItemNo($data['project_id'] ?? null, $data['section'] ?? null);
@@ -429,6 +499,9 @@ class WorkTrackerBoardController extends Controller
     public function updateItem(WorkItemRequest $request, WorkItem $item)
     {
         $data = $request->validated();
+        $this->guardItem($request, $item);
+        // Dipindah ke section lain? Tujuannya juga harus section yang boleh dibuka.
+        $this->guardSectionByName($request, $data['project_id'] ?? $item->project_id, $data['section'] ?? $item->section);
         $extraPicIds = $this->pullAdditionalPicIds($data);
 
         $changes = Audit::changes($item, $data, Audit::labels('work_item'));
@@ -442,6 +515,8 @@ class WorkTrackerBoardController extends Controller
 
     public function destroyItem(Request $request, WorkItem $item)
     {
+        $this->guardItem($request, $item);
+
         $summary = Audit::summary($item, Audit::labels('work_item'));
         $item->delete();
 
@@ -459,6 +534,8 @@ class WorkTrackerBoardController extends Controller
      */
     public function updateProgress(Request $request, WorkItem $item)
     {
+        $this->guardItem($request, $item);
+
         $data = $request->validate([
             'progress' => ['required', Rule::in(WorkItem::PROGRESS_OPTIONS)],
         ]);
@@ -482,6 +559,8 @@ class WorkTrackerBoardController extends Controller
      */
     public function updateField(Request $request, WorkItem $item)
     {
+        $this->guardItem($request, $item);
+
         $field = $request->validate([
             'field' => ['required', Rule::in(['title', 'due_date', 'pic_employee_id', 'link'])],
         ])['field'];
@@ -524,6 +603,8 @@ class WorkTrackerBoardController extends Controller
     /** Simpan note inline dari tabel tracker (blur textarea) — fetch JSON. */
     public function updateNote(Request $request, WorkItem $item)
     {
+        $this->guardItem($request, $item);
+
         $data = $request->validate(['notes' => ['nullable', 'string', 'max:5000']]);
 
         $changes = Audit::changes($item, ['notes' => $data['notes'] ?? null], Audit::labels('work_item'));

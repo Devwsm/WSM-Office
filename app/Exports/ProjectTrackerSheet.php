@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Project;
 use App\Models\ProjectSection;
+use App\Models\User;
 use App\Models\WorkItem;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -21,7 +22,7 @@ class ProjectTrackerSheet implements FromArray, ShouldAutoSize, WithStyles, With
 {
     public const HEADINGS = ['SECTION', 'NO', 'ITEM', 'DATE', 'FOCUS', 'PIC', 'PROGRESS', 'NOTE', 'LINK', 'ID WSM'];
 
-    public function __construct(private readonly Project $project) {}
+    public function __construct(private readonly Project $project, private readonly ?User $viewer = null) {}
 
     public function title(): string
     {
@@ -30,9 +31,11 @@ class ProjectTrackerSheet implements FromArray, ShouldAutoSize, WithStyles, With
 
     public function array(): array
     {
+        // Section terbatas hanya ikut terunduh kalau pengunduhnya berhak membukanya.
         $items = WorkItem::query()
             ->with(['pic:id,name', 'additionalPics:id,name'])
             ->where('project_id', $this->project->id)
+            ->when($this->viewer, fn($q) => $q->sectionVisibleTo($this->viewer))
             ->get();
 
         // Section terdaftar dulu (urutan yang diatur), sisanya menyusul menurut

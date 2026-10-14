@@ -73,12 +73,80 @@ class ProjectSection extends Model
         return $this->viewers->isNotEmpty();
     }
 
-    /** Boleh dilihat $user? (Item milik sendiri ditangani terpisah di level item.) */
-    public function isVisibleTo(User $user): bool
+    /**
+     * Boleh membuka section ini? Owner/Developer selalu boleh. Section tanpa
+     * viewer terbuka untuk semua. Section terbatas hanya untuk viewer yang
+     * dipilih DAN siapa pun yang menjadi PIC (utama/tambahan) di salah satu
+     * item section itu — PIC otomatis ikut daftar viewer (2026-10-14).
+     * `$picIds` boleh diberikan kalau sudah dihitung (hindari query per section).
+     *
+     * @param  list<int>|null  $picIds
+     */
+    public function isVisibleTo(User $user, ?array $picIds = null): bool
     {
-        return $user->seesAllWork()
-            || ! $this->isRestricted()
-            || $this->viewers->contains('id', $user->id);
+        if ($user->seesAllWork() || ! $this->isRestricted()) {
+            return true;
+        }
+
+        return $this->viewers->contains('id', $user->id)
+            || in_array($user->id, $picIds ?? $this->picUserIds(), true);
+    }
+
+    /** ID semua PIC (utama + tambahan) dari item di section ini. @return list<int> */
+    public function picUserIds(): array
+    {
+        return static::picMap()[static::picKey($this->project_id, $this->name)] ?? [];
+    }
+
+    public static function picKey(?int $projectId, ?string $name): string
+    {
+        return (int) $projectId . '|' . $name;
+    }
+
+    /**
+     * Peta "project_id|nama section" => daftar ID PIC, dihitung sekali untuk
+     * semua section (1 query). Dipakai tracker untuk menandai PIC otomatis
+     * sebagai viewer dan menentukan section mana yang terkunci.
+     *
+     * @return array<string, list<int>>
+     */
+    public static function picMap(): array
+    {
+        $main = DB::table('work_items')
+            ->whereNotNull('project_id')->where('section', '!=', '')->whereNotNull('pic_employee_id')
+            ->select('project_id', 'section', 'pic_employee_id as user_id');
+
+        $rows = DB::table('work_item_additional_pics as a')
+            ->join('work_items as w', 'w.id', '=', 'a.work_item_id')
+            ->whereNotNull('w.project_id')->where('w.section', '!=', '')
+            ->select('w.project_id', 'w.section', 'a.user_id')
+            ->union($main)
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[static::picKey((int) $row->project_id, (string) $row->section)][(int) $row->user_id] = (int) $row->user_id;
+        }
+
+        return array_map('array_values', $map);
+    }
+
+    /**
+     * Cek akses ke section lewat (project, nama) — dipakai endpoint tulis.
+     * Section yang tidak terdaftar / tanpa project / tanpa nama = terbuka.
+     */
+    public static function userHasAccess(User $user, ?int $projectId, ?string $name): bool
+    {
+        $name = trim((string) $name);
+
+        if ($user->seesAllWork() || ! $projectId || $name === '') {
+            return true;
+        }
+
+        $section = static::query()->with('viewers:id')
+            ->where('project_id', $projectId)->where('name', $name)->first();
+
+        return $section === null || $section->isVisibleTo($user);
     }
 
     /** Pastikan (project, nama) punya baris; baru ditaruh di urutan paling bawah. Idempotent. */

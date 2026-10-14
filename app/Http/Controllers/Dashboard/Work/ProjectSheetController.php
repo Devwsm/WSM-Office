@@ -40,14 +40,14 @@ class ProjectSheetController extends Controller
     {
         $filename = 'WSM-' . Str::slug($project->name ?: 'project') . '-' . now()->format('Y-m-d') . '.xlsx';
 
-        return Excel::download(new ProjectWorkbookExport($project, $request->user()->name), $filename);
+        return Excel::download(new ProjectWorkbookExport($project, $request->user()->name, $request->user()), $filename);
     }
 
-    public function show(Project $project): View
+    public function show(Request $request, Project $project): View
     {
         return view('dashboard.work.projects.sync', [
             'project' => $project,
-            'itemCount' => $project->workItems()->count(),
+            'itemCount' => $project->workItems()->sectionVisibleTo($request->user())->count(),
         ]);
     }
 
@@ -69,7 +69,7 @@ class ProjectSheetController extends Controller
             return back()->withErrors(['file' => $e->getMessage()]);
         }
 
-        $plan = (new SheetSync($project))->plan($parsed['rows']);
+        $plan = (new SheetSync($project, $request->user()))->plan($parsed['rows']);
 
         $token = $this->previewService->stage($request->user(), $this->cacheKey($project), [
             'plan' => $plan,
@@ -94,7 +94,7 @@ class ProjectSheetController extends Controller
         $payload = $this->previewService->retrieve($request->user(), $this->cacheKey($project), $token);
         abort_if($payload === null, 410, 'Sesi preview sudah kadaluarsa (30 menit) — silakan upload ulang filenya.');
 
-        $result = (new SheetSync($project))->apply($payload['plan'], $request->user());
+        $result = (new SheetSync($project, $request->user()))->apply($payload['plan'], $request->user());
 
         $this->previewService->forget($request->user(), $this->cacheKey($project), $token);
 
@@ -107,7 +107,7 @@ class ProjectSheetController extends Controller
 
         $status = "Sinkron selesai: {$result['created']} task baru, {$result['updated']} task diperbarui.";
         if ($result['skipped'] > 0) {
-            $status .= " {$result['skipped']} task dilewati karena sudah terhapus sejak preview.";
+            $status .= " {$result['skipped']} task dilewati karena sudah terhapus sejak preview atau berada di section yang tidak bisa kamu buka.";
         }
 
         return redirect()

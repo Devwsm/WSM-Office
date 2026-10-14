@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Support\Collection;
 
@@ -12,13 +13,14 @@ use Illuminate\Support\Collection;
  */
 class WorkItemExport extends BaseExport
 {
-    public function __construct(private readonly ?int $projectId = null) {}
+    public function __construct(private readonly ?int $projectId = null, private readonly ?User $viewer = null) {}
 
     public function rows(): Collection
     {
         return WorkItem::query()
             ->with(['project', 'pic', 'additionalPics'])
             ->when($this->projectId, fn($q) => $q->where('project_id', $this->projectId))
+            ->when($this->viewer, fn($q) => $q->sectionVisibleTo($this->viewer))
             ->orderBy('due_date')
             ->get();
     }

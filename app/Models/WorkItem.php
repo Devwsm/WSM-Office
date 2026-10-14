@@ -165,8 +165,28 @@ class WorkItem extends Model
                     ->whereNotExists(fn($v) => $v->select(DB::raw(1))->from('project_section_viewers as v2')
                         ->whereColumn('v2.project_section_id', 'ps.id')
                         ->where('v2.user_id', $user->id));
-            })->orWhere(fn(Builder $own) => $own->forPic($user->id));
+            })
+                // PIC di salah satu item section itu = otomatis viewer section tersebut.
+                ->orWhereExists(function ($peer) use ($user) {
+                    $peer->select(DB::raw(1))->from('work_items as peer')
+                        ->whereColumn('peer.project_id', 'work_items.project_id')
+                        ->whereColumn('peer.section', 'work_items.section')
+                        ->where(function ($w) use ($user) {
+                            $w->where('peer.pic_employee_id', $user->id)
+                                ->orWhereExists(fn($x) => $x->select(DB::raw(1))->from('work_item_additional_pics as ap')
+                                    ->whereColumn('ap.work_item_id', 'peer.id')
+                                    ->where('ap.user_id', $user->id));
+                        });
+                })
+                ->orWhere(fn(Builder $own) => $own->forPic($user->id));
         });
+    }
+
+    /** Boleh dibuka/diubah $user menurut visibility section? (1 sumber kebenaran: scopeSectionVisibleTo.) */
+    public function isAccessibleTo(User $user): bool
+    {
+        return $user->seesAllWork()
+            || static::query()->whereKey($this->getKey())->sectionVisibleTo($user)->exists();
     }
 
     public function project(): BelongsTo

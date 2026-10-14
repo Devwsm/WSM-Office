@@ -201,7 +201,7 @@ class ExportController extends Controller
                 [$this->jobOpeningFilter($request->integer('job_opening_id'))],
             ],
             'work-tracker' => [
-                new WorkItemExport($projectId),
+                new WorkItemExport($projectId, $request->user()),
                 [$this->projectFilter($projectId)],
             ],
             'leave-recap' => [

@@ -209,25 +209,221 @@ class WorkControlRevisionTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_restricted_section_is_hidden_from_non_viewers_but_not_from_owner_viewer_or_pic(): void
+    public function test_restricted_section_is_locked_for_non_viewers_but_open_to_owner_developer_viewer_and_pic(): void
     {
-        $section = $this->section();
-        $section->viewers()->sync([$this->p['hrd']->id]);
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
         $this->item(['title' => 'Rahasia kontrak']);
         $this->item(['title' => 'Tugas pribadi Gepeng', 'item_no' => 2, 'pic_employee_id' => $this->p['gepeng']->id]);
         $this->item(['title' => 'Terbuka', 'section' => 'OPEN', 'item_no' => 1]);
+        $dev = $this->makeDeveloper($this->p['owner']);
+        $noAccess = 'Tidak ada akses ke item di dalam section ini';
 
-        // Non-viewer (work view): section & itemnya hilang, section lain tetap, task miliknya tetap terlihat.
-        $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.tracker.index'))
-            ->assertOk()->assertDontSee('Rahasia kontrak')->assertSee('Tugas pribadi Gepeng')->assertSee('Terbuka');
-
-        // Manager work=manage yang bukan viewer pun tidak melihatnya.
+        // Akses Manage saja TIDAK cukup: section tampil terkunci, isinya (judul item) tidak ikut terkirim.
         $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))
-            ->assertOk()->assertDontSee('Rahasia kontrak');
+            ->assertOk()->assertSee($noAccess)->assertSee('wt-locked', false)->assertSee('Terkunci')->assertSee('Terbuka')
+            ->assertDontSee('Rahasia kontrak')->assertDontSee('Tugas pribadi Gepeng');
 
-        // Owner selalu lihat semuanya dan melihat label terbatas.
-        $this->actingAs($this->p['owner'])->get(route('dashboard.work.tracker.index'))
-            ->assertOk()->assertSee('Rahasia kontrak')->assertSee('1 orang');
+        // PIC item di section itu otomatis viewer: membuka SELURUH section, bukan cuma task miliknya.
+        $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.tracker.index'))
+            ->assertOk()->assertSee('Rahasia kontrak')->assertSee('Tugas pribadi Gepeng')->assertDontSee('wt-locked', false);
+
+        // Owner dan Developer selalu bisa membuka (pengecualian), walau tidak dipilih sebagai viewer.
+        foreach ([$this->p['owner'], $dev] as $user) {
+            $this->actingAs($user)->get(route('dashboard.work.tracker.index'))
+                ->assertOk()->assertSee('Rahasia kontrak')->assertDontSee('wt-locked', false);
+        }
+        $this->actingAs($this->p['owner'])->get(route('dashboard.work.tracker.index'))->assertSee('1 orang');
+    }
+
+    public function test_additional_pic_also_counts_as_automatic_viewer(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Rahasia kontrak'])->additionalPics()->sync([$this->p['aldora']->id]);
+
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))
+            ->assertOk()->assertSee('Rahasia kontrak')->assertDontSee('wt-locked', false);
+    }
+
+    public function test_locked_section_is_not_offered_in_add_task_form_and_hidden_when_filtering(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Rahasia kontrak']);
+        $this->item(['title' => 'Terbuka', 'section' => 'OPEN', 'item_no' => 1]);
+
+        $html = $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))->assertOk()->getContent();
+        // Daftar section untuk form Tambah Task (JSON per project) tidak memuat section terkunci.
+        $this->assertStringContainsString('const wtSections = {"' . $this->project->id . '":["OPEN"]}', $html);
+
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index', ['progress' => 'Pending']))
+            ->assertOk()->assertDontSee('Terkunci');
+    }
+
+    public function test_write_endpoints_reject_work_manage_users_without_access_to_a_locked_section(): void
+    {
+        $section = $this->section();
+        $section->viewers()->sync([$this->p['hrd']->id]);
+        $item = $this->item(['title' => 'Rahasia kontrak']);
+        $a = $this->actingAs($this->p['aldora']);
+        $payload = ['project_id' => $this->project->id, 'section' => 'CONTRACT', 'title' => 'Diubah', 'progress' => 'Done', 'priority' => 'High'];
+
+        $a->patchJson(route('dashboard.work.tracker.items.progress', $item), ['progress' => 'Done'])->assertForbidden();
+        $a->patchJson(route('dashboard.work.tracker.items.field', $item), ['field' => 'title', 'value' => 'Diubah'])->assertForbidden();
+        $a->patchJson(route('dashboard.work.tracker.items.note', $item), ['notes' => 'diubah'])->assertForbidden();
+        $a->patch(route('dashboard.work.tracker.items.update', $item), $payload)->assertForbidden();
+        $a->post(route('dashboard.work.tracker.items.store'), $payload)->assertForbidden();
+        $a->delete(route('dashboard.work.tracker.items.destroy', $item))->assertForbidden();
+        $a->patch(route('dashboard.work.tracker.sections.update', $section), ['color' => '#112233'])->assertForbidden();
+        $a->patch(route('dashboard.work.tracker.sections.move', $section), ['direction' => 'down'])->assertForbidden();
+        $a->delete(route('dashboard.work.tracker.sections.destroy', $section), ['confirm_name' => 'CONTRACT'])->assertForbidden();
+        $a->delete(route('dashboard.work.tracker.projects.destroy', $this->project))->assertForbidden();
+        $a->patchJson(route('dashboard.work.calendar.items.move', $item), ['due_date' => '2026-10-30'])->assertForbidden();
+
+        // Memindahkan item SENDIRI ke section terkunci juga ditolak.
+        $own = $this->item(['title' => 'Item terbuka', 'section' => 'OPEN', 'item_no' => 5, 'pic_employee_id' => $this->p['aldora']->id]);
+        $a->patch(route('dashboard.work.tracker.items.update', $own), array_merge($payload, ['title' => 'Item terbuka']))->assertForbidden();
+
+        $item->refresh();
+        $this->assertSame('Rahasia kontrak', $item->title);
+        $this->assertSame('Pending', $item->progress);
+        $this->assertSame('2026-09-24', $item->due_date->toDateString());
+        $this->assertNull($item->notes);
+        $this->assertSame('OPEN', $own->fresh()->section);
+        $this->assertSame(2, WorkItem::query()->where('project_id', $this->project->id)->count());
+        $this->assertNotNull($this->project->fresh());
+        $this->assertTrue(ProjectSection::query()->whereKey($section->id)->exists());
+    }
+
+    public function test_owner_developer_and_viewers_can_still_change_a_locked_section(): void
+    {
+        $section = $this->section();
+        $section->viewers()->sync([$this->p['aldora']->id]);
+        $item = $this->item(['title' => 'Rahasia kontrak']);
+        $dev = $this->makeDeveloper($this->p['owner']);
+
+        $this->actingAs($this->p['owner'])->patchJson(route('dashboard.work.tracker.items.progress', $item), ['progress' => 'Done'])->assertOk();
+        $this->actingAs($dev)->patchJson(route('dashboard.work.tracker.items.note', $item), ['notes' => 'dari developer'])->assertOk();
+        $this->actingAs($this->p['aldora'])->patchJson(route('dashboard.work.tracker.items.field', $item), ['field' => 'title', 'value' => 'Judul viewer'])->assertOk();
+
+        $item->refresh();
+        $this->assertSame('Done', $item->progress);
+        $this->assertSame('dari developer', $item->notes);
+        $this->assertSame('Judul viewer', $item->title);
+    }
+
+    public function test_pic_is_added_to_viewers_automatically_when_owner_restricts_a_section(): void
+    {
+        $section = $this->section();
+        $this->item(['title' => 'Tugas Gepeng', 'pic_employee_id' => $this->p['gepeng']->id]);
+        $this->item(['title' => 'Tugas bersama', 'item_no' => 2])->additionalPics()->sync([$this->p['aldora']->id]);
+
+        // Checkbox PIC disabled di UI (tidak terkirim); server tetap memasukkan semua PIC.
+        $this->actingAs($this->p['owner'])
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), ['access' => 'selected', 'user_ids' => [$this->p['hrd']->id]])
+            ->assertRedirect();
+        $ids = $section->viewers()->pluck('users.id')->all();
+        sort($ids);
+        $expected = [$this->p['hrd']->id, $this->p['gepeng']->id, $this->p['aldora']->id];
+        sort($expected);
+        $this->assertSame($expected, $ids);
+
+        // Pilihan "Terbuka untuk semua orang" mengosongkan daftar walau ada PIC.
+        $this->actingAs($this->p['owner'])
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), ['access' => 'all'])
+            ->assertRedirect();
+        $this->assertSame([], $section->viewers()->pluck('users.id')->all());
+    }
+
+    public function test_restricting_with_nobody_selected_and_no_pic_is_rejected_instead_of_silently_opening(): void
+    {
+        $section = $this->section();
+        $section->viewers()->sync([$this->p['hrd']->id]);
+
+        $this->actingAs($this->p['owner'])
+            ->put(route('dashboard.work.tracker.sections.viewers', $section), ['access' => 'selected'])
+            ->assertSessionHasErrors('user_ids');
+        $this->assertSame([$this->p['hrd']->id], $section->viewers()->pluck('users.id')->all());
+    }
+
+    public function test_visibility_modal_marks_pic_users_for_the_owner(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Tugas Gepeng', 'pic_employee_id' => $this->p['gepeng']->id]);
+
+        $html = $this->actingAs($this->p['owner'])->get(route('dashboard.work.tracker.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('viewersModal.pics.includes(' . $this->p['gepeng']->id . ')', $html);
+        $this->assertStringContainsString('Terbuka untuk semua orang', $html);
+        $this->assertStringContainsString('Hanya orang tertentu', $html);
+        // Payload section: PIC Gepeng terdaftar sebagai PIC, mode awal "selected" karena sudah dibatasi.
+        $q = '(?:\\\\u0022|&quot;|")';
+        $this->assertMatchesRegularExpression('/pics' . $q . ':\[' . $this->p['gepeng']->id . '\]/', $html);
+        $this->assertMatchesRegularExpression('/access' . $q . ':' . $q . 'selected/', $html);
+    }
+
+    public function test_dashboard_timeline_calendar_hides_locked_section_items(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Rahasia kalender', 'due_date' => '2026-09-24']);
+
+        $this->actingAs($this->p['aldora'])->get(route('dashboard.work.calendar', ['month' => '2026-09']))
+            ->assertOk()->assertDontSee('Rahasia kalender');
+        $this->actingAs($this->p['owner'])->get(route('dashboard.work.calendar', ['month' => '2026-09']))
+            ->assertOk()->assertSee('Rahasia kalender');
+    }
+
+    public function test_project_excel_and_export_center_skip_locked_section_items(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Rahasia ekspor']);
+        $this->item(['title' => 'Terbuka ekspor', 'section' => 'OPEN', 'item_no' => 1]);
+
+        $titles = fn($rows) => collect($rows)->flatten()->filter(fn($v) => is_string($v))->implode('|');
+
+        $forManager = $titles((new \App\Exports\ProjectTrackerSheet($this->project, $this->p['aldora']))->array());
+        $this->assertStringContainsString('Terbuka ekspor', $forManager);
+        $this->assertStringNotContainsString('Rahasia ekspor', $forManager);
+
+        $forOwner = $titles((new \App\Exports\ProjectTrackerSheet($this->project, $this->p['owner']))->array());
+        $this->assertStringContainsString('Rahasia ekspor', $forOwner);
+
+        $this->assertSame(1, (new \App\Exports\WorkItemExport($this->project->id, $this->p['aldora']))->rows()->count());
+        $this->assertSame(2, (new \App\Exports\WorkItemExport($this->project->id, $this->p['owner']))->rows()->count());
+    }
+
+    public function test_sheet_sync_cannot_touch_or_create_items_in_a_locked_section(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $locked = $this->item(['title' => 'Rahasia sinkron']);
+        $plan = ['rows' => [
+            ['action' => 'create', 'apply' => ['section' => 'CONTRACT', 'title' => 'Sisipan', 'item_no' => '9'], 'pics' => null],
+            ['action' => 'update', 'id' => $locked->id, 'apply' => ['title' => 'Ditimpa'], 'pics' => null],
+        ]];
+
+        $result = (new \App\Support\ProjectSheet\SheetSync($this->project, $this->p['aldora']))->apply($plan, $this->p['aldora']);
+        $this->assertSame(['created' => 0, 'updated' => 0, 'skipped' => 2], $result);
+        $this->assertSame('Rahasia sinkron', $locked->fresh()->title);
+
+        // Owner tidak dibatasi.
+        $result = (new \App\Support\ProjectSheet\SheetSync($this->project, $this->p['owner']))->apply($plan, $this->p['owner']);
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(1, $result['updated']);
+        $this->assertSame('Ditimpa', $locked->fresh()->title);
+    }
+
+    public function test_universal_search_box_and_row_search_text_are_rendered_without_locked_items(): void
+    {
+        $this->section()->viewers()->sync([$this->p['hrd']->id]);
+        $this->item(['title' => 'Rahasia kontrak', 'notes' => 'catatan rahasia']);
+        $this->item(['title' => 'Revisi lagu', 'section' => 'OPEN', 'item_no' => 1, 'notes' => 'cek mixing', 'pic_employee_id' => $this->p['gepeng']->id]);
+
+        $html = $this->actingAs($this->p['aldora'])->get(route('dashboard.work.tracker.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('id="wtSearch"', $html);
+        $this->assertStringContainsString('id="wtSearchEmpty"', $html);
+        // Bahan cari memuat judul, catatan, section, project, dan nama PIC.
+        $this->assertMatchesRegularExpression('/data-search="[^"]*revisi lagu[^"]*cek mixing[^"]*open[^"]*album q4[^"]*"/', $html);
+        $this->assertStringContainsString(mb_strtolower($this->p['gepeng']->name), $html);
+        // Item section terkunci tidak punya baris, jadi tidak mungkin ketemu lewat pencarian.
+        $this->assertStringNotContainsString('catatan rahasia', $html);
+        $this->assertStringNotContainsString('Rahasia kontrak', $html);
     }
 
     public function test_restricted_section_items_are_hidden_from_employee_shared_calendar(): void
