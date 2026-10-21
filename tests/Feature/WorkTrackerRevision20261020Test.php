@@ -241,36 +241,31 @@ class WorkTrackerRevision20261020Test extends TestCase
 
     // ---- kalender: mode tahunan -------------------------------------------
 
-    public function test_year_view_shows_project_duration_from_dates_or_items(): void
+    public function test_year_view_marks_project_duration_as_connected_days_without_gantt(): void
     {
-        $this->a->update(['start_date' => '2026-06-01', 'end_date' => '2026-10-31']);
-        $this->item($this->b, 'S', 'Tonggak Beta', ['due_date' => '2026-03-10']);
-        $this->item($this->b, 'S', 'Akhir Beta', ['item_no' => 2, 'due_date' => '2026-04-09', 'progress' => 'Done']);
-        $this->project('Kosong'); // tanpa tanggal & tanpa item
+        $this->a->update(['start_date' => '2026-06-01', 'end_date' => '2026-06-10']);
+        $this->project('Kosong'); // tanpa tanggal: tidak ada jalur
         $this->project('Lama', ['start_date' => '2024-01-01', 'end_date' => '2024-02-01']);
 
         $res = $this->actingAs($this->p['gepeng'])->get(route('dashboard.work.calendar', ['view' => 'year', 'year' => 2026]))
             ->assertOk();
 
         $res->assertSee('Project Timeline · Tahunan', false)
-            ->assertSee('153 hari')           // Alpha: 1 Jun – 31 Okt = 153 hari
-            ->assertSee('tgl dari item')      // Beta: rentang dari deadline item
-            ->assertSee('Tonggak Beta')       // tooltip titik deadline
-            ->assertSee('Belum punya tanggal')
-            ->assertSee('Kosong')
-            ->assertSee('1 project lain tidak berjalan di');
-        $this->assertStringNotContainsString('data-year-row="' . Project::where('name', 'Lama')->value('id') . '"', $res->getContent());
+            ->assertSee('data-span="' . $this->a->id . '"', false);
+        $this->assertSame(10, substr_count($res->getContent(), 'data-span="' . $this->a->id . '"')); // 1–10 Jun
+        $this->assertStringNotContainsString('data-span="' . Project::where('name', 'Lama')->value('id') . '"', $res->getContent());
+        $res->assertDontSee('data-year-row', false)->assertDontSee('Timeline Project 2026', false);
     }
 
     public function test_year_view_filters_and_bad_params_do_not_break(): void
     {
-        $this->a->update(['start_date' => '2026-06-01', 'end_date' => '2026-10-31']);
-        $this->b->update(['start_date' => '2026-02-01', 'end_date' => '2026-03-01']);
+        $this->a->update(['start_date' => '2026-06-01', 'end_date' => '2026-06-05']);
+        $this->b->update(['start_date' => '2026-02-01', 'end_date' => '2026-02-03']);
         $g = $this->actingAs($this->p['gepeng']);
 
         $g->get(route('dashboard.work.calendar', ['view' => 'year', 'year' => 2026, 'project' => $this->a->id]))
-            ->assertOk()->assertSee('data-year-row="' . $this->a->id . '"', false)
-            ->assertDontSee('data-year-row="' . $this->b->id . '"', false);
+            ->assertOk()->assertSee('data-span="' . $this->a->id . '"', false)
+            ->assertDontSee('data-span="' . $this->b->id . '"', false);
 
         $g->get(route('dashboard.work.calendar', ['view' => 'year', 'year' => 'abc']))->assertOk();
         $g->get(route('dashboard.work.calendar', ['view' => 'year', 'year' => 1800]))->assertOk();

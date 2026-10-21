@@ -48,6 +48,12 @@ use Illuminate\Validation\ValidationException;
  *    kalender bulan itu (lihat miniMonths()).
  *  - Mode BULAN: grid pas layar HP (chip satu baris, tanpa geser samping) —
  *    detail lengkap tetap lewat popup harian.
+ *
+ * 2026-10-21 (2) — garis waktu project TERSAMBUNG di bulan & tahun:
+ *  - Garis Gantt di mode tahun dihapus. Sebagai gantinya project yang punya
+ *    tanggal Mulai DAN Selesai digambar sebagai bar menyambung antar-hari di
+ *    grid bulan (lane per minggu) dan sebagai jalur warna menyambung di 12
+ *    bulan mini. Project yang cuma punya salah satu tanggal tetap penanda ▶ / ■.
  * ---------------------------------------------------------------------
  */
 class CalendarController extends Controller
@@ -100,18 +106,25 @@ class CalendarController extends Controller
         // Penanda mulai/selesai project — hanya project yang terlihat oleh filter
         // (project terpilih; untuk filter PIC: dia lead-nya atau punya item untuk PIC itu).
         $markerProjects = Project::query()
-            ->where(fn($q) => $q->whereBetween('start_date', $range)->orWhereBetween('end_date', $range))
+            ->where(fn($q) => $q->whereBetween('start_date', $range)
+                ->orWhereBetween('end_date', $range)
+                // Project panjang yang melintasi seluruh grid (mulai sebelum, selesai sesudah).
+                ->orWhere(fn($w) => $w->where('start_date', '<', $range[0])->where('end_date', '>', $range[1])))
             ->when($projectFilter, fn($q) => $q->where('id', $projectFilter))
             ->when($picUser, fn($q) => $q->where(
                 fn($w) => $w->where('lead_employee_id', $picUser->id)
                     ->orWhereHas('workItems', fn($i) => $this->wherePic($i, $picUser))
             ))
             ->get();
+        // Project dengan Mulai & Selesai lengkap -> bar menyambung; selain itu tetap penanda ▶ / ■.
+        $isSpan = fn(Project $p): bool => $p->start_date && $p->end_date && $p->end_date->gte($p->start_date);
+        $spanProjects = $markerProjects->filter($isSpan)
+            ->sortBy([['start_date', 'asc'], ['name', 'asc']])->values();
         $startsByDate = $markerProjects->filter(fn(Project $p) => $p->start_date)->groupBy(fn(Project $p) => $p->start_date->toDateString());
         $endsByDate = $markerProjects->filter(fn(Project $p) => $p->end_date)->groupBy(fn(Project $p) => $p->end_date->toDateString());
         $projectsUrl = route('dashboard.work.projects.index');
 
-        $chipForProject = function (Project $p, string $label) use ($projectsUrl): array {
+        $chipForProject = function (Project $p, string $label) use ($projectsUrl, $isSpan): array {
             $color = Project::colorFor($p);
 
             return [
@@ -125,11 +138,56 @@ class CalendarController extends Controller
                 'text' => Project::contrastTextFor($color),
                 'url' => $projectsUrl,
                 'done' => false,
+                'span' => $isSpan($p), // true = digambar sebagai bar menyambung, bukan chip
             ];
         };
 
-        $weeks = collect(range(0, 5))->map(function (int $week) use ($gridStart, $itemsByDate, $startsByDate, $endsByDate, $anchor, $weeklyRhythm, $chipForProject) {
-            return collect(range(0, 6))->map(function (int $dow) use ($week, $gridStart, $itemsByDate, $startsByDate, $endsByDate, $anchor, $weeklyRhythm, $chipForProject) {
+        // Lane bar project per minggu: tiap project dapat baris (lane) tetap sepanjang
+        // minggu itu, jadi bar sejajar antar-hari. Kolom grid = hari dalam minggu (Minggu=0).
+        $weekLaneMaps = collect(range(0, 5))->map(function (int $week) use ($gridStart, $spanProjects, $projectsUrl) {
+            $weekStart = $gridStart->copy()->addDays($week * 7);
+            $weekEnd = $weekStart->copy()->addDays(6);
+            $laneEnds = [];
+            $map = [];
+
+            foreach ($spanProjects as $p) {
+                if ($p->end_date->lt($weekStart) || $p->start_date->gt($weekEnd)) {
+                    continue;
+                }
+                $from = $p->start_date->lt($weekStart) ? 0 : $p->start_date->dayOfWeek;
+                $to = $p->end_date->gt($weekEnd) ? 6 : $p->end_date->dayOfWeek;
+
+                $lane = 0;
+                while (isset($laneEnds[$lane]) && $laneEnds[$lane] >= $from) {
+                    $lane++;
+                }
+                $laneEnds[$lane] = $to;
+
+                $color = Project::colorFor($p);
+                $seg = [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'color' => $color,
+                    'text' => Project::contrastTextFor($color),
+                    'from' => $from,
+                    'to' => $to,
+                    'capL' => $p->start_date->gte($weekStart), // ujung kiri bulat = project benar-benar mulai di sini
+                    'capR' => $p->end_date->lte($weekEnd),
+                    'range' => $p->start_date->translatedFormat('j M Y') . ' → ' . $p->end_date->translatedFormat('j M Y'),
+                    'url' => $projectsUrl,
+                ];
+                for ($col = $from; $col <= $to; $col++) {
+                    $map[$lane][$col] = $seg;
+                }
+            }
+
+            return ['count' => count($laneEnds), 'map' => $map];
+        });
+
+        $weeks = collect(range(0, 5))->map(function (int $week) use ($gridStart, $itemsByDate, $startsByDate, $endsByDate, $anchor, $weeklyRhythm, $chipForProject, $weekLaneMaps) {
+            $laneInfo = $weekLaneMaps[$week];
+
+            return collect(range(0, 6))->map(function (int $dow) use ($week, $gridStart, $itemsByDate, $startsByDate, $endsByDate, $anchor, $weeklyRhythm, $chipForProject, $laneInfo) {
                 $date = $gridStart->copy()->addDays($week * 7 + $dow);
                 $key = $date->toDateString();
 
@@ -154,15 +212,25 @@ class CalendarController extends Controller
                     ->concat($endsByDate->get($key, collect())->map(fn(Project $p) => $chipForProject($p, '■ ' . $p->name . ' end')))
                     ->values();
 
+                // Chip di sel = item + penanda project tanpa bar; penanda project ber-bar hanya ada di popup harian.
+                $gridItems = $items->reject(fn(array $chip) => ! empty($chip['span']))->values();
+                $lanes = collect(range(0, max(0, $laneInfo['count'] - 1)))
+                    ->take($laneInfo['count'])
+                    ->map(fn(int $lane) => $laneInfo['map'][$lane][$dow] ?? null)
+                    ->values();
+
                 return [
+                    'col' => $dow,
+                    'lanes' => $lanes,
+                    'tint' => $gridItems->first()['color'] ?? null,
                     'date' => $date,
                     'outside' => $date->month !== $anchor->month,
                     'isToday' => $date->isToday(),
                     'key' => $key,
                     'rhythm' => $weeklyRhythm[$date->dayOfWeek] ?? null,
                     'all' => $items,
-                    'visible' => $items->take(self::VISIBLE_PER_CELL),
-                    'hidden' => $items->slice(self::VISIBLE_PER_CELL)->values(),
+                    'visible' => $gridItems->take(self::VISIBLE_PER_CELL),
+                    'hidden' => $gridItems->slice(self::VISIBLE_PER_CELL)->values(),
                 ];
             });
         });
@@ -257,155 +325,24 @@ class CalendarController extends Controller
     }
 
     /**
-     * Mode TAHUNAN (2026-10-20): garis waktu project selama setahun (1 baris = 1
-     * project) untuk melihat berapa lama project berjalan.
-     *
-     * Rentang project = tanggal Mulai/Selesai project; yang kosong diisi dari
-     * deadline item paling awal/akhir (item yang boleh dilihat pengguna ini).
-     * Project tanpa tanggal sama sekali dan tanpa item berdeadline tidak punya
-     * rentang -> dicantumkan terpisah. Titik di garis = deadline item (dengan
-     * filter PIC: hanya item PIC itu). Persentase progress = item Done / semua
-     * item project yang terlihat.
+     * Mode TAHUNAN: 12 bulan mini (gaya kalender Samsung). Hari berdeadline
+     * berwarna project; rentang project (Mulai–Selesai) tampil sebagai jalur
+     * warna menyambung. Garis waktu Gantt lama dihapus (2026-10-21).
      */
     private function year(Request $request)
     {
         $yearParam = (int) $request->query('year');
         $year = ($yearParam >= 2000 && $yearParam <= 2100) ? $yearParam : (int) Carbon::today()->year;
 
-        $yearStart = Carbon::create($year, 1, 1)->startOfDay();
-        $yearEnd = Carbon::create($year, 12, 31)->startOfDay();
-        $totalDays = $yearStart->daysInYear;
-
         $projectFilter = $request->query('project') ? (int) $request->query('project') : null;
         $picFilter = $request->query('pic') ? (int) $request->query('pic') : null;
         $picUser = $picFilter ? User::query()->find($picFilter, ['id', 'name']) : null;
         $viewer = $request->user();
 
-        // Semua item berdeadline yang boleh dilihat (lintas tahun: dipakai untuk rentang cadangan & progress).
-        $items = WorkItem::query()
-            ->sectionVisibleTo($viewer)
-            ->whereNotNull('project_id')
-            ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
-            ->get(['id', 'project_id', 'title', 'due_date', 'progress'])
-            ->groupBy('project_id');
-
-        // Filter PIC: hanya mempengaruhi project mana yang tampil dan titik deadline-nya.
-        $picItemIds = $picUser
-            ? $this->wherePic(WorkItem::query()->sectionVisibleTo($viewer), $picUser)->pluck('work_items.id')->flip()
-            : null;
-
-        $projects = Project::query()
-            ->when($projectFilter, fn($q) => $q->where('id', $projectFilter))
-            ->when($picUser, fn($q) => $q->where(
-                fn($w) => $w->where('lead_employee_id', $picUser->id)
-                    ->orWhereHas('workItems', fn($i) => $this->wherePic($i, $picUser))
-            ))
-            ->orderBy('name')
-            ->get();
-
-        // Carbon 3: diffInDays() mengembalikan float -> dibulatkan supaya selisih hari selalu bulat.
-        $dayOffset = fn(Carbon $d): int => (int) round($yearStart->diffInDays($d, false));
-
-        $rows = collect();
-        $undated = collect();
-        $outside = 0;
-
-        foreach ($projects as $project) {
-            $projectItems = $items->get($project->id, collect());
-            $dated = $projectItems->filter(fn(WorkItem $i) => $i->due_date !== null);
-
-            $from = $project->start_date?->copy()->startOfDay() ?? $dated->min('due_date')?->copy()->startOfDay();
-            $to = $project->end_date?->copy()->startOfDay() ?? $dated->max('due_date')?->copy()->startOfDay();
-
-            if (! $from && ! $to) {
-                $undated->push($project->name);
-
-                continue;
-            }
-
-            $from ??= $to->copy();
-            $to ??= $from->copy();
-            if ($to->lt($from)) {
-                $to = $from->copy(); // tanggal selesai lebih awal dari mulai (salah isi): tampil 1 hari
-            }
-
-            if ($to->lt($yearStart) || $from->gt($yearEnd)) {
-                $outside++;
-
-                continue;
-            }
-
-            $visFrom = $from->lt($yearStart) ? $yearStart : $from;
-            $visTo = $to->gt($yearEnd) ? $yearEnd : $to;
-            $left = $dayOffset($visFrom) / $totalDays * 100;
-            $width = max(0.7, ($dayOffset($visTo) - $dayOffset($visFrom) + 1) / $totalDays * 100);
-
-            $ticks = $dated
-                ->filter(fn(WorkItem $i) => $i->due_date->year === $year && ($picItemIds === null || $picItemIds->has($i->id)))
-                ->sortBy('due_date')->take(200)
-                ->map(fn(WorkItem $i) => [
-                    'pos' => round($dayOffset($i->due_date->copy()->startOfDay()) / $totalDays * 100 + 0.5 / $totalDays * 100, 3),
-                    'tip' => $i->title . ' · ' . $i->due_date->translatedFormat('j M Y') . ' · ' . $i->progress,
-                    'done' => $i->progress === 'Done',
-                ])->values();
-
-            $days = (int) round($from->diffInDays($to)) + 1;
-            $total = $projectItems->count();
-            $done = $projectItems->where('progress', 'Done')->count();
-            $color = Project::colorFor($project);
-
-            $rows->push([
-                'id' => $project->id,
-                'name' => $project->name,
-                'status' => $project->status,
-                'priority' => $project->priority,
-                'color' => $color,
-                'text' => Project::contrastTextFor($color),
-                'from' => $from->translatedFormat('j M Y'),
-                'to' => $to->translatedFormat('j M Y'),
-                // Rentang berasal dari tanggal project, atau (cadangan) dari deadline item.
-                'derived' => ! $project->start_date || ! $project->end_date,
-                'days' => $days,
-                'duration' => $this->durationLabel($days),
-                'left' => round($left, 3),
-                'width' => round(min($width, 100 - $left), 3),
-                'before' => $from->lt($yearStart),
-                'after' => $to->gt($yearEnd),
-                'items' => $total,
-                'pct' => $total ? (int) round($done / $total * 100) : 0,
-                'ticks' => $ticks,
-                'url' => route('dashboard.work.tracker.index', ['project_id' => [$project->id]]),
-            ]);
-        }
-
-        $rows = $rows->sortBy([['left', 'asc'], ['name', 'asc']])->values();
-
-        // Kolom bulan (lebar sebanding jumlah hari) + garis batas bulan & penanda hari ini.
-        $months = collect(range(1, 12))->map(function (int $m) use ($year, $yearStart, $totalDays, $projectFilter, $picFilter) {
-            $start = Carbon::create($year, $m, 1)->startOfDay();
-
-            return [
-                'label' => $start->translatedFormat('M'),
-                'left' => round((int) round($yearStart->diffInDays($start)) / $totalDays * 100, 3),
-                'width' => round($start->daysInMonth / $totalDays * 100, 3),
-                'url' => route('dashboard.work.calendar', array_filter(['month' => $start->format('Y-m'), 'project' => $projectFilter, 'pic' => $picFilter])),
-            ];
-        });
-
-        $miniMonths = $this->miniMonths($year, $projectFilter, $picUser, $viewer);
-
-        $today = Carbon::today();
-        $todayPos = $today->year === $year ? round($dayOffset($today) / $totalDays * 100 + 0.5 / $totalDays * 100, 3) : null;
-
         return view('dashboard.work.calendar', [
             'mode' => 'year',
             'year' => $year,
-            'yearRows' => $rows,
-            'yearMonths' => $months,
-            'miniMonths' => $miniMonths,
-            'todayPos' => $todayPos,
-            'undatedProjects' => $undated,
-            'outsideCount' => $outside,
+            'miniMonths' => $this->miniMonths($year, $projectFilter, $picUser, $viewer),
             'anchor' => Carbon::create($year, 1, 1),
             'projects' => Project::query()->orderBy('name')->get(['id', 'name', 'color']),
             'picOptions' => User::query()
@@ -441,20 +378,61 @@ class CalendarController extends Controller
             ->get()
             ->groupBy(fn(WorkItem $item) => $item->due_date->toDateString());
 
+        // Project dengan Mulai & Selesai lengkap yang menyentuh tahun ini -> jalur menyambung.
+        $yearStart = Carbon::create($year, 1, 1)->startOfDay();
+        $yearEnd = Carbon::create($year, 12, 31)->startOfDay();
+        $spanProjects = Project::query()
+            ->whereNotNull('start_date')->whereNotNull('end_date')
+            ->whereDate('start_date', '<=', $yearEnd->toDateString())
+            ->whereDate('end_date', '>=', $yearStart->toDateString())
+            ->when($projectFilter, fn($q) => $q->where('id', $projectFilter))
+            ->when($picUser, fn($q) => $q->where(
+                fn($w) => $w->where('lead_employee_id', $picUser->id)
+                    ->orWhereHas('workItems', fn($i) => $this->wherePic($i, $picUser))
+            ))
+            ->orderBy('start_date')->orderBy('name')
+            ->get()
+            ->filter(fn(Project $p) => $p->end_date->gte($p->start_date));
+
+        // Tanggal -> project pertama yang berjalan di hari itu (project yang tumpang tindih: yang mulai lebih dulu menang).
+        $spanByDate = [];
+        foreach ($spanProjects as $p) {
+            $d = $p->start_date->copy()->startOfDay();
+            if ($d->lt($yearStart)) {
+                $d = $yearStart->copy();
+            }
+            $last = $p->end_date->copy()->startOfDay();
+            if ($last->gt($yearEnd)) {
+                $last = $yearEnd->copy();
+            }
+            for (; $d->lte($last); $d->addDay()) {
+                $spanByDate[$d->toDateString()] ??= $p;
+            }
+        }
+
         $today = Carbon::today();
         $filter = array_filter(['project' => $projectFilter, 'pic' => $picUser?->id]);
 
-        return collect(range(1, 12))->map(function (int $m) use ($year, $byDate, $today, $filter) {
+        return collect(range(1, 12))->map(function (int $m) use ($year, $byDate, $today, $filter, $spanByDate) {
             $first = Carbon::create($year, $m, 1)->startOfDay();
+            $daysInMonth = $first->daysInMonth;
 
-            $days = collect(range(1, $first->daysInMonth))->map(function (int $day) use ($first, $byDate, $today) {
+            $days = collect(range(1, $daysInMonth))->map(function (int $day) use ($first, $byDate, $today, $spanByDate, $daysInMonth) {
                 $date = $first->copy()->day($day);
                 $items = $byDate->get($date->toDateString(), collect());
                 $color = $items->isNotEmpty() ? Project::colorFor($items->first()->project) : null;
 
+                $span = $spanByDate[$date->toDateString()] ?? null;
+                $prev = $spanByDate[$date->copy()->subDay()->toDateString()] ?? null;
+                $next = $spanByDate[$date->copy()->addDay()->toDateString()] ?? null;
+
                 return [
                     'day' => $day,
                     'dow' => $date->dayOfWeek,
+                    // Jalur project: ujung bulat di awal/akhir project, awal/akhir minggu, dan awal/akhir bulan.
+                    'span' => $span ? ['id' => $span->id, 'color' => Project::colorFor($span), 'name' => $span->name] : null,
+                    'roundL' => $span && (! $prev || $prev->id !== $span->id || $date->dayOfWeek === 0 || $day === 1),
+                    'roundR' => $span && (! $next || $next->id !== $span->id || $date->dayOfWeek === 6 || $day === $daysInMonth),
                     'color' => $color,
                     'count' => $items->count(),
                     'isToday' => $date->isSameDay($today),
@@ -471,19 +449,6 @@ class CalendarController extends Controller
                 'url' => route('dashboard.work.calendar', ['month' => $first->format('Y-m')] + $filter),
             ];
         });
-    }
-
-    /** "126 hari · ±4 bln" — lama project dalam hari, plus perkiraan bulan kalau sudah lebih dari sebulan. */
-    private function durationLabel(int $days): string
-    {
-        if ($days < 45) {
-            return $days . ' hari';
-        }
-
-        $months = round($days / 30.44, 1);
-        $months = fmod($months, 1.0) === 0.0 ? (string) (int) $months : str_replace('.', ',', (string) $months);
-
-        return $days . ' hari · ±' . $months . ' bln';
     }
 
     /**

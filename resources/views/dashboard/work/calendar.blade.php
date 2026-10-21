@@ -33,6 +33,12 @@
         tengah (hari ini = lingkaran hitam, Minggu merah), chip satu baris. Di HP
         grid muat satu layar (tanpa geser samping); judul lengkap + detail lewat
         popup harian (popup tidak berubah).
+
+    2026-10-21 (2) — garis waktu project TERSAMBUNG:
+      - Gantt di mode tahun dihapus.
+      - Mode BULAN: project dengan tanggal Mulai & Selesai = bar menyambung
+        antar-hari (lane per minggu, label di awal tiap minggu).
+      - Mode TAHUN: jalur warna menyambung di bulan mini (pekat = ada deadline).
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Work Control — Timeline Calendar', 'navActive' => 'modules'])
@@ -91,10 +97,11 @@
                     class="mt-1 block text-[28px] font-black leading-none tracking-tight">{{ $isYear ? $year : $anchor->translatedFormat('F Y') }}</strong>
                 <p class="mt-2 text-xs text-muted">
                     @if ($isYear)
-                        Ketuk bulan untuk membukanya. Warna hari = project yang punya deadline di hari itu. Di bawahnya:
-                        satu baris = satu project, batang = lama project berjalan, titik = deadline item.
+                        Ketuk bulan untuk membukanya. Jalur warna menyambung = lama project berjalan; hari yang
+                        lebih pekat = ada deadline item.
                     @else
-                        Warna mengikuti project. Filter bisa berdasarkan project maupun PIC.
+                        Warna mengikuti project. Bar menyambung = lama project berjalan. Filter bisa berdasarkan project
+                        maupun PIC.
                     @endif
                 </p>
             </div>
@@ -246,14 +253,14 @@
                                 </div>
                             @endforeach
                         </div>
-                        <div class="grid grid-cols-7 gap-0.5 p-0.5 sm:gap-1 sm:p-1">
+                        <div class="grid grid-cols-7 gap-0.5 p-0.5 [--d:6px] sm:gap-1 sm:p-1 sm:[--d:16px]">
                             @foreach ($weeks as $week)
                                 @foreach ($week as $cell)
                                     <div data-date="{{ $cell['key'] }}" @click="onCell($event, '{{ $cell['key'] }}')"
                                         @dragover.prevent="dragOver($event)" @dragleave="dragLeave($event)"
                                         @drop.prevent="drop($event, '{{ $cell['key'] }}')"
-                                        @if (!$cell['outside'] && $cell['all']->isNotEmpty()) style="background:color-mix(in srgb, {{ $cell['all']->first()['color'] }} 14%, #fff)" @endif
-                                        class="min-h-24 min-w-0 cursor-pointer overflow-hidden rounded-lg p-0.5 transition sm:min-h-33 sm:rounded-xl sm:p-1.5 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-[#faf8f4]' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
+                                        @if (!$cell['outside'] && $cell['tint']) style="background:color-mix(in srgb, {{ $cell['tint'] }} 14%, #fff)" @endif
+                                        class="min-h-24 min-w-0 cursor-pointer rounded-lg p-0.5 transition sm:min-h-33 sm:rounded-xl sm:p-1.5 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-[#faf8f4]' }} {{ $cell['isToday'] ? 'outline-2 -outline-offset-2 outline-[#111]' : '' }}">
                                         {{-- Nomor tanggal di tengah ala Samsung: hari ini = lingkaran hitam, Minggu = merah. --}}
                                         <div class="mb-1 flex justify-center text-[11px] font-black">
                                             <span
@@ -262,6 +269,29 @@
 
                                         {{-- Chip item (maks 3); di HP kalender digeser ke samping. Chip bisa di-drag di desktop kalau punya akses manage. --}}
                                         <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 sm:gap-1">
+                                            {{-- Bar project menyambung: tiap lane = 1 project; kosong = penyeimbang tinggi. Bar kiri→kanan melebar lewat margin negatif (--d = padding + gap sel). --}}
+                                            @foreach ($cell['lanes'] as $seg)
+                                                @if ($seg === null)
+                                                    <span class="block h-3.5 sm:h-4" aria-hidden="true"></span>
+                                                @else
+                                                    @php
+                                                        $isFirst = $seg['from'] === $cell['col'];
+                                                        $isLast = $seg['to'] === $cell['col'];
+                                                        $span = $seg['to'] - $seg['from'] + 1;
+                                                    @endphp
+                                                    <a href="{{ $seg['url'] }}" data-chip
+                                                        data-project-span="{{ $seg['id'] }}"
+                                                        title="{{ $seg['name'] }} · {{ $seg['range'] }}"
+                                                        class="relative block h-3.5 text-[8px] font-black leading-3.5 sm:h-4 sm:text-[10px] sm:leading-4 {{ $isFirst && $seg['capL'] ? 'rounded-l-[5px]' : '' }} {{ $isLast && $seg['capR'] ? 'rounded-r-[5px]' : '' }}"
+                                                        style="background:{{ $seg['color'] }};color:{{ $seg['text'] }};{{ $isLast ? '' : 'margin-right:calc(-1 * var(--d));' }}">
+                                                        @if ($isFirst)
+                                                            <span data-project-label
+                                                                class="absolute inset-y-0 left-0 block overflow-hidden text-ellipsis whitespace-nowrap px-1"
+                                                                style="width:{{ $span > 1 ? "calc({$span} * 100% - var(--d))" : '100%' }}">{{ $seg['name'] }}</span>
+                                                        @endif
+                                                    </a>
+                                                @endif
+                                            @endforeach
                                             @foreach ($cell['visible'] as $item)
                                                 @include('dashboard.work._calendar-chip', [
                                                     'item' => $item,
@@ -682,7 +712,7 @@
                         class="block min-w-0 rounded-2xl p-1 transition hover:bg-[#f6f2eb] sm:p-2">
                         <span
                             class="mx-auto mb-1.5 block w-fit rounded-lg px-2.5 py-0.5 text-center text-[13px] font-black {{ $mm['isCurrent'] ? 'bg-[#111] text-white' : '' }}">{{ $mm['short'] }}</span>
-                        <span class="grid grid-cols-7 gap-px text-center">
+                        <span class="grid grid-cols-7 gap-x-0 gap-y-0.5 text-center">
                             @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $i => $initial)
                                 <span
                                     class="pb-0.5 text-[8px] font-black sm:text-[10px] {{ $i === 0 ? 'text-[#d64535]' : 'text-muted' }}">{{ $initial }}</span>
@@ -691,124 +721,32 @@
                                 <span></span>
                             @endfor
                             @foreach ($mm['days'] as $d)
-                                <span
-                                    class="grid aspect-square place-items-center rounded-[5px] text-[8px] font-bold leading-none sm:text-[11px] {{ $d['isToday'] ? 'bg-[#111] text-white' : ($d['dow'] === 0 ? 'text-[#d64535]' : 'text-ink') }}"
-                                    @if ($d['color'] && !$d['isToday']) style="background:color-mix(in srgb, {{ $d['color'] }} 38%, #fff)" @endif>{{ $d['day'] }}</span>
+                                @php
+                                    // Jalur project menyambung (ujung bulat di awal/akhir); hari berdeadline lebih pekat.
+                                    $dayBg = $d['isToday']
+                                        ? null
+                                        : ($d['color']
+                                            ? "color-mix(in srgb, {$d['color']} 45%, #fff)"
+                                            : ($d['span']
+                                                ? "color-mix(in srgb, {$d['span']['color']} 22%, #fff)"
+                                                : null));
+                                    $dayRound = $d['span']
+                                        ? ($d['roundL'] ? 'rounded-l-[5px] ' : '') .
+                                            ($d['roundR'] ? 'rounded-r-[5px]' : '')
+                                        : 'rounded-[5px]';
+                                @endphp
+                                <span data-day="{{ $d['day'] }}"
+                                    @if ($d['span']) data-span="{{ $d['span']['id'] }}" @endif
+                                    class="grid aspect-square place-items-center text-[8px] font-bold leading-none sm:text-[11px] {{ $dayRound }} {{ $d['isToday'] ? 'bg-[#111] text-white' : ($d['dow'] === 0 ? 'text-[#d64535]' : 'text-ink') }}"
+                                    @if ($dayBg) style="background:{{ $dayBg }}" @endif>{{ $d['day'] }}</span>
                             @endforeach
                         </span>
                     </a>
                 @endforeach
             </div>
 
-            <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-muted">Timeline Project
-                {{ $year }}</p>
-
-            {{-- Garis waktu project. Batang = rentang project, titik = deadline item. --}}
-            @php
-                // Garis batas bulan + penanda hari ini digambar sebagai latar tiap baris (persen dari lebar lajur).
-                $gridLayers = $yearMonths
-                    ->skip(1)
-                    ->map(fn($m) => "linear-gradient(#ece5da,#ece5da) {$m['left']}% 0/1px 100% no-repeat")
-                    ->all();
-                if ($todayPos !== null) {
-                    $gridLayers[] = "linear-gradient(#111,#111) {$todayPos}% 0/2px 100% no-repeat";
-                }
-                $gridBg = implode(',', $gridLayers);
-            @endphp
-
-            @if ($yearRows->isEmpty())
-                <p class="rounded-3xl border border-dashed border-line p-6 text-sm text-muted">
-                    Belum ada project yang berjalan di {{ $year }}@if ($projectFilter || $picFilter)
-                        pada filter ini
-                    @endif.
-                    Isi tanggal Mulai/Selesai di menu Projects, atau beri deadline pada item di Work Tracker.
-                </p>
-            @else
-                <p class="mb-1.5 text-[10px] font-bold text-muted lg:hidden">← Geser garis waktu ke samping →</p>
-                <div class="overflow-x-auto rounded-[26px] border border-line bg-white" data-year-timeline
-                    data-focus="{{ $todayPos ?? $yearRows->first()['left'] }}">
-                    <div class="min-w-230">
-                        {{-- Header bulan (klik = buka bulan itu) --}}
-                        <div class="flex bg-[#111] text-white">
-                            <div
-                                class="sticky left-0 z-20 flex w-32 shrink-0 items-center bg-[#111] px-3 py-2.5 text-[10px] font-black uppercase tracking-widest sm:w-56">
-                                Project · {{ $year }}</div>
-                            <div class="relative h-10 min-w-0 flex-1">
-                                @foreach ($yearMonths as $m)
-                                    <a href="{{ $m['url'] }}" title="Buka {{ $m['label'] }} {{ $year }}"
-                                        class="absolute inset-y-0 grid place-items-center text-[11px] font-black hover:bg-white/10"
-                                        style="left:{{ $m['left'] }}%;width:{{ $m['width'] }}%">{{ $m['label'] }}</a>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        @foreach ($yearRows as $row)
-                            <div class="flex border-t border-[#ece5da]" data-year-row="{{ $row['id'] }}">
-                                <div class="sticky left-0 z-10 w-32 shrink-0 bg-white px-2.5 py-2.5 sm:w-56">
-                                    <a href="{{ $row['url'] }}"
-                                        class="block text-[12px] font-black leading-tight wrap-break-word hover:underline">{{ $row['name'] }}</a>
-                                    <p class="mt-0.5 text-[10px] font-bold text-muted">{{ $row['from'] }} →
-                                        {{ $row['to'] }}</p>
-                                    <p class="text-[10px] font-extrabold">{{ $row['duration'] }}</p>
-                                    <p class="text-[10px] font-medium text-muted">
-                                        {{ $row['pct'] }}% selesai · {{ $row['items'] }} item
-                                        @if ($row['derived'])
-                                            <span
-                                                title="Tanggal Mulai/Selesai project belum lengkap, jadi rentang diambil dari deadline item.">·
-                                                tgl dari item</span>
-                                        @endif
-                                    </p>
-                                </div>
-                                <div class="relative min-h-16 min-w-0 flex-1" style="background:{{ $gridBg }}">
-                                    <div class="absolute top-1/2 h-7 -translate-y-1/2 overflow-hidden {{ $row['before'] ? 'rounded-l-none' : 'rounded-l-lg' }} {{ $row['after'] ? 'rounded-r-none' : 'rounded-r-lg' }}"
-                                        style="left:{{ $row['left'] }}%;width:{{ $row['width'] }}%;background:{{ $row['color'] }};color:{{ $row['text'] }}"
-                                        title="{{ $row['name'] }} · {{ $row['from'] }} → {{ $row['to'] }} · {{ $row['duration'] }} · {{ $row['pct'] }}% selesai ({{ $row['items'] }} item)">
-                                        <span class="absolute inset-y-0 left-0 bg-black/20"
-                                            style="width:{{ $row['pct'] }}%"></span>
-                                        @if ($row['width'] >= 12)
-                                            <span
-                                                class="relative flex h-full items-center truncate px-2 text-[10px] font-black">{{ $row['before'] ? '◀ ' : '' }}{{ $row['duration'] }}{{ $row['after'] ? ' ▶' : '' }}</span>
-                                        @endif
-                                    </div>
-                                    @foreach ($row['ticks'] as $tick)
-                                        <i class="absolute top-1/2 z-1 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white {{ $tick['done'] ? 'opacity-50' : '' }}"
-                                            style="left:{{ $tick['pos'] }}%;background:#17130a"
-                                            title="{{ $tick['tip'] }}"></i>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                <script>
-                    // Mobile: garis waktu langsung digeser ke hari ini (atau awal project pertama) supaya tidak mulai dari Januari yang kosong.
-                    document.querySelectorAll('[data-year-timeline]').forEach((box) => {
-                        const label = box.querySelector('.sticky');
-                        const inner = box.firstElementChild;
-                        const pct = parseFloat(box.dataset.focus);
-                        if (!label || !inner || isNaN(pct)) return;
-                        const laneW = inner.scrollWidth - label.offsetWidth;
-                        box.scrollLeft = Math.max(0, laneW * pct / 100 - (box.clientWidth - label.offsetWidth) / 3);
-                    });
-                </script>
-                <p class="mt-2 text-[10px] font-medium text-muted">Bagian gelap di batang = persentase item yang sudah
-                    Done.
-                    @if ($todayPos !== null)
-                        Garis hitam = hari ini.
-                    @endif
-                    ◀ ▶ = project mulai sebelum / selesai setelah {{ $year }}.
-                </p>
-            @endif
-
-            @if ($undatedProjects->isNotEmpty())
-                <p class="mt-2 rounded-2xl bg-[#f6f2eb] px-3.5 py-2.5 text-[11px] font-bold text-[#4e4a43]">
-                    Belum punya tanggal (isi Mulai/Selesai di menu Projects): {{ $undatedProjects->implode(', ') }}.</p>
-            @endif
-            @if ($outsideCount > 0)
-                <p class="mt-2 text-[11px] font-medium text-muted">{{ $outsideCount }} project lain tidak berjalan di
-                    {{ $year }}.</p>
-            @endif
-
+            <p class="mt-3 text-[10px] font-medium text-muted">Jalur warna menyambung = lama project berjalan (tanggal
+                Mulai–Selesai di menu Projects). Hari yang lebih pekat = ada deadline item. Lingkaran hitam = hari ini.</p>
         @endif
 
         @if (!$isYear && $canManage)
