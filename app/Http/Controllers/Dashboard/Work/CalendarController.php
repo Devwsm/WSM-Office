@@ -41,6 +41,13 @@ use Illuminate\Validation\ValidationException;
  *    work=manage (updateItem(), JSON), bukan pindah ke halaman Work Tracker.
  *  - Mode TAHUNAN (`?view=year&year=2026`): garis waktu project (Gantt) selama
  *    setahun untuk melihat berapa lama tiap project berjalan — lihat year().
+ *
+ * 2026-10-21 — tampilan disamakan dengan kalender Samsung (permintaan tim):
+ *  - Mode TAHUNAN: di atas garis waktu project ada 12 bulan mini (Minggu-Sabtu);
+ *    hari yang punya deadline diberi warna project, klik bulan -> langsung ke
+ *    kalender bulan itu (lihat miniMonths()).
+ *  - Mode BULAN: grid pas layar HP (chip satu baris, tanpa geser samping) —
+ *    detail lengkap tetap lewat popup harian.
  * ---------------------------------------------------------------------
  */
 class CalendarController extends Controller
@@ -385,6 +392,8 @@ class CalendarController extends Controller
             ];
         });
 
+        $miniMonths = $this->miniMonths($year, $projectFilter, $picUser, $viewer);
+
         $today = Carbon::today();
         $todayPos = $today->year === $year ? round($dayOffset($today) / $totalDays * 100 + 0.5 / $totalDays * 100, 3) : null;
 
@@ -393,6 +402,7 @@ class CalendarController extends Controller
             'year' => $year,
             'yearRows' => $rows,
             'yearMonths' => $months,
+            'miniMonths' => $miniMonths,
             'todayPos' => $todayPos,
             'undatedProjects' => $undated,
             'outsideCount' => $outside,
@@ -410,6 +420,57 @@ class CalendarController extends Controller
             'hasNoProjectItems' => false,
             'noProjectColor' => Project::NO_PROJECT_COLOR,
         ]);
+    }
+
+    /**
+     * 12 bulan mini untuk mode TAHUN (gaya kalender Samsung): Minggu..Sabtu,
+     * tiap hari yang punya deadline item diberi warna project (item pertama di
+     * hari itu) + jumlah item untuk tooltip. Memakai aturan yang sama dengan
+     * grid bulan: section terbatas tidak ikut, filter project/PIC berlaku.
+     */
+    private function miniMonths(int $year, ?int $projectFilter, ?User $picUser, User $viewer)
+    {
+        $byDate = WorkItem::query()
+            ->sectionVisibleTo($viewer)
+            ->whereBetween('due_date', [$year . '-01-01', $year . '-12-31'])
+            ->when($projectFilter, fn($q) => $q->where('project_id', $projectFilter))
+            ->when($picUser, fn($q) => $this->wherePic($q, $picUser))
+            ->with('project')
+            ->orderBy('item_no')
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn(WorkItem $item) => $item->due_date->toDateString());
+
+        $today = Carbon::today();
+        $filter = array_filter(['project' => $projectFilter, 'pic' => $picUser?->id]);
+
+        return collect(range(1, 12))->map(function (int $m) use ($year, $byDate, $today, $filter) {
+            $first = Carbon::create($year, $m, 1)->startOfDay();
+
+            $days = collect(range(1, $first->daysInMonth))->map(function (int $day) use ($first, $byDate, $today) {
+                $date = $first->copy()->day($day);
+                $items = $byDate->get($date->toDateString(), collect());
+                $color = $items->isNotEmpty() ? Project::colorFor($items->first()->project) : null;
+
+                return [
+                    'day' => $day,
+                    'dow' => $date->dayOfWeek,
+                    'color' => $color,
+                    'count' => $items->count(),
+                    'isToday' => $date->isSameDay($today),
+                ];
+            });
+
+            return [
+                'label' => $first->translatedFormat('F'),
+                'short' => $first->translatedFormat('M'),
+                'lead' => $first->dayOfWeek, // kotak kosong sebelum tanggal 1 (Minggu = 0)
+                'days' => $days,
+                'isCurrent' => $first->isSameMonth($today),
+                'itemCount' => $days->sum('count'),
+                'url' => route('dashboard.work.calendar', ['month' => $first->format('Y-m')] + $filter),
+            ];
+        });
     }
 
     /** "126 hari · ±4 bln" — lama project dalam hari, plus perkiraan bulan kalau sudah lebih dari sebulan. */

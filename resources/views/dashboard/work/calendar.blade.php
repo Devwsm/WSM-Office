@@ -24,6 +24,15 @@
         yang hanya view melihat detailnya saja. Simpan lewat PATCH JSON.
       - Mode TAHUN (?view=year): garis waktu project selama setahun (1 baris =
         1 project) untuk melihat berapa lama project berjalan.
+
+    2026-10-21 — disamakan dengan kalender Samsung (permintaan tim):
+      - Mode TAHUN: 12 bulan mini (Minggu-Sabtu) di atas garis waktu project.
+        Hari yang punya deadline berwarna project; klik/ketuk bulan langsung
+        membuka kalender bulan itu.
+      - Mode BULAN: sel membulat dengan sedikit warna project, nomor tanggal di
+        tengah (hari ini = lingkaran hitam, Minggu merah), chip satu baris. Di HP
+        grid muat satu layar (tanpa geser samping); judul lengkap + detail lewat
+        popup harian (popup tidak berubah).
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Work Control — Timeline Calendar', 'navActive' => 'modules'])
@@ -82,8 +91,8 @@
                     class="mt-1 block text-[28px] font-black leading-none tracking-tight">{{ $isYear ? $year : $anchor->translatedFormat('F Y') }}</strong>
                 <p class="mt-2 text-xs text-muted">
                     @if ($isYear)
-                        Satu baris = satu project. Batang = lama project berjalan (tanggal Mulai–Selesai), titik =
-                        deadline item.
+                        Ketuk bulan untuk membukanya. Warna hari = project yang punya deadline di hari itu. Di bawahnya:
+                        satu baris = satu project, batang = lama project berjalan, titik = deadline item.
                     @else
                         Warna mengikuti project. Filter bisa berdasarkan project maupun PIC.
                     @endif
@@ -206,10 +215,8 @@
 
             {{-- Grid bulan — header hitam memuat ritme kerja tiap hari (Sabtu/Minggu = ritme event). --}}
             <div x-data="wsmCalendar(@js($dayPopups), {{ $canManage ? 'true' : 'false' }}, @js(route('dashboard.work.calendar.items.move', ['item' => '__ID__'])), @js($itemDetails))" @keydown.escape.window="popup = null; closeItem(false)">
-                <p class="mb-1.5 text-[10px] font-bold text-muted lg:hidden">← Geser kalender ke samping untuk melihat semua
-                    hari →</p>
-                <div class="overflow-x-auto rounded-[26px] border border-line bg-white">
-                    <div class="min-w-215 overflow-hidden lg:min-w-0">
+                <div class="overflow-hidden rounded-[26px] border border-line bg-white">
+                    <div class="overflow-hidden">
                         <div class="grid grid-cols-7 bg-[#111] text-white">
                             @foreach ([0, 1, 2, 3, 4, 5, 6] as $dow)
                                 @php
@@ -221,11 +228,17 @@
                                         default => 'bg-[#eeeae3] text-[#4e4a43]',
                                     };
                                 @endphp
-                                <div class="px-2 py-2.5 text-center"
+                                <div class="min-w-0 px-0.5 py-2 text-center sm:px-2 sm:py-2.5"
                                     title="{{ $r['focus'] }} · {{ $r['mode'] }} · {{ $r['hours'] }}">
-                                    <span class="block text-[11px] font-black">{{ $r['day'] }}</span>
                                     <span
-                                        class="mt-1 block rounded-md px-1 py-0.5 text-[8px] font-black leading-tight {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
+                                        class="block text-[10px] font-black sm:text-[11px] {{ $dow === 0 ? 'text-[#ff8a7a]' : '' }}"><span
+                                            class="sm:hidden">{{ mb_strtoupper(mb_substr($r['day'], 0, 3)) }}</span><span
+                                            class="hidden sm:inline">{{ $r['day'] }}</span></span>
+                                    {{-- HP: kolom sempit, ritme cukup berupa garis warna mode (detail ada di popup harian & tooltip). --}}
+                                    <span
+                                        class="mt-1 block h-1 rounded-full sm:hidden {{ $modeClass }} {{ $todayDow === $dow ? 'ring-1 ring-white' : '' }}"></span>
+                                    <span
+                                        class="mt-1 hidden rounded-md px-1 py-0.5 text-[8px] font-black leading-tight sm:block {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
                                         <span class="block">{{ $r['focus'] }}</span>
                                         <span class="block opacity-80">{{ $r['mode'] }}<span> ·
                                                 {{ $r['hours'] }}</span></span>
@@ -233,22 +246,22 @@
                                 </div>
                             @endforeach
                         </div>
-                        <div class="grid grid-cols-7">
+                        <div class="grid grid-cols-7 gap-0.5 p-0.5 sm:gap-1 sm:p-1">
                             @foreach ($weeks as $week)
                                 @foreach ($week as $cell)
                                     <div data-date="{{ $cell['key'] }}" @click="onCell($event, '{{ $cell['key'] }}')"
                                         @dragover.prevent="dragOver($event)" @dragleave="dragLeave($event)"
                                         @drop.prevent="drop($event, '{{ $cell['key'] }}')"
-                                        class="min-h-33 cursor-pointer border-b border-r border-[#ece5da] p-2 transition nth-[7n]:border-r-0 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-white' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
-                                        <div class="mb-1.5 flex items-center justify-between text-[11px] font-black">
-                                            <span>{{ $cell['date']->day }}</span>
-                                            @if ($cell['isToday'])
-                                                <small class="text-[10px]">Today</small>
-                                            @endif
+                                        @if (!$cell['outside'] && $cell['all']->isNotEmpty()) style="background:color-mix(in srgb, {{ $cell['all']->first()['color'] }} 14%, #fff)" @endif
+                                        class="min-h-24 min-w-0 cursor-pointer overflow-hidden rounded-lg p-0.5 transition sm:min-h-33 sm:rounded-xl sm:p-1.5 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-[#faf8f4]' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
+                                        {{-- Nomor tanggal di tengah ala Samsung: hari ini = lingkaran hitam, Minggu = merah. --}}
+                                        <div class="mb-1 flex justify-center text-[11px] font-black">
+                                            <span
+                                                class="grid h-5 min-w-5 place-items-center rounded-full px-1 {{ $cell['isToday'] ? 'bg-[#111] text-white' : ($cell['date']->dayOfWeek === 0 && !$cell['outside'] ? 'text-[#d64535]' : '') }}">{{ $cell['date']->day }}</span>
                                         </div>
 
                                         {{-- Chip item (maks 3); di HP kalender digeser ke samping. Chip bisa di-drag di desktop kalau punya akses manage. --}}
-                                        <div class="grid gap-1">
+                                        <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 sm:gap-1">
                                             @foreach ($cell['visible'] as $item)
                                                 @include('dashboard.work._calendar-chip', [
                                                     'item' => $item,
@@ -466,7 +479,7 @@
 
                 /* Tombol "+N item": class pendek supaya tag-nya tidak dipecah formatter Blade (teks jadi satu ekspresi). */
                 .wsm-more {
-                    text-align: left;
+                    text-align: center;
                     font-size: 10px;
                     font-weight: 800;
                     color: #8b867e;
@@ -661,7 +674,36 @@
                 }
             </script>
         @else
-            {{-- Mode TAHUN: garis waktu project. Batang = rentang project, titik = deadline item. --}}
+            {{-- Mode TAHUN (gaya kalender Samsung): 12 bulan mini. Ketuk bulan = buka kalender bulan itu. --}}
+            <div class="mb-6 grid grid-cols-3 gap-x-2 gap-y-4 sm:gap-x-4 lg:grid-cols-4" data-year-months>
+                @foreach ($miniMonths as $mm)
+                    <a href="{{ $mm['url'] }}" data-year-month="{{ $loop->iteration }}"
+                        title="Buka {{ $mm['label'] }} {{ $year }}{{ $mm['itemCount'] ? ' · ' . $mm['itemCount'] . ' item' : '' }}"
+                        class="block min-w-0 rounded-2xl p-1 transition hover:bg-[#f6f2eb] sm:p-2">
+                        <span
+                            class="mx-auto mb-1.5 block w-fit rounded-lg px-2.5 py-0.5 text-center text-[13px] font-black {{ $mm['isCurrent'] ? 'bg-[#111] text-white' : '' }}">{{ $mm['short'] }}</span>
+                        <span class="grid grid-cols-7 gap-px text-center">
+                            @foreach (['M', 'S', 'S', 'R', 'K', 'J', 'S'] as $i => $initial)
+                                <span
+                                    class="pb-0.5 text-[8px] font-black sm:text-[10px] {{ $i === 0 ? 'text-[#d64535]' : 'text-muted' }}">{{ $initial }}</span>
+                            @endforeach
+                            @for ($i = 0; $i < $mm['lead']; $i++)
+                                <span></span>
+                            @endfor
+                            @foreach ($mm['days'] as $d)
+                                <span
+                                    class="grid aspect-square place-items-center rounded-[5px] text-[8px] font-bold leading-none sm:text-[11px] {{ $d['isToday'] ? 'bg-[#111] text-white' : ($d['dow'] === 0 ? 'text-[#d64535]' : 'text-ink') }}"
+                                    @if ($d['color'] && !$d['isToday']) style="background:color-mix(in srgb, {{ $d['color'] }} 38%, #fff)" @endif>{{ $d['day'] }}</span>
+                            @endforeach
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+
+            <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-muted">Timeline Project
+                {{ $year }}</p>
+
+            {{-- Garis waktu project. Batang = rentang project, titik = deadline item. --}}
             @php
                 // Garis batas bulan + penanda hari ini digambar sebagai latar tiap baris (persen dari lebar lajur).
                 $gridLayers = $yearMonths
