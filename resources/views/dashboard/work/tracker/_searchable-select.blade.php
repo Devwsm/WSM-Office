@@ -43,6 +43,12 @@
         display: none;
     }
 
+    /* Setelah dibungkus, select asli (termasuk <select multiple>) tidak ikut menentukan tinggi/tampilan. */
+    .wt-ss>select[multiple] {
+        height: 100%;
+        overflow: hidden;
+    }
+
     /* Select asli disembunyikan secara visual tapi tetap ada, supaya validasi `required` browser tetap bekerja. */
     .wt-ss>select {
         position: absolute;
@@ -218,6 +224,7 @@
     #wtSsCount {
         flex: 1;
         min-width: 0;
+        white-space: nowrap;
         font-size: 11px;
         font-weight: 800;
         color: #8b867e;
@@ -563,7 +570,7 @@
         function updateCount() {
             if (!openMulti) return;
             const n = items.filter((it) => it.selected).length;
-            countEl.textContent = n === 0 ? 'Semua (tanpa filter)' : n + ' dipilih';
+            countEl.textContent = n === 0 ? 'Semua' : n + ' dipilih';
         }
 
         function setActive(idx, scroll) {
@@ -641,7 +648,7 @@
             const r = openBtn.getBoundingClientRect();
             const vw = window.innerWidth;
             const vh = window.innerHeight;
-            const width = Math.min(Math.max(r.width, 240), vw - 16);
+            const width = Math.min(Math.max(r.width, 260), vw - 16);
             const left = Math.max(8, Math.min(r.left, vw - width - 8));
             const below = vh - r.bottom - 12;
             const above = r.top - 12;
@@ -666,6 +673,11 @@
         function init() {
             document.querySelectorAll('select[data-searchable]').forEach(enhance);
         }
+
+        // Refresh / tombol Back (bfcache): browser bisa memulihkan pilihan lama ke <select> asli -> samakan label tombolnya.
+        window.addEventListener('pageshow', () => {
+            document.querySelectorAll('select[data-searchable]').forEach((s) => refresh(s));
+        });
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);

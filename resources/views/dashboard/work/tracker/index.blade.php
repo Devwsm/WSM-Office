@@ -29,6 +29,15 @@
 @extends('layouts.app', ['title' => 'Work Tracker', 'navActive' => 'modules'])
 
 @section('content')
+    {{-- Sebelum JS dropdown pencarian jalan (halaman masih memuat / refresh), <select multiple> mentah jangan tampil
+         sebagai listbox besar: ditahan setinggi tombol filter. Setelah dibungkus (.wt-ss) aturan ini tidak berlaku. --}}
+    <style>
+        label>select[multiple][data-searchable] {
+            height: 2.1rem;
+            overflow: hidden;
+            appearance: none;
+        }
+    </style>
     @php
         $canManage = auth()->user()->canManageModule('work');
         // Assign visibility section: khusus Owner & Developer (bukan sekadar `work,manage`).
@@ -118,8 +127,8 @@
                 <label class="grid min-w-34 flex-1 gap-1 sm:flex-none">
                     <span class="text-[10px] font-extrabold uppercase text-muted">{{ $label }}</span>
                     <select name="{{ $name }}[]" multiple onchange="this.form.submit()" data-searchable
-                        data-all-label="{{ $all }}" data-search-placeholder="Cari {{ strtolower($label) }}…"
-                        aria-label="Filter {{ $label }}"
+                        autocomplete="off" data-all-label="{{ $all }}"
+                        data-search-placeholder="Cari {{ strtolower($label) }}…" aria-label="Filter {{ $label }}"
                         class="w-full rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink sm:max-w-52">
                         @foreach ($options as $value => $text)
                             <option value="{{ $value }}" @selected(in_array((string) $value, $currentValues, true))>{{ $text }}
@@ -232,10 +241,11 @@
                                     data-wt-key="{{ $secKey }}" data-wt-project="{{ $project?->id ?? 0 }}"
                                     data-wt-section="{{ $section['name'] }}">
                                     <summary
-                                        class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
+                                        class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3"
                                         style="background:{{ $secColor }};color:{{ $secInk }}">
+                                        {{-- HP: nama section satu baris penuh, tombol aksi turun ke baris berikutnya (tidak saling menjepit). --}}
                                         <span
-                                            class="flex min-w-0 flex-1 items-center gap-2 wrap-break-word text-[12px] font-black uppercase tracking-wide">
+                                            class="flex min-w-0 basis-full items-center gap-2 wrap-break-word text-[12px] font-black uppercase tracking-wide sm:flex-1 sm:basis-0">
                                             <span class="wt-chevron text-xs transition">⌄</span><span
                                                 class="wt-secname min-w-0 wrap-break-word"
                                                 data-name="{{ $section['name'] }}">{{ $section['name'] }}</span>
@@ -247,7 +257,8 @@
                                                     class="wt-rename grid h-6 w-6 flex-none place-items-center rounded-lg bg-white/70 text-[11px] normal-case text-[#17130a]">✎</button>
                                             @endif
                                         </span>
-                                        <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
+                                        <span
+                                            class="flex flex-wrap items-center justify-start gap-1.5 text-[#17130a] sm:justify-end">
                                             @if ($locked)
                                                 <span title="Kamu tidak punya akses ke item di dalam section ini"
                                                     class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
@@ -401,7 +412,7 @@
                                                                 @if ($canManage)
                                                                     <select data-orig="{{ $item->pic_employee_id }}"
                                                                         onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
-                                                                        data-searchable
+                                                                        data-searchable autocomplete="off"
                                                                         data-search-placeholder="Cari nama PIC…"
                                                                         aria-label="PIC utama"
                                                                         class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] font-bold hover:border-line focus:border-line focus:bg-white">
@@ -430,7 +441,7 @@
                                                                 @if ($canManage)
                                                                     <select data-orig="{{ $item->progress }}"
                                                                         onchange="wtQuickProgress({{ $item->id }}, this)"
-                                                                        data-searchable
+                                                                        data-searchable autocomplete="off"
                                                                         data-search-placeholder="Cari progress…"
                                                                         aria-label="Progress"
                                                                         class="w-full rounded-lg border-0 px-2 py-1.5 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">
@@ -526,7 +537,8 @@
                 class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                 <div @click.outside="taskModalOpen = false"
                     class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
-                    <div class="mb-3 flex items-center justify-between">
+                    <div
+                        class="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 flex items-center justify-between bg-cream px-5 pb-2 pt-5">
                         <h3 class="text-lg font-black" id="wtTaskFormTitle">Tambah Task</h3>
                         <button type="button" @click="taskModalOpen = false"
                             class="grid h-9 w-9 place-items-center rounded-2xl bg-[#ece7dd]">✕</button>
@@ -544,7 +556,7 @@
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Project</label>
                                 <select name="project_id" id="wtTaskProject" required onchange="wtRebuildSections('')"
-                                    data-searchable data-search-placeholder="Cari project…"
+                                    data-searchable autocomplete="off" data-search-placeholder="Cari project…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     <option value="" disabled selected>Pilih project…</option>
                                     @foreach ($projects as $project)
@@ -555,7 +567,7 @@
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Section</label>
                                 <select id="wtTaskSectionSelect" required onchange="wtSectionChanged()" data-searchable
-                                    data-search-placeholder="Cari section…"
+                                    autocomplete="off" data-search-placeholder="Cari section…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm"></select>
                                 {{-- Nilai yang dikirim tetap `section`; input teks cuma muncul saat harus membuat section baru. --}}
                                 <input name="section" id="wtTaskSection" list="wtSectionSuggestions" autocomplete="off"
@@ -573,7 +585,7 @@
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">PIC 1</label>
                                 <select name="pic_employee_id" id="wtTaskPic" onchange="wtSyncPicOptions()"
-                                    data-searchable data-search-placeholder="Cari nama PIC…"
+                                    data-searchable autocomplete="off" data-search-placeholder="Cari nama PIC…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     <option value="">Belum di-assign</option>
                                     @foreach ($employees as $employee)
@@ -595,7 +607,7 @@
                                         (opsional)
                                     </label>
                                     <select name="additional_pic_ids[]" id="wtTaskPic{{ $picNo }}"
-                                        onchange="wtSyncPicOptions()" data-searchable
+                                        onchange="wtSyncPicOptions()" data-searchable autocomplete="off"
                                         data-search-placeholder="Cari nama PIC…"
                                         class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                         <option value="">Tidak ada</option>
@@ -611,7 +623,7 @@
                         <div class="grid items-start gap-3 sm:grid-cols-2">
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Progress</label>
-                                <select name="progress" id="wtTaskProgress" data-searchable
+                                <select name="progress" id="wtTaskProgress" data-searchable autocomplete="off"
                                     data-search-placeholder="Cari progress…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     @foreach (\App\Models\WorkItem::PROGRESS_OPTIONS as $status)
@@ -621,7 +633,7 @@
                             </div>
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Priority</label>
-                                <select name="priority" id="wtTaskPriority" data-searchable
+                                <select name="priority" id="wtTaskPriority" data-searchable autocomplete="off"
                                     data-search-placeholder="Cari priority…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     @foreach (\App\Models\WorkItem::PRIORITIES as $priority)

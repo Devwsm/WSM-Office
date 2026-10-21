@@ -10,20 +10,20 @@
     Project, OfficeSetting) — lihat Dashboard\Work\CalendarController.
 
     2026-10-03 — revisi permintaan tim:
-    - Ritme kerja pindah ke HEADER kolom hari (bukan di tiap tanggal), 7 hari:
-    Sabtu/Minggu berisi ritme "event".
-    - Maks 3 chip per tanggal, sisanya "+N item"; klik tanggal/+N buka POPUP harian.
-    - Drag & drop chip antar tanggal HANYA di desktop (layar lebar + mouse) dan
-    hanya untuk yang punya akses work=manage; di HP/tablet kalender cuma
-    bisa dilihat + buka popup harian.
+      - Ritme kerja pindah ke HEADER kolom hari (bukan di tiap tanggal), 7 hari:
+        Sabtu/Minggu berisi ritme "event".
+      - Maks 3 chip per tanggal, sisanya "+N item"; klik tanggal/+N buka POPUP harian.
+      - Drag & drop chip antar tanggal HANYA di desktop (layar lebar + mouse) dan
+        hanya untuk yang punya akses work=manage; di HP/tablet kalender cuma
+        bisa dilihat + buka popup harian.
 
     2026-10-20 — revisi permintaan tim:
-    - Klik item (chip di tanggal ATAU item di popup harian) membuka MODAL
-    detail, bukan pindah halaman. Yang punya akses work=manage langsung bisa
-    mengedit (judul, tanggal, PIC 1-3, progress, prioritas, link, catatan);
-    yang hanya view melihat detailnya saja. Simpan lewat PATCH JSON.
-    - Mode TAHUN (?view=year): garis waktu project selama setahun (1 baris =
-    1 project) untuk melihat berapa lama project berjalan.
+      - Klik item (chip di tanggal ATAU item di popup harian) membuka MODAL
+        detail, bukan pindah halaman. Yang punya akses work=manage langsung bisa
+        mengedit (judul, tanggal, PIC 1-3, progress, prioritas, link, catatan);
+        yang hanya view melihat detailnya saja. Simpan lewat PATCH JSON.
+      - Mode TAHUN (?view=year): garis waktu project selama setahun (1 baris =
+        1 project) untuk melihat berapa lama project berjalan.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Work Control — Timeline Calendar', 'navActive' => 'modules'])
@@ -167,9 +167,9 @@
                                         <label
                                             class="mb-1 block text-[10px] font-extrabold uppercase text-muted">Mode</label>
                                         <select name="rhythm[{{ $dow }}][mode]" class="input-wsm">
-                                            @foreach ($rhythmModes as $mode)
-                                                <option value="{{ $mode }}" @selected(old("rhythm.$dow.mode", $rhythm['mode']) === $mode)>
-                                                    {{ $mode }}</option>
+                                            @foreach ($rhythmModes as $rhythmMode)
+                                                <option value="{{ $rhythmMode }}" @selected(old("rhythm.$dow.mode", $rhythm['mode']) === $rhythmMode)>
+                                                    {{ $rhythmMode }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -206,74 +206,64 @@
 
             {{-- Grid bulan — header hitam memuat ritme kerja tiap hari (Sabtu/Minggu = ritme event). --}}
             <div x-data="wsmCalendar(@js($dayPopups), {{ $canManage ? 'true' : 'false' }}, @js(route('dashboard.work.calendar.items.move', ['item' => '__ID__'])), @js($itemDetails))" @keydown.escape.window="popup = null; closeItem(false)">
-                <div class="overflow-hidden rounded-[26px] border border-line bg-white">
-                    <div class="grid grid-cols-7 bg-[#111] text-white">
-                        @foreach ([0, 1, 2, 3, 4, 5, 6] as $dow)
-                            @php
-                                $r = $weeklyRhythm[$dow];
-                                $modeClass = match ($r['mode']) {
-                                    'WFO' => 'bg-[#e8efff] text-[#23498d]',
-                                    'WFH' => 'bg-[#e8f8e8] text-[#286231]',
-                                    'Event' => 'bg-[#fff0bd] text-[#6b4a00]',
-                                    default => 'bg-[#eeeae3] text-[#4e4a43]',
-                                };
-                            @endphp
-                            <div class="px-1 py-2 text-center lg:px-2 lg:py-2.5"
-                                title="{{ $r['focus'] }} · {{ $r['mode'] }} · {{ $r['hours'] }}">
-                                <span class="block text-[10px] font-black lg:text-[11px]"><span
-                                        class="lg:hidden">{{ \Illuminate\Support\Str::substr($r['day'], 0, 3) }}</span><span
-                                        class="hidden lg:inline">{{ $r['day'] }}</span></span>
-                                <span
-                                    class="mt-1 block rounded-md px-1 py-0.5 text-[8px] font-black leading-tight {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
-                                    <span class="hidden lg:block">{{ $r['focus'] }}</span>
-                                    <span class="block opacity-80">{{ $r['mode'] }}<span class="hidden lg:inline"> ·
-                                            {{ $r['hours'] }}</span></span>
-                                </span>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="grid grid-cols-7">
-                        @foreach ($weeks as $week)
-                            @foreach ($week as $cell)
-                                <div data-date="{{ $cell['key'] }}" @click="onCell($event, '{{ $cell['key'] }}')"
-                                    @dragover.prevent="dragOver($event)" @dragleave="dragLeave($event)"
-                                    @drop.prevent="drop($event, '{{ $cell['key'] }}')"
-                                    class="min-h-20 cursor-pointer border-b border-r border-[#ece5da] p-1 transition lg:min-h-33 lg:p-2 nth-[7n]:border-r-0 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-white' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
-                                    <div class="mb-1 flex items-center justify-between text-[11px] font-black lg:mb-1.5">
-                                        <span>{{ $cell['date']->day }}</span>
-                                        @if ($cell['isToday'])
-                                            <small class="text-[10px]">Today</small>
-                                        @endif
-                                    </div>
-
-                                    {{-- Desktop: chip item (maks 3). Chip item bisa di-drag kalau punya akses manage. --}}
-                                    <div class="hidden gap-1 lg:grid">
-                                        @foreach ($cell['visible'] as $item)
-                                            @include('dashboard.work._calendar-chip', ['item' => $item])
-                                        @endforeach
-                                        @if ($cell['hidden']->isNotEmpty())
-                                            @php $moreLabel = '+' . $cell['hidden']->count() . ' item'; @endphp
-                                            <button type="button" class="wsm-more"
-                                                @click.stop="open('{{ $cell['key'] }}')">{{ $moreLabel }}</button>
-                                        @endif
-                                    </div>
-
-                                    {{-- HP & tablet: titik warna ringkas; ketuk tanggal buka popup harian. --}}
-                                    @if ($cell['all']->isNotEmpty())
-                                        <div class="flex flex-wrap items-center gap-0.5 lg:hidden">
-                                            @foreach ($cell['all']->take(6) as $item)
-                                                <i class="inline-block h-2 w-2 rounded-full {{ $item['done'] ? 'opacity-50' : '' }}"
-                                                    style="background:{{ $item['color'] }}"></i>
-                                            @endforeach
-                                            @if ($cell['all']->count() > 6)
-                                                <span
-                                                    class="text-[9px] font-black">+{{ $cell['all']->count() - 6 }}</span>
-                                            @endif
-                                        </div>
-                                    @endif
+                <p class="mb-1.5 text-[10px] font-bold text-muted lg:hidden">← Geser kalender ke samping untuk melihat semua
+                    hari →</p>
+                <div class="overflow-x-auto rounded-[26px] border border-line bg-white">
+                    <div class="min-w-215 overflow-hidden lg:min-w-0">
+                        <div class="grid grid-cols-7 bg-[#111] text-white">
+                            @foreach ([0, 1, 2, 3, 4, 5, 6] as $dow)
+                                @php
+                                    $r = $weeklyRhythm[$dow];
+                                    $modeClass = match ($r['mode']) {
+                                        'WFO' => 'bg-[#e8efff] text-[#23498d]',
+                                        'WFH' => 'bg-[#e8f8e8] text-[#286231]',
+                                        'Event' => 'bg-[#fff0bd] text-[#6b4a00]',
+                                        default => 'bg-[#eeeae3] text-[#4e4a43]',
+                                    };
+                                @endphp
+                                <div class="px-2 py-2.5 text-center"
+                                    title="{{ $r['focus'] }} · {{ $r['mode'] }} · {{ $r['hours'] }}">
+                                    <span class="block text-[11px] font-black">{{ $r['day'] }}</span>
+                                    <span
+                                        class="mt-1 block rounded-md px-1 py-0.5 text-[8px] font-black leading-tight {{ $modeClass }} {{ $todayDow === $dow ? 'ring-2 ring-white' : '' }}">
+                                        <span class="block">{{ $r['focus'] }}</span>
+                                        <span class="block opacity-80">{{ $r['mode'] }}<span> ·
+                                                {{ $r['hours'] }}</span></span>
+                                    </span>
                                 </div>
                             @endforeach
-                        @endforeach
+                        </div>
+                        <div class="grid grid-cols-7">
+                            @foreach ($weeks as $week)
+                                @foreach ($week as $cell)
+                                    <div data-date="{{ $cell['key'] }}" @click="onCell($event, '{{ $cell['key'] }}')"
+                                        @dragover.prevent="dragOver($event)" @dragleave="dragLeave($event)"
+                                        @drop.prevent="drop($event, '{{ $cell['key'] }}')"
+                                        class="min-h-33 cursor-pointer border-b border-r border-[#ece5da] p-2 transition nth-[7n]:border-r-0 {{ $cell['outside'] ? 'bg-[#f6f2eb] text-[#b5afa5]' : 'bg-white' }} {{ $cell['isToday'] ? 'relative z-10 outline-2 -outline-offset-2 outline-[#111]' : '' }}">
+                                        <div class="mb-1.5 flex items-center justify-between text-[11px] font-black">
+                                            <span>{{ $cell['date']->day }}</span>
+                                            @if ($cell['isToday'])
+                                                <small class="text-[10px]">Today</small>
+                                            @endif
+                                        </div>
+
+                                        {{-- Chip item (maks 3); di HP kalender digeser ke samping. Chip bisa di-drag di desktop kalau punya akses manage. --}}
+                                        <div class="grid gap-1">
+                                            @foreach ($cell['visible'] as $item)
+                                                @include('dashboard.work._calendar-chip', [
+                                                    'item' => $item,
+                                                ])
+                                            @endforeach
+                                            @if ($cell['hidden']->isNotEmpty())
+                                                @php $moreLabel = '+' . $cell['hidden']->count() . ' item'; @endphp
+                                                <button type="button" class="wsm-more"
+                                                    @click.stop="open('{{ $cell['key'] }}')">{{ $moreLabel }}</button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            @endforeach
+                        </div>
                     </div>
                 </div>
 
@@ -320,7 +310,8 @@
                     class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                     <div @click.outside="closeItem(true)"
                         class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
-                        <div class="mb-3 flex items-start justify-between gap-3">
+                        <div
+                            class="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 flex items-start justify-between gap-3 bg-cream px-5 pb-2 pt-5">
                             <div class="min-w-0">
                                 <p class="text-[10px] font-black uppercase tracking-[0.14em] text-muted">
                                     {{ $canManage ? 'Edit Item' : 'Detail Item' }}</p>
@@ -421,7 +412,8 @@
                                 </div>
                                 <p x-show="error" x-cloak x-text="error" role="alert"
                                     class="rounded-xl bg-[#ffded8] px-3 py-2 text-[12px] font-bold text-[#9b392f]"></p>
-                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                <div
+                                    class="sticky -bottom-5 z-10 -mx-5 -mb-5 mt-1 flex flex-wrap items-center gap-2 bg-cream px-5 pb-5 pt-2">
                                     <a :href="item ? item.tracker_url : '#'"
                                         class="btn-wsm-white py-2! px-3.5! text-xs!">Buka di Work Tracker</a>
                                     <button type="submit" :disabled="saving"
@@ -690,12 +682,14 @@
                     Isi tanggal Mulai/Selesai di menu Projects, atau beri deadline pada item di Work Tracker.
                 </p>
             @else
-                <div class="overflow-x-auto rounded-[26px] border border-line bg-white" data-year-timeline>
+                <p class="mb-1.5 text-[10px] font-bold text-muted lg:hidden">← Geser garis waktu ke samping →</p>
+                <div class="overflow-x-auto rounded-[26px] border border-line bg-white" data-year-timeline
+                    data-focus="{{ $todayPos ?? $yearRows->first()['left'] }}">
                     <div class="min-w-230">
                         {{-- Header bulan (klik = buka bulan itu) --}}
                         <div class="flex bg-[#111] text-white">
                             <div
-                                class="sticky left-0 z-20 flex w-40 shrink-0 items-center bg-[#111] px-3 py-2.5 text-[10px] font-black uppercase tracking-widest sm:w-56">
+                                class="sticky left-0 z-20 flex w-32 shrink-0 items-center bg-[#111] px-3 py-2.5 text-[10px] font-black uppercase tracking-widest sm:w-56">
                                 Project · {{ $year }}</div>
                             <div class="relative h-10 min-w-0 flex-1">
                                 @foreach ($yearMonths as $m)
@@ -708,7 +702,7 @@
 
                         @foreach ($yearRows as $row)
                             <div class="flex border-t border-[#ece5da]" data-year-row="{{ $row['id'] }}">
-                                <div class="sticky left-0 z-10 w-40 shrink-0 bg-white px-3 py-2.5 sm:w-56">
+                                <div class="sticky left-0 z-10 w-32 shrink-0 bg-white px-2.5 py-2.5 sm:w-56">
                                     <a href="{{ $row['url'] }}"
                                         class="block text-[12px] font-black leading-tight wrap-break-word hover:underline">{{ $row['name'] }}</a>
                                     <p class="mt-0.5 text-[10px] font-bold text-muted">{{ $row['from'] }} →
@@ -744,6 +738,17 @@
                         @endforeach
                     </div>
                 </div>
+                <script>
+                    // Mobile: garis waktu langsung digeser ke hari ini (atau awal project pertama) supaya tidak mulai dari Januari yang kosong.
+                    document.querySelectorAll('[data-year-timeline]').forEach((box) => {
+                        const label = box.querySelector('.sticky');
+                        const inner = box.firstElementChild;
+                        const pct = parseFloat(box.dataset.focus);
+                        if (!label || !inner || isNaN(pct)) return;
+                        const laneW = inner.scrollWidth - label.offsetWidth;
+                        box.scrollLeft = Math.max(0, laneW * pct / 100 - (box.clientWidth - label.offsetWidth) / 3);
+                    });
+                </script>
                 <p class="mt-2 text-[10px] font-medium text-muted">Bagian gelap di batang = persentase item yang sudah
                     Done.
                     @if ($todayPos !== null)
@@ -764,7 +769,7 @@
 
         @endif
 
-        @if ($mode === 'month' && $canManage)
+        @if (!$isYear && $canManage)
             {{-- Dropdown pencarian (PIC/Progress/Priority di modal edit item) — komponen yang sama dengan Work Tracker. --}}
             @include('dashboard.work.tracker._searchable-select')
         @endif
