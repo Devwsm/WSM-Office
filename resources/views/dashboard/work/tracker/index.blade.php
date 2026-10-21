@@ -16,6 +16,14 @@
     (color picker), urutan (↑ ↓), tambah section kosong, dan hapus
     (section berisi item -> ketik nama section untuk konfirmasi). Data
     warna/urutan ada di `project_sections`; default warna = dari nama.
+
+    Revisi 2026-10-20 (permintaan tim):
+      - Filter Project/PIC/Progress/Focus = dropdown CHECKLIST + pencarian
+        (boleh pilih banyak sekaligus; query `?project_id[]=1&project_id[]=2`).
+      - SEMUA dropdown di halaman ini memakai dropdown pencarian (termasuk
+        Progress per baris dan Section/Progress/Priority di form task).
+      - Nama section bisa diganti langsung dari header (tombol ✎).
+      - Judul item = textarea yang bisa melebar/diubah tingginya seperti Note.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.app', ['title' => 'Work Tracker', 'navActive' => 'modules'])
@@ -92,7 +100,8 @@
         <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <label class="relative block min-w-0 flex-1">
                 <span class="sr-only">Cari di Work Tracker</span>
-                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" aria-hidden="true">🔍</span>
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm"
+                    aria-hidden="true">🔍</span>
                 <input type="search" id="wtSearch" autocomplete="off" spellcheck="false"
                     placeholder="Cari task, PIC, section, project, catatan…   (tekan / untuk mulai)"
                     class="w-full rounded-2xl border border-line bg-white py-2.5 pl-10 pr-10 text-[13px] font-bold text-ink">
@@ -102,23 +111,24 @@
             <p id="wtSearchInfo" class="text-[11px] font-extrabold text-muted" aria-live="polite"></p>
         </div>
 
-        {{-- Filter --}}
+        {{-- Filter: dropdown checklist + pencarian (pilih banyak sekaligus). Diterapkan saat panel ditutup / klik "Terapkan". --}}
         <form method="GET" class="mb-3 flex flex-wrap items-end gap-2">
-            @foreach ([['project_id', 'Project', $projects->pluck('name', 'id'), $selectedProjectId, 'Semua Project'], ['pic', 'PIC', $employees->pluck('name', 'id'), $selectedPic, 'Semua PIC'], ['progress', 'Progress', collect(\App\Models\WorkItem::PROGRESS_OPTIONS)->mapWithKeys(fn($s) => [$s => $s]), $selectedProgress, 'Semua'], ['focus', 'Focus', collect($focusOptions)->mapWithKeys(fn($s) => [$s => $s]), $selectedFocus, 'Semua Focus']] as [$name, $label, $options, $current, $all])
+            @foreach ([['project_id', 'Project', $projects->pluck('name', 'id'), $selectedProjectIds, 'Semua Project'], ['pic', 'PIC', $employees->pluck('name', 'id'), $selectedPics, 'Semua PIC'], ['progress', 'Progress', collect(\App\Models\WorkItem::PROGRESS_OPTIONS)->mapWithKeys(fn($s) => [$s => $s]), $selectedProgress, 'Semua Progress'], ['focus', 'Focus', collect($focusOptions)->mapWithKeys(fn($s) => [$s => $s]), $selectedFocus, 'Semua Focus']] as [$name, $label, $options, $current, $all])
+                @php $currentValues = array_map('strval', (array) $current); @endphp
                 <label class="grid min-w-34 flex-1 gap-1 sm:flex-none">
                     <span class="text-[10px] font-extrabold uppercase text-muted">{{ $label }}</span>
-                    <select name="{{ $name }}" onchange="this.form.submit()"
-                        @if (in_array($name, ['project_id', 'pic'], true)) data-searchable data-search-placeholder="Cari {{ strtolower($label) }}…" @endif
+                    <select name="{{ $name }}[]" multiple onchange="this.form.submit()" data-searchable
+                        data-all-label="{{ $all }}" data-search-placeholder="Cari {{ strtolower($label) }}…"
+                        aria-label="Filter {{ $label }}"
                         class="w-full rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink sm:max-w-52">
-                        <option value="">{{ $all }}</option>
                         @foreach ($options as $value => $text)
-                            <option value="{{ $value }}" @selected((string) $current === (string) $value)>{{ $text }}
+                            <option value="{{ $value }}" @selected(in_array((string) $value, $currentValues, true))>{{ $text }}
                             </option>
                         @endforeach
                     </select>
                 </label>
             @endforeach
-            @if ($selectedProjectId || $selectedPic || $selectedProgress || $selectedFocus)
+            @if ($selectedProjectIds || $selectedPics || $selectedProgress || $selectedFocus)
                 <a href="{{ route('dashboard.work.tracker.index') }}"
                     class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset</a>
             @endif
@@ -143,7 +153,7 @@
                 <article class="overflow-hidden rounded-3xl border border-line bg-[#fbf8f2]"
                     data-wt-card="{{ $cardKey }}">
                     <details class="wt-card group" data-wt-key="{{ $cardKey }}"
-                        @if ($selectedProjectId) open @endif>
+                        @if ($selectedProjectIds) open @endif>
                         <summary
                             class="flex cursor-pointer list-none flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0 flex-1">
@@ -225,23 +235,33 @@
                                         class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
                                         style="background:{{ $secColor }};color:{{ $secInk }}">
                                         <span
-                                            class="flex min-w-0 items-center gap-2 wrap-break-word text-[12px] font-black uppercase tracking-wide">
-                                            <span class="wt-chevron text-xs transition">⌄</span>{{ $section['name'] }}
+                                            class="flex min-w-0 flex-1 items-center gap-2 wrap-break-word text-[12px] font-black uppercase tracking-wide">
+                                            <span class="wt-chevron text-xs transition">⌄</span><span
+                                                class="wt-secname min-w-0 wrap-break-word"
+                                                data-name="{{ $section['name'] }}">{{ $section['name'] }}</span>
+                                            @if ($canManage && $sec && !$locked)
+                                                {{-- Ganti nama langsung di header (Enter simpan, Esc batal). --}}
+                                                <button type="button" title="Ganti nama section"
+                                                    aria-label="Ganti nama section {{ $section['name'] }}"
+                                                    onclick="wtStartRename(event, {{ $sec->id }}, this)"
+                                                    class="wt-rename grid h-6 w-6 flex-none place-items-center rounded-lg bg-white/70 text-[11px] normal-case text-[#17130a]">✎</button>
+                                            @endif
                                         </span>
                                         <span class="flex flex-wrap items-center justify-end gap-1.5 text-[#17130a]">
                                             @if ($locked)
                                                 <span title="Kamu tidak punya akses ke item di dalam section ini"
                                                     class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
                                                     Terkunci</span>
-                                            @elseif (! empty($section['viewer_ids']))
+                                            @elseif (!empty($section['viewer_ids']))
                                                 <span title="Hanya orang tertentu yang bisa melihat section ini"
                                                     class="rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-extrabold">🔒
                                                     {{ count($section['viewer_ids']) }} orang</span>
                                             @endif
-                                            @if ($canManage && $sec && ! $locked)
+                                            @if ($canManage && $sec && !$locked)
                                                 @if ($canAssignVisibility)
                                                     {{-- Visibility per orang (kosong = semua orang boleh lihat). Hanya Owner & Developer. --}}
-                                                    <button type="button" title="Atur siapa yang bisa melihat section ini"
+                                                    <button type="button"
+                                                        title="Atur siapa yang bisa melihat section ini"
                                                         @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids'], 'pics' => $section['pic_ids'] ?? [], 'access' => empty($section['viewer_ids']) ? 'all' : 'selected']); viewersAccess = viewersModal.access"
                                                         class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
                                                 @endif
@@ -263,7 +283,8 @@
                                                             onclick="event.stopPropagation()" onsubmit="wtRememberOpen()">
                                                             @csrf
                                                             @method('PATCH')
-                                                            <input type="hidden" name="direction" value="{{ $dir }}">
+                                                            <input type="hidden" name="direction"
+                                                                value="{{ $dir }}">
                                                             <button type="submit" title="{{ $title }}"
                                                                 @disabled($disabled)
                                                                 class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
@@ -274,7 +295,7 @@
                                                         class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black text-[#9b392f]">×</button>
                                                 @endunless
                                             @endif
-                                            @if ($canManage && $project && ! $locked)
+                                            @if ($canManage && $project && !$locked)
                                                 <button type="button" title="Tambah item di section ini"
                                                     onclick="event.preventDefault();event.stopPropagation();wtOpenAddTask('{{ $project?->id }}', @js($section['name'] === 'TANPA SECTION' ? '' : $section['name']))"
                                                     class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black">+</button>
@@ -288,7 +309,8 @@
                                     </summary>
 
                                     @if ($locked)
-                                        <p class="wt-locked bg-white px-4 py-5 text-center text-[12px] font-bold text-muted">
+                                        <p
+                                            class="wt-locked bg-white px-4 py-5 text-center text-[12px] font-bold text-muted">
                                             🔒 Tidak ada akses ke item di dalam section ini.</p>
                                     @elseif ($section['rows']->isEmpty())
                                         <p class="bg-white px-4 py-3 text-[11px] text-muted">Section ini masih kosong.
@@ -319,11 +341,27 @@
                                                             $focus = $item->computedFocus();
                                                             [$fbg, $ftx] = $focusColors($focus);
                                                             // Bahan pencarian universal: semua teks yang terlihat/relevan di baris ini.
-                                                            $searchText = mb_strtolower(implode(' ', array_filter([
-                                                                $item->item_no, $item->title, $item->notes, $item->progress, $item->priority,
-                                                                $focus, $item->picLabel(''), $item->additional_pic, $item->link,
-                                                                $section['name'], $project?->name ?? 'tanpa project',
-                                                            ], fn($v) => $v !== null && $v !== '')));
+                                                            $searchText = mb_strtolower(
+                                                                implode(
+                                                                    ' ',
+                                                                    array_filter(
+                                                                        [
+                                                                            $item->item_no,
+                                                                            $item->title,
+                                                                            $item->notes,
+                                                                            $item->progress,
+                                                                            $item->priority,
+                                                                            $focus,
+                                                                            $item->picLabel(''),
+                                                                            $item->additional_pic,
+                                                                            $item->link,
+                                                                            $section['name'],
+                                                                            $project?->name ?? 'tanpa project',
+                                                                        ],
+                                                                        fn($v) => $v !== null && $v !== '',
+                                                                    ),
+                                                                ),
+                                                            );
                                                         @endphp
                                                         <tr data-search="{{ $searchText }}"
                                                             class="border-t border-line align-middle {{ $item->progress === 'Done' ? 'opacity-70' : '' }}">
@@ -331,15 +369,21 @@
                                                                 class="wt-no px-3 py-2.5 font-bold text-muted">
                                                                 {{ $item->item_no }}</td>
                                                             <td class="wt-title px-3 py-2.5 font-black leading-snug"><span
-                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>@if ($canManage)<input type="text" value="{{ $item->title }}" data-orig="{{ $item->title }}" maxlength="255"
+                                                                    class="wt-no-inline">#{{ $item->item_no }}</span>
+                                                                @if ($canManage)
+                                                                    <textarea rows="1" data-orig="{{ $item->title }}" maxlength="255"
                                                                         onblur="wtSaveField({{ $item->id }}, 'title', this)"
-                                                                        onkeydown="if(event.key==='Enter'){this.blur()}else if(event.key==='Escape'){this.value=this.dataset.orig;this.blur()}"
+                                                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}else if(event.key==='Escape'){this.value=this.dataset.orig;this.blur()}"
                                                                         aria-label="Judul item"
-                                                                        class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 font-black hover:border-line focus:border-line focus:bg-white">@else{{ $item->title }}@endif
+                                                                        class="wt-note-input wt-title-input wt-inline block w-full resize-y rounded-lg border border-transparent bg-transparent px-1.5 py-1.5 font-black leading-snug hover:border-line focus:border-line focus:bg-white">{{ $item->title }}</textarea>@else{{ $item->title }}
+                                                                @endif
                                                             </td>
                                                             <td data-label="Date" class="px-3 py-2.5 whitespace-nowrap">
                                                                 @if ($canManage)
-                                                                    <input type="date" value="{{ $item->due_date?->format('Y-m-d') }}" data-orig="{{ $item->due_date?->format('Y-m-d') }}" data-reload="1"
+                                                                    <input type="date"
+                                                                        value="{{ $item->due_date?->format('Y-m-d') }}"
+                                                                        data-orig="{{ $item->due_date?->format('Y-m-d') }}"
+                                                                        data-reload="1"
                                                                         onchange="wtSaveField({{ $item->id }}, 'due_date', this)"
                                                                         aria-label="Tanggal"
                                                                         class="wt-inline w-31 rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] hover:border-line focus:border-line focus:bg-white">
@@ -355,13 +399,17 @@
                                                             <td data-label="PIC"
                                                                 class="px-3 py-2.5 font-bold text-[#5e5952]">
                                                                 @if ($canManage)
-                                                                    <select data-orig="{{ $item->pic_employee_id }}" onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
-                                                                        data-searchable data-search-placeholder="Cari nama PIC…"
+                                                                    <select data-orig="{{ $item->pic_employee_id }}"
+                                                                        onchange="wtSaveField({{ $item->id }}, 'pic_employee_id', this)"
+                                                                        data-searchable
+                                                                        data-search-placeholder="Cari nama PIC…"
                                                                         aria-label="PIC utama"
                                                                         class="wt-inline w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-[11px] font-bold hover:border-line focus:border-line focus:bg-white">
                                                                         <option value="">Belum di-assign</option>
                                                                         @foreach ($employees as $emp)
-                                                                            <option value="{{ $emp->id }}" @selected($item->pic_employee_id === $emp->id)>{{ $emp->name }}</option>
+                                                                            <option value="{{ $emp->id }}"
+                                                                                @selected($item->pic_employee_id === $emp->id)>
+                                                                                {{ $emp->name }}</option>
                                                                         @endforeach
                                                                     </select>
                                                                 @else
@@ -380,8 +428,11 @@
                                                             </td>
                                                             <td data-label="Progress" class="px-3 py-2.5">
                                                                 @if ($canManage)
-                                                                    <select
+                                                                    <select data-orig="{{ $item->progress }}"
                                                                         onchange="wtQuickProgress({{ $item->id }}, this)"
+                                                                        data-searchable
+                                                                        data-search-placeholder="Cari progress…"
+                                                                        aria-label="Progress"
                                                                         class="w-full rounded-lg border-0 px-2 py-1.5 text-[11px] font-extrabold {{ $progressClass($item->progress) }}">
                                                                         @foreach (\App\Models\WorkItem::PROGRESS_OPTIONS as $status)
                                                                             <option value="{{ $status }}"
@@ -408,12 +459,14 @@
                                                                     <a href="{{ $item->link }}" target="_blank"
                                                                         rel="noopener"
                                                                         class="font-extrabold text-[#2647b8] underline">Open</a>
-                                                                @elseif (! $canManage)
+                                                                @elseif (!$canManage)
                                                                     -
                                                                 @endif
                                                                 @if ($canManage)
-                                                                    <button type="button" title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
-                                                                        onclick="wtEditLink({{ $item->id }}, this)" data-link="{{ $item->link }}"
+                                                                    <button type="button"
+                                                                        title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
+                                                                        onclick="wtEditLink({{ $item->id }}, this)"
+                                                                        data-link="{{ $item->link }}"
                                                                         class="ml-1 rounded-md bg-[#ece7dd] px-1.5 py-0.5 text-[9px] font-extrabold">{{ $item->link ? '✎' : '+ Link' }}</button>
                                                                 @endif
                                                             </td>
@@ -463,8 +516,8 @@
                 </p>
             @endforelse
         </div>
-        <p id="wtSearchEmpty" hidden
-            class="mt-3 rounded-3xl border border-dashed border-line p-6 text-sm text-muted">Tidak ada task yang cocok
+        <p id="wtSearchEmpty" hidden class="mt-3 rounded-3xl border border-dashed border-line p-6 text-sm text-muted">
+            Tidak ada task yang cocok
             dengan pencarian ini.</p>
 
         @if ($canManage && $projects->isNotEmpty())
@@ -501,7 +554,8 @@
                             </div>
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Section</label>
-                                <select id="wtTaskSectionSelect" required onchange="wtSectionChanged()"
+                                <select id="wtTaskSectionSelect" required onchange="wtSectionChanged()" data-searchable
+                                    data-search-placeholder="Cari section…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm"></select>
                                 {{-- Nilai yang dikirim tetap `section`; input teks cuma muncul saat harus membuat section baru. --}}
                                 <input name="section" id="wtTaskSection" list="wtSectionSuggestions" autocomplete="off"
@@ -536,12 +590,13 @@
                         <div class="grid items-start gap-3 sm:grid-cols-2">
                             @foreach ([2, 3] as $picNo)
                                 <div class="grid content-start gap-1">
-                                    <label class="text-[10px] font-extrabold uppercase text-muted">PIC {{ $picNo }}
+                                    <label class="text-[10px] font-extrabold uppercase text-muted">PIC
+                                        {{ $picNo }}
                                         (opsional)
                                     </label>
                                     <select name="additional_pic_ids[]" id="wtTaskPic{{ $picNo }}"
-                                        onchange="wtSyncPicOptions()"
-                                        data-searchable data-search-placeholder="Cari nama PIC…"
+                                        onchange="wtSyncPicOptions()" data-searchable
+                                        data-search-placeholder="Cari nama PIC…"
                                         class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                         <option value="">Tidak ada</option>
                                         @foreach ($employees as $employee)
@@ -556,7 +611,8 @@
                         <div class="grid items-start gap-3 sm:grid-cols-2">
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Progress</label>
-                                <select name="progress" id="wtTaskProgress"
+                                <select name="progress" id="wtTaskProgress" data-searchable
+                                    data-search-placeholder="Cari progress…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     @foreach (\App\Models\WorkItem::PROGRESS_OPTIONS as $status)
                                         <option value="{{ $status }}">{{ $status }}</option>
@@ -565,7 +621,8 @@
                             </div>
                             <div class="grid content-start gap-1">
                                 <label class="text-[10px] font-extrabold uppercase text-muted">Priority</label>
-                                <select name="priority" id="wtTaskPriority"
+                                <select name="priority" id="wtTaskPriority" data-searchable
+                                    data-search-placeholder="Cari priority…"
                                     class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-sm">
                                     @foreach (\App\Models\WorkItem::PRIORITIES as $priority)
                                         <option value="{{ $priority }}" @selected($priority === 'Medium')>
@@ -592,48 +649,56 @@
 
             {{-- Modal visibility section: pilih orang yang boleh melihat; kosong = semua. Hanya Owner & Developer. --}}
             @if ($canAssignVisibility)
-            <div x-show="viewersModal" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-                <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
-                    <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
-                    <p class="mt-1 text-[12px] text-muted">Section <b x-text="viewersModal ? viewersModal.name : ''"></b>.
-                        Owner dan Developer selalu bisa membuka section. <b>PIC</b> item di section ini otomatis tercentang
-                        dan tidak bisa dilepas selama masih jadi PIC. Orang lain yang tidak dicentang melihat section ini
-                        terkunci.</p>
-                    <form method="POST" :action="viewersModal ? viewersModal.action : '#'" onsubmit="wtRememberOpen()"
-                        class="mt-3 grid gap-3">
-                        @csrf
-                        @method('PUT')
-                        <div class="grid gap-1.5 text-[12px] font-extrabold">
-                            <label class="flex cursor-pointer items-center gap-2">
-                                <input type="radio" name="access" value="all" x-model="viewersAccess">
-                                Terbuka untuk semua orang
-                            </label>
-                            <label class="flex cursor-pointer items-center gap-2">
-                                <input type="radio" name="access" value="selected" x-model="viewersAccess">
-                                Hanya orang tertentu
-                            </label>
-                        </div>
-                        <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2"
-                            :class="viewersAccess === 'all' ? 'opacity-50' : ''">
-                            @foreach ($employees as $emp)
-                                <label class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]"
-                                    :class="viewersAccess === 'all' || (viewersModal && viewersModal.pics.includes({{ $emp->id }})) ? 'cursor-not-allowed' : 'cursor-pointer'">
-                                    <input type="checkbox" name="user_ids[]" value="{{ $emp->id }}"
-                                        :checked="viewersModal && (viewersModal.ids.includes({{ $emp->id }}) || viewersModal.pics.includes({{ $emp->id }}))"
-                                        :disabled="viewersAccess === 'all' || (viewersModal && viewersModal.pics.includes({{ $emp->id }}))">
-                                    <span class="min-w-0 flex-1">{{ $emp->name }}</span>
-                                    <span x-show="viewersModal && viewersModal.pics.includes({{ $emp->id }})" x-cloak
-                                        class="rounded-full bg-[#e6f4e9] px-2 py-0.5 text-[9px] font-extrabold text-[#1c6c39]">PIC</span>
+                <div x-show="viewersModal" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+                    <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
+                        <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
+                        <p class="mt-1 text-[12px] text-muted">Section <b
+                                x-text="viewersModal ? viewersModal.name : ''"></b>.
+                            Owner dan Developer selalu bisa membuka section. <b>PIC</b> item di section ini otomatis
+                            tercentang
+                            dan tidak bisa dilepas selama masih jadi PIC. Orang lain yang tidak dicentang melihat section
+                            ini
+                            terkunci.</p>
+                        <form method="POST" :action="viewersModal ? viewersModal.action : '#'"
+                            onsubmit="wtRememberOpen()" class="mt-3 grid gap-3">
+                            @csrf
+                            @method('PUT')
+                            <div class="grid gap-1.5 text-[12px] font-extrabold">
+                                <label class="flex cursor-pointer items-center gap-2">
+                                    <input type="radio" name="access" value="all" x-model="viewersAccess">
+                                    Terbuka untuk semua orang
                                 </label>
-                            @endforeach
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="button" @click="viewersModal = null" class="btn-wsm-white">Batal</button>
-                            <button type="submit" class="btn-wsm-black">Simpan</button>
-                        </div>
-                    </form>
+                                <label class="flex cursor-pointer items-center gap-2">
+                                    <input type="radio" name="access" value="selected" x-model="viewersAccess">
+                                    Hanya orang tertentu
+                                </label>
+                            </div>
+                            <div class="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line bg-white p-2"
+                                :class="viewersAccess === 'all' ? 'opacity-50' : ''">
+                                @foreach ($employees as $emp)
+                                    <label
+                                        class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-[12px] font-bold hover:bg-[#f6f2eb]"
+                                        :class="viewersAccess === 'all' || (viewersModal && viewersModal.pics.includes(
+                                            {{ $emp->id }})) ? 'cursor-not-allowed' : 'cursor-pointer'">
+                                        <input type="checkbox" name="user_ids[]" value="{{ $emp->id }}"
+                                            :checked="viewersModal && (viewersModal.ids.includes({{ $emp->id }}) ||
+                                                viewersModal.pics.includes({{ $emp->id }}))"
+                                            :disabled="viewersAccess === 'all' || (viewersModal && viewersModal.pics
+                                                .includes({{ $emp->id }}))">
+                                        <span class="min-w-0 flex-1">{{ $emp->name }}</span>
+                                        <span x-show="viewersModal && viewersModal.pics.includes({{ $emp->id }})"
+                                            x-cloak
+                                            class="rounded-full bg-[#e6f4e9] px-2 py-0.5 text-[9px] font-extrabold text-[#1c6c39]">PIC</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="viewersModal = null" class="btn-wsm-white">Batal</button>
+                                <button type="submit" class="btn-wsm-black">Simpan</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
             @endif
 
             {{-- Modal hapus section: section berisi item -> nama section harus diketik persis. --}}
@@ -685,8 +750,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-                       lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-                       tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                           lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                           tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -699,6 +764,32 @@
         .wt-note-input {
             min-height: 2rem;
             field-sizing: content;
+        }
+
+        /* Judul item memakai kolom yang sama dengan Note (textarea): bisa melebar ke bawah / ditarik tingginya. */
+        .wt-title-input {
+            overflow-wrap: anywhere;
+        }
+
+        /* Kolom ganti nama section di header (muncul menggantikan nama saat tombol ✎ ditekan). */
+        .wt-rename-input {
+            min-width: 0;
+            flex: 1 1 auto;
+            max-width: 28rem;
+            border: 1px solid var(--color-line, #e5dfd5);
+            border-radius: .75rem;
+            background: #fff;
+            padding: .25rem .6rem;
+            color: #17130a;
+            font: inherit;
+            font-size: 12px;
+            letter-spacing: normal;
+            outline: none;
+        }
+
+        .wt-rename-input:focus {
+            border-color: #cfc7b8;
+            box-shadow: 0 0 0 3px rgba(23, 19, 10, .08);
         }
 
         @container (max-width: 1100px)
@@ -804,6 +895,8 @@
                 window.location.reload();
             }).catch(() => {
                 select.disabled = false;
+                // Dropdown pencarian: kembalikan pilihan ke nilai tersimpan (labelnya ikut kembali).
+                if (select.dataset.orig) select.value = select.dataset.orig;
                 wtError('Gagal update progress, coba lagi.');
             });
         }
@@ -811,6 +904,12 @@
         // --- Edit satuan (judul / tanggal / PIC / link): simpan saat berubah, tanpa buka form Edit ---
         function wtSaveField(id, field, el) {
             const orig = el.dataset.orig ?? '';
+            // Judul = satu baris logis walau kolomnya textarea: baris baru (mis. hasil paste) dijadikan spasi.
+            if (field === 'title') {
+                const clean = el.value.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+                if (clean !== el.value) el.value = clean;
+                wtAutosize(el);
+            }
             if (el.value === orig) return;
             el.classList.add('opacity-60');
             fetch(`${wtBase}/${id}/field`, {
@@ -886,7 +985,8 @@
                 if (!res.ok) throw new Error();
                 wtRememberOpen();
                 window.location.reload();
-            }).catch(() => wtError('Link gagal disimpan. Pastikan diawali http:// atau https:// (maks 255 karakter).'));
+            }).catch(() => wtError(
+                'Link gagal disimpan. Pastikan diawali http:// atau https:// (maks 255 karakter).'));
         }
 
         // --- Warna section: simpan langsung, header diwarnai ulang tanpa reload ---
@@ -921,6 +1021,112 @@
                 input.value = input.dataset.orig;
                 wtError('Warna section gagal disimpan, coba lagi.');
             });
+        }
+
+        // --- Ganti nama section langsung di header: Enter / klik di luar = simpan, Esc = batal ---
+        function wtStartRename(e, id, btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const head = btn.closest('summary');
+            const nameEl = head.querySelector('.wt-secname');
+            if (head.querySelector('.wt-rename-input')) return;
+
+            const current = nameEl.dataset.name;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = current;
+            input.maxLength = 80;
+            input.autocomplete = 'off';
+            input.className = 'wt-rename-input';
+            input.setAttribute('aria-label', 'Nama section');
+            nameEl.hidden = true;
+            btn.hidden = true;
+            nameEl.after(input);
+
+            // Input ada di dalam <summary>: klik/spasi/Enter di sini tidak boleh membuka-tutup section.
+            ['click', 'mousedown', 'pointerdown', 'keydown', 'keypress'].forEach((ev) => input.addEventListener(ev, (x) => x
+                .stopPropagation()));
+            input.addEventListener('keyup', (x) => {
+                x.stopPropagation();
+                if (x.key === ' ') x.preventDefault();
+            });
+
+            const restore = () => {
+                input.remove();
+                nameEl.hidden = false;
+                btn.hidden = false;
+            };
+            let done = false;
+            const finish = (save) => {
+                if (done) return;
+                done = true;
+                const next = input.value.replace(/\s+/g, ' ').trim();
+                if (!save || next === '' || next === current) {
+                    restore();
+                    return;
+                }
+                input.disabled = true;
+                fetch(`${wtSectionBase}/${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': wtCsrf(),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: next
+                    }),
+                }).then(async (res) => {
+                    if (!res.ok) {
+                        const body = await res.json().catch(() => ({}));
+                        throw new Error(body.errors ? Object.values(body.errors).flat()[0] : (body
+                            .message || ''));
+                    }
+                    // Nama dipakai di daftar section form task & kunci buka/tutup -> muat ulang,
+                    // section yang diganti tetap terbuka (dicari lewat nama barunya).
+                    const sec = head.closest('details.wt-section');
+                    wtRememberOpen({
+                        p: sec.dataset.wtProject,
+                        s: next
+                    });
+                    window.location.reload();
+                }).catch((err) => {
+                    restore();
+                    wtError(err.message || 'Gagal mengganti nama section, coba lagi.');
+                });
+            };
+            input.addEventListener('keydown', (x) => {
+                if (x.key === 'Enter') {
+                    x.preventDefault();
+                    finish(true);
+                } else if (x.key === 'Escape') {
+                    x.preventDefault();
+                    finish(false);
+                }
+            });
+            input.addEventListener('blur', () => finish(true));
+            input.focus();
+            input.select();
+        }
+
+        // --- Judul & Note: tinggi mengikuti isi. Browser modern pakai CSS `field-sizing: content`;
+        // browser lama (Firefox/Safari lama) memakai fallback ukur-manual ini. ---
+        const wtNativeAutosize = window.CSS && CSS.supports && CSS.supports('field-sizing', 'content');
+
+        function wtAutosize(el) {
+            if (wtNativeAutosize || !el || el.scrollHeight === 0) return;
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight + 2) + 'px';
+        }
+        if (!wtNativeAutosize) {
+            const all = () => document.querySelectorAll('textarea.wt-note-input').forEach(wtAutosize);
+            document.addEventListener('input', (e) => {
+                if (e.target.matches && e.target.matches('textarea.wt-note-input')) wtAutosize(e.target);
+            });
+            // Textarea di dalam <details> yang tertutup berukuran 0 -> ukur ulang saat dibuka.
+            document.querySelectorAll('details').forEach((d) => d.addEventListener('toggle', () => d.open && all()));
+            window.addEventListener('load', all);
+            window.addEventListener('resize', all);
         }
 
         // --- Note inline: simpan saat blur kalau isinya berubah ---

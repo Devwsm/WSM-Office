@@ -12,6 +12,7 @@ use App\Models\ProjectSection;
 use App\Models\User;
 use App\Models\WorkItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -103,19 +104,20 @@ class WorkTrackerBoardController extends Controller
             ->groupBy('project_id')
             ->map(fn($rows) => $rows->keyBy('name'));
 
-        $selectedProjectId = $request->integer('project_id') ?: null;
-        $selectedPic = $request->integer('pic') ?: null;
-        $selectedProgress = in_array($request->query('progress'), WorkItem::PROGRESS_OPTIONS, true)
-            ? $request->query('progress')
-            : null;
+        // Semua filter boleh berisi BANYAK nilai sekaligus (dropdown checklist: ?project_id[]=1&project_id[]=2).
+        // Nilai tunggal (?project_id=1, link lama dari kalender / Projects / sinkron sheet) tetap diterima.
+        $selectedProjectIds = $this->idsParam($request, 'project_id');
+        $selectedPics = $this->idsParam($request, 'pic');
+        $selectedProgress = $this->optionsParam($request, 'progress', WorkItem::PROGRESS_OPTIONS);
 
         // Filter PIC/Progress menyembunyikan item — section kosong ikut
         // disembunyikan & tombol geser dimatikan (urutan penuh jadi tidak terlihat).
         // Focus = hasil `computedFocus()` (HARI INI/BESOK/KELEWAT/...), bukan kolom DB — difilter di PHP.
-        $selectedFocus = in_array($request->query('focus'), self::FOCUS_OPTIONS, true)
-            ? $request->query('focus')
-            : null;
-        $filtering = (bool) ($selectedPic || $selectedProgress || $selectedFocus);
+        $selectedFocus = $this->optionsParam($request, 'focus', self::FOCUS_OPTIONS);
+        $filtering = (bool) ($selectedPics || $selectedProgress || $selectedFocus);
+
+        // Tepat 1 project dipilih -> dipakai sebagai default project di form Tambah Task.
+        $selectedProjectId = count($selectedProjectIds) === 1 ? $selectedProjectIds[0] : null;
 
         $all = WorkItem::query()->sectionVisibleTo($viewer)->with(['pic', 'additionalPics'])->orderBy('due_date')->orderBy('item_no')->get();
 
@@ -143,19 +145,19 @@ class WorkTrackerBoardController extends Controller
         }
 
         $visible = $all
-            ->when($selectedProjectId, fn($c) => $c->where('project_id', $selectedProjectId))
-            ->when($selectedPic, fn($c) => $c->filter(fn(WorkItem $i) => $i->hasPic($selectedPic)))
-            ->when($selectedProgress, fn($c) => $c->where('progress', $selectedProgress))
-            ->when($selectedFocus, fn($c) => $c->filter(fn(WorkItem $i) => $i->computedFocus() === $selectedFocus))
+            ->when($selectedProjectIds, fn($c) => $c->whereIn('project_id', $selectedProjectIds))
+            ->when($selectedPics, fn($c) => $c->filter(fn(WorkItem $i) => collect($selectedPics)->contains(fn(int $pic) => $i->hasPic($pic))))
+            ->when($selectedProgress, fn($c) => $c->whereIn('progress', $selectedProgress))
+            ->when($selectedFocus, fn($c) => $c->filter(fn(WorkItem $i) => in_array($i->computedFocus(), $selectedFocus, true)))
             ->groupBy(fn(WorkItem $i) => $i->project_id ?? 0);
 
         $cards = $projects
-            ->when($selectedProjectId, fn($c) => $c->where('id', $selectedProjectId))
+            ->when($selectedProjectIds, fn($c) => $c->whereIn('id', $selectedProjectIds))
             ->map(fn(Project $p) => $this->buildCard($p, $totals->get($p->id, collect()), $visible->get($p->id, collect()), $meta->get($p->id, collect()), $filtering))
             ->values();
 
-        // Task tanpa project — kartu sendiri, cuma muncul kalau ada isinya.
-        if (! $selectedProjectId && $visible->has(0)) {
+        // Task tanpa project — kartu sendiri, cuma muncul kalau ada isinya (dan tidak sedang memilih project tertentu).
+        if (! $selectedProjectIds && $visible->has(0)) {
             $cards->push($this->buildCard(null, $totals->get(0, collect()), $visible->get(0), collect(), $filtering));
         }
 
@@ -166,12 +168,35 @@ class WorkTrackerBoardController extends Controller
             'employees' => $employees,
             'sectionsByProject' => $sectionsByProject,
             'selectedProjectId' => $selectedProjectId,
-            'selectedPic' => $selectedPic,
+            'selectedProjectIds' => $selectedProjectIds,
+            'selectedPics' => $selectedPics,
             'selectedProgress' => $selectedProgress,
             'selectedFocus' => $selectedFocus,
             'focusOptions' => self::FOCUS_OPTIONS,
             'filtering' => $filtering,
         ]);
+    }
+
+    /**
+     * Filter berisi ID (project, PIC): terima nilai tunggal ATAU array, buang yang bukan angka positif,
+     * hilangkan duplikat. @return list<int>
+     */
+    private function idsParam(Request $request, string $key): array
+    {
+        return collect(Arr::wrap($request->query($key)))
+            ->filter(fn($v) => is_scalar($v) && ctype_digit((string) $v) && (int) $v > 0)
+            ->map(fn($v) => (int) $v)->unique()->values()->all();
+    }
+
+    /**
+     * Filter berisi pilihan tetap (progress, focus): hanya nilai yang ada di `$allowed` yang dipakai,
+     * urutan mengikuti `$allowed` (bukan urutan URL) supaya tampilan konsisten. @return list<string>
+     */
+    private function optionsParam(Request $request, string $key, array $allowed): array
+    {
+        $given = collect(Arr::wrap($request->query($key)))->filter(fn($v) => is_string($v))->all();
+
+        return array_values(array_filter($allowed, fn(string $option) => in_array($option, $given, true)));
     }
 
     /**
@@ -345,22 +370,83 @@ class WorkTrackerBoardController extends Controller
         return back()->with('status', 'Section ditambahkan.');
     }
 
+    /**
+     * Ubah warna dan/atau NAMA section (rename langsung dari header, 2026-10-20).
+     *
+     * `work_items.section` menyimpan nama sebagai teks, jadi rename = ubah baris
+     * `project_sections` + seluruh item project itu yang memakai nama lama, dalam
+     * satu transaksi (pakai query builder: tidak memicu hook WorkItem::saved yang
+     * akan mendaftarkan section baru dobel). Visibility (viewer) menempel ke ID
+     * section, jadi ikut terbawa. Nama harus unik per project (huruf besar/kecil
+     * dianggap sama); mengganti kapitalisasi nama sendiri ("contract" → "CONTRACT") boleh.
+     */
     public function updateSection(Request $request, ProjectSection $section)
     {
         $this->guardSection($request, $section);
 
-        $data = $request->validate(['color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/']]);
+        $data = $request->validate([
+            'color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/', 'required_without:name'],
+            'name' => ['nullable', 'string', 'max:80', 'required_without:color'],
+        ], [
+            'name.max' => 'Nama section maksimal 80 karakter.',
+        ]);
 
-        $oldColor = $section->color ?? 'bawaan';
-        $section->update(['color' => strtolower($data['color'])]);
+        $messages = [];
 
-        AuditLog::record('Warna section diubah', "Section \"{$section->name}\" (project #{$section->project_id}): warna {$oldColor} → {$section->color}.", $request->user());
+        if (! empty($data['color'])) {
+            $oldColor = $section->color ?? 'bawaan';
+            $section->update(['color' => strtolower($data['color'])]);
 
-        if ($request->wantsJson()) {
-            return response()->json(['ok' => true]);
+            AuditLog::record('Warna section diubah', "Section \"{$section->name}\" (project #{$section->project_id}): warna {$oldColor} → {$section->color}.", $request->user());
+            $messages[] = 'Warna section diperbarui.';
         }
 
-        return back()->with('status', 'Warna section diperbarui.');
+        if (array_key_exists('name', $data) && $data['name'] !== null) {
+            $newName = trim(preg_replace('/\s+/u', ' ', $data['name']));
+            $oldName = $section->name;
+
+            if ($newName === '') {
+                return $this->sectionError($request, 'Nama section tidak boleh kosong.');
+            }
+
+            if ($newName !== $oldName) {
+                // Unik per project tanpa membedakan huruf besar/kecil — selain section ini sendiri.
+                $taken = ProjectSection::query()->where('project_id', $section->project_id)
+                    ->whereKeyNot($section->id)->get(['name'])
+                    ->contains(fn($s) => mb_strtolower($s->name) === mb_strtolower($newName));
+
+                if ($taken) {
+                    return $this->sectionError($request, 'Section "' . $newName . '" sudah ada di project ini.');
+                }
+
+                $moved = DB::transaction(function () use ($section, $oldName, $newName) {
+                    $moved = WorkItem::query()->where('project_id', $section->project_id)
+                        ->where('section', $oldName)->update(['section' => $newName]);
+                    $section->update(['name' => $newName]);
+
+                    return $moved;
+                });
+
+                AuditLog::record('Section diganti nama', "Section \"{$oldName}\" (project #{$section->project_id}) diganti nama menjadi \"{$newName}\"; {$moved} item ikut dipindah ke nama baru.", $request->user());
+                $messages[] = 'Section diganti nama menjadi "' . $newName . '".';
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => true, 'name' => $section->name, 'color' => $section->color]);
+        }
+
+        return back()->with('status', $messages ? implode(' ', $messages) : 'Tidak ada perubahan.');
+    }
+
+    /** Galat rename section: JSON (422) untuk fetch di tracker, redirect + pesan untuk form biasa. */
+    private function sectionError(Request $request, string $message)
+    {
+        if ($request->wantsJson()) {
+            return response()->json(['message' => $message, 'errors' => ['name' => [$message]]], 422);
+        }
+
+        return back()->withErrors(['name' => $message]);
     }
 
     /**

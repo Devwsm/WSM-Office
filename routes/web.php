@@ -392,6 +392,8 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
         // 2026-09-28 — Weekly Rhythm Settings (padanan prototype), disimpan di office_settings.weekly_rhythm.
         // Drag & drop pindah tanggal deadline (UI hanya aktif di desktop).
         Route::patch('/kalender/item/{item}/tanggal', [DashboardWorkCalendarController::class, 'moveItem'])->middleware(['module:work,manage', 'throttle:60,1'])->name('calendar.items.move');
+        // Edit item dari modal kalender (klik item) — JSON, tanpa pindah halaman.
+        Route::patch('/kalender/item/{item}', [DashboardWorkCalendarController::class, 'updateItem'])->middleware(['module:work,manage', 'throttle:60,1'])->name('calendar.items.update');
         Route::patch('/kalender/rhythm', [DashboardWorkCalendarController::class, 'updateRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.update');
         Route::post('/kalender/rhythm/reset', [DashboardWorkCalendarController::class, 'resetRhythm'])->middleware(['module:work,manage', 'throttle:10,1'])->name('calendar.rhythm.reset');
 

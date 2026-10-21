@@ -197,9 +197,13 @@ class WorkControlRevisionTest extends TestCase
         $this->assertStringContainsString('data-search-placeholder="Cari nama PIC…"', $html);
         $this->assertGreaterThanOrEqual(7, substr_count($html, 'data-searchable'));
 
-        // Progress & Focus hanya beberapa pilihan: tetap dropdown biasa.
-        $this->assertDoesNotMatchRegularExpression('/<select name="progress"[^>]*data-searchable/', $html);
-        $this->assertDoesNotMatchRegularExpression('/<select name="focus"[^>]*data-searchable/', $html);
+        // 2026-10-20: SEMUA dropdown Work Tracker = dropdown pencarian; keempat filter berupa checklist (multiple).
+        foreach (['project_id', 'pic', 'progress', 'focus'] as $filter) {
+            $this->assertMatchesRegularExpression('/<select name="' . $filter . '\[\]" multiple[^>]*data-searchable/', $html);
+        }
+        foreach (['progress', 'focus', 'section', 'priority'] as $word) {
+            $this->assertStringContainsString('data-search-placeholder="Cari ' . $word . '…"', $html);
+        }
     }
 
     public function test_view_only_user_cannot_change_section_viewers(): void
