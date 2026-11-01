@@ -412,9 +412,11 @@ class User extends Authenticatable
     /**
      * Boleh mereset password akun `$target` lewat dashboard IT (gerbang
      * modul `it` dicek terpisah di route)? Tidak boleh mereset akun sendiri
-     * (pakai Profil), akun Owner hanya oleh Owner, dan akun Developer
-     * hanya oleh Owner atau Developer lain (supaya pemegang akses IT biasa
-     * tidak bisa menaikkan dirinya lewat akun Developer).
+     * (pakai Profil). Akun Owner hanya oleh Owner lain atau Developer
+     * (Developer jadi jalur pemulihan kalau Owner lupa password dan tidak
+     * ada Owner lain yang bisa mereset). Akun Developer hanya oleh Owner
+     * atau Developer lain. Pemegang akses IT biasa tidak boleh menyentuh
+     * akun Owner maupun Developer, supaya tidak bisa menaikkan dirinya.
      */
     public function canResetPasswordOf(User $target): bool
     {
@@ -427,7 +429,7 @@ class User extends Authenticatable
         }
 
         if ($target->isOwner()) {
-            return false;
+            return $this->isDeveloper();
         }
 
         if ($target->isDeveloper()) {

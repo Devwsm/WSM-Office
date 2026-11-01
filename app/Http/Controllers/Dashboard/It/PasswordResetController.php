@@ -25,7 +25,8 @@ use Illuminate\Support\Str;
  *      terbuka (mis. di HP yang hilang) tidak lagi berlaku.
  *
  * Siapa boleh mereset siapa: User::canResetPasswordOf() — akun sendiri
- * tidak boleh (pakai Profil), akun Owner hanya oleh Owner, akun Developer
+ * tidak boleh (pakai Profil), akun Owner hanya oleh Owner lain atau
+ * Developer (jalur pemulihan kalau Owner lupa password), akun Developer
  * hanya oleh Owner atau Developer. Setiap reset tercatat di Audit Log.
  * ---------------------------------------------------------------------
  */
@@ -83,7 +84,8 @@ class PasswordResetController extends Controller
         DB::table('sessions')->where('user_id', $employee->id)->delete();
 
         // Password sementara SENGAJA tidak ditulis ke audit log.
-        AuditLog::record('Password direset', "Password {$employee->name} direset oleh {$actor->name}.", $actor);
+        $label = $employee->isOwner() ? ' (akun Owner)' : '';
+        AuditLog::record('Password direset', "Password {$employee->name}{$label} direset oleh {$actor->name}.", $actor);
 
         return redirect()
             ->route('dashboard.it.password-resets.index', request()->only('q'))

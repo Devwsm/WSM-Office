@@ -292,7 +292,7 @@ class DeveloperRoleTest extends TestCase
         $this->assertTrue($owner->canResetPasswordOf($dev));
         $this->assertTrue($owner->canResetPasswordOf($aldora));
         $this->assertFalse($dev->canResetPasswordOf($dev));
-        $this->assertFalse($dev->canResetPasswordOf($owner));
+        $this->assertTrue($dev->canResetPasswordOf($owner));
         $this->assertTrue($dev->canResetPasswordOf($dev2));
         $this->assertTrue($dev->canResetPasswordOf($aldora));
         $this->assertFalse($itManager->canResetPasswordOf($owner));

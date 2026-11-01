@@ -158,15 +158,18 @@ class PasswordResetTest extends TestCase
         $this->assertSame(0, AuditLog::where('action', 'Password direset')->count());
     }
 
-    public function test_only_owners_can_reset_owner_accounts_and_only_owners_or_developers_can_reset_developers(): void
+    public function test_only_owners_or_developers_can_reset_owner_accounts_and_only_owners_or_developers_can_reset_developers(): void
     {
         $itManager = $this->makeUser('hrd', ['it' => 'manage'], null, ['email' => 'it.hrd@wsm.local']);
         $dev2 = $this->makeDeveloper($this->p['owner'], ['email' => 'dev2@wsm.local']);
 
-        // Developer dan pemegang IT biasa tidak boleh menyentuh Owner.
-        $this->reset($this->dev, $this->p['owner'])->assertForbidden();
+        // Pemegang IT biasa tidak boleh menyentuh Owner.
         $this->reset($itManager, $this->p['owner'])->assertForbidden();
         $this->assertFalse($this->p['owner']->fresh()->must_change_password);
+
+        // Developer boleh mereset Owner (jalur pemulihan kalau Owner lupa password).
+        $this->reset($this->dev, $this->p['owner'])->assertRedirect();
+        $this->assertTrue($this->p['owner']->fresh()->must_change_password);
 
         // Pemegang IT biasa tidak boleh mereset Developer; Developer lain dan Owner boleh.
         $this->reset($itManager, $dev2)->assertForbidden();
@@ -189,8 +192,58 @@ class PasswordResetTest extends TestCase
             ->get(route('dashboard.it.password-resets.index'))
             ->assertOk()
             ->assertSee(route('dashboard.it.password-resets.reset', $this->p['aldora']), false)
+            ->assertSee(route('dashboard.it.password-resets.reset', $this->p['owner']), false)
+            ->assertDontSee(route('dashboard.it.password-resets.reset', $this->dev), false);
+
+        // Pemegang IT biasa tidak melihat tombol Reset untuk Owner maupun Developer.
+        $itManager = $this->makeUser('hrd', ['it' => 'manage'], null, ['email' => 'it.hrd@wsm.local']);
+        $this->actingAs($itManager)
+            ->get(route('dashboard.it.password-resets.index'))
+            ->assertOk()
+            ->assertSee(route('dashboard.it.password-resets.reset', $this->p['aldora']), false)
             ->assertDontSee(route('dashboard.it.password-resets.reset', $this->p['owner']), false)
             ->assertDontSee(route('dashboard.it.password-resets.reset', $this->dev), false);
+    }
+
+    public function test_developer_can_recover_a_forgotten_owner_account_end_to_end(): void
+    {
+        $owner = $this->p['owner'];
+        $oldHash = $owner->password;
+        DB::table('sessions')->insert(['id' => 'sesi-owner', 'user_id' => $owner->id, 'ip_address' => '127.0.0.1', 'user_agent' => 'uji', 'payload' => 'x', 'last_activity' => time()]);
+
+        // Konfirmasi di tombol Reset memberi peringatan khusus untuk akun Owner.
+        $this->actingAs($this->dev)
+            ->get(route('dashboard.it.password-resets.index'))
+            ->assertOk()
+            ->assertSee('Ini akun Owner');
+
+        $this->reset($this->dev, $owner)->assertRedirect(route('dashboard.it.password-resets.index'));
+        $temporary = session('reset_result.password');
+
+        $owner->refresh();
+        $this->assertNotSame($oldHash, $owner->password);
+        $this->assertTrue(Hash::check($temporary, $owner->password));
+        $this->assertTrue($owner->must_change_password);
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $owner->id)->count());
+
+        // Tercatat di Audit Log, menyebut akun Owner dan pelakunya, tanpa password.
+        $log = AuditLog::where('action', 'Password direset')->firstOrFail();
+        $this->assertStringContainsString('akun Owner', $log->detail);
+        $this->assertStringContainsString('Arga', $log->detail);
+        $this->assertStringNotContainsString($temporary, $log->detail);
+
+        // Owner login dengan password sementara, dipaksa ganti, lalu bisa masuk lagi.
+        $this->post('/logout');
+        $this->post('/login', ['email' => $owner->email, 'password' => $temporary])->assertRedirect();
+        $this->get(route('employee.home'))->assertRedirect(route('employee.profile.index'));
+
+        $this->patch(route('employee.profile.password'), ['current_password' => $temporary, 'password' => 'OwnerBaru2026', 'password_confirmation' => 'OwnerBaru2026'])
+            ->assertSessionHasNoErrors();
+
+        $owner->refresh();
+        $this->assertFalse($owner->must_change_password);
+        $this->assertTrue(Hash::check('OwnerBaru2026', $owner->password));
+        $this->get(route('employee.home'))->assertOk();
     }
 
     public function test_the_list_can_be_searched(): void

@@ -92,7 +92,7 @@
                                 @if ($me->canResetPasswordOf($employee))
                                     <form method="POST"
                                         action="{{ route('dashboard.it.password-resets.reset', $employee) }}"
-                                        data-confirm="{{ $employee->name }} akan dikeluarkan dari semua sesi login dan wajib memakai password sementara yang baru."
+                                        data-confirm="{{ $employee->name }} akan dikeluarkan dari semua sesi login dan wajib memakai password sementara yang baru.{{ $employee->isOwner() ? ' Ini akun Owner: pastikan yang meminta reset memang pemilik akunnya, dan sampaikan password sementara hanya kepadanya.' : '' }}"
                                         data-confirm-title="Reset password {{ $employee->name }}?"
                                         data-confirm-button="Ya, reset" data-confirm-danger="1">
                                         @csrf

@@ -993,7 +993,7 @@ return [
                 ],
                 'Perlu diketahui' => [
                     'Akun sendiri tidak bisa direset di sini; ganti lewat halaman Profil.',
-                    'Akun Owner hanya bisa direset oleh Owner. Akun Developer hanya bisa direset oleh Owner atau Developer lain.',
+                    'Akun Owner bisa direset oleh Owner lain atau Developer (kalau Owner lupa password, minta Developer mereset). Akun Developer hanya bisa direset oleh Owner atau Developer lain. Pemegang akses IT biasa tidak bisa mereset akun Owner maupun Developer.',
                     'Halaman ini hanya bisa dibuka dengan akses Manage pada modul IT.',
                 ],
             ],
