@@ -1,6 +1,6 @@
 name: Deploy to cPanel (SSH)
 
-# Deploy otomatis lewat SSH + rsync (menggantikan FTP).
+# Deploy otomatis lewat SSH + arsip tar (menggantikan FTP; server tidak punya rsync).
 # Cadangan: workflow "Deploy to cPanel (FTP, cadangan manual)" di deploy-ftp.yml.
 
 on:
@@ -102,7 +102,7 @@ jobs:
       - name: Tes koneksi SSH (3x percobaan)
         run: |
           for i in 1 2 3; do
-            if ssh wsm "echo 'SSH OK di' \$(hostname); $PHP_BIN -v | head -1; test -d '$APP_DIR' && echo 'Folder aplikasi ada' || { echo 'Folder aplikasi TIDAK ADA: $APP_DIR'; exit 3; }"; then
+            if ssh wsm "echo 'SSH OK di' \$(hostname); $PHP_BIN -v | head -1; test -d '$APP_DIR' && echo 'Folder aplikasi ada' || { echo 'Folder aplikasi TIDAK ADA: $APP_DIR'; exit 3; }; command -v tar >/dev/null && command -v gzip >/dev/null && echo 'tar + gzip tersedia' || { echo 'tar/gzip TIDAK ADA di server'; exit 4; }"; then
               exit 0
             fi
             echo "Percobaan $i gagal, tunggu 15 detik..."
@@ -111,23 +111,56 @@ jobs:
           echo "::error::Tidak bisa SSH ke server. Cek SSH_HOST, SSH_PORT, SSH_USER, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS, dan apakah key sudah Authorized di cPanel."
           exit 1
 
-      # --checksum: runner membuat file baru tiap run (waktu berubah),
-      # jadi bandingkan isi supaya hanya file yang benar-benar berubah yang dikirim.
-      # --delete hanya untuk folder kode; .env, storage, dan bootstrap/cache tidak disentuh.
+      # Server tidak punya rsync, jadi kode dikirim sebagai arsip tar.gz lewat SSH
+      # (hanya butuh tar + gzip di server). Arsip diekstrak ke folder sementara,
+      # lalu folder kode ditukar (folder lama disimpan sebagai *.old sampai deploy berikutnya).
+      # .env, storage, dan bootstrap/cache tidak pernah disentuh.
+      # vendor hanya dikirim kalau composer.lock berubah (penanda di server: .vendor-lock-hash).
       - name: Kirim kode aplikasi ke server
         run: |
-          R="rsync -rlptzc --delete --human-readable --stats -e ssh"
-          for d in app config resources routes; do
-            $R "$d/" "wsm:$APP_DIR/$d/"
+          set -euo pipefail
+
+          LOCK_HASH=$(sha256sum composer.lock | cut -d' ' -f1)
+          REMOTE_HASH=$(ssh wsm "cat '$APP_DIR/.vendor-lock-hash' 2>/dev/null || true")
+          DIRS="app config database resources routes"
+          SEND_HASH=""
+          if [ "$LOCK_HASH" = "$REMOTE_HASH" ] && ssh wsm "test -d '$APP_DIR/vendor'"; then
+            echo "composer.lock tidak berubah: vendor tidak dikirim ulang"
+          else
+            echo "composer.lock baru/berubah: vendor ikut dikirim"
+            DIRS="$DIRS vendor"
+            SEND_HASH="$LOCK_HASH"
+          fi
+
+          tar -czf /tmp/release.tar.gz --exclude='*.sqlite' --exclude='bootstrap/cache' \
+            $DIRS bootstrap artisan composer.json composer.lock
+          ls -lh /tmp/release.tar.gz
+
+          ssh wsm "set -e; cd '$APP_DIR'; rm -rf .deploy-new; mkdir .deploy-new; tar -xzf - -C .deploy-new" < /tmp/release.tar.gz
+
+          ssh wsm "bash -s -- '$APP_DIR' '$DIRS' '$SEND_HASH'" <<'REMOTE'
+          set -e
+          APP="$1"; DIRS="$2"; HASH="$3"
+          cd "$APP"
+          for d in $DIRS; do
+            rm -rf "$d.old"
+            if [ -d "$d" ]; then mv "$d" "$d.old"; fi
+            mv ".deploy-new/$d" "$d"
           done
-          $R --exclude='*.sqlite' database/ "wsm:$APP_DIR/database/"
-          $R --exclude='/cache/' bootstrap/ "wsm:$APP_DIR/bootstrap/"
-          $R vendor/ "wsm:$APP_DIR/vendor/"
-          rsync -rlptzc -e ssh artisan composer.json composer.lock "wsm:$APP_DIR/"
+          if ls database.old/*.sqlite >/dev/null 2>&1; then cp -a database.old/*.sqlite database/; fi
+          cp -a .deploy-new/bootstrap/. bootstrap/
+          cp -f .deploy-new/artisan .deploy-new/composer.json .deploy-new/composer.lock .
+          if [ -n "$HASH" ]; then echo "$HASH" > .vendor-lock-hash; fi
+          rm -rf .deploy-new
+          echo "Kode aplikasi terpasang"
+          REMOTE
 
       - name: Kirim hasil build ke public_html
         run: |
-          rsync -rlptzc --delete --human-readable -e ssh public/build/ "wsm:$PUBLIC_DIR/build/"
+          set -euo pipefail
+          tar -czf /tmp/build.tar.gz -C public build
+          ssh wsm "set -e; cd '$PUBLIC_DIR'; rm -rf .build-new; mkdir .build-new; tar -xzf - -C .build-new" < /tmp/build.tar.gz
+          ssh wsm "set -e; cd '$PUBLIC_DIR'; rm -rf build.old; if [ -d build ]; then mv build build.old; fi; mv .build-new/build build; rm -rf .build-new build.old; echo 'Build terpasang'"
 
       - name: Migrate & cache di server
         run: |
