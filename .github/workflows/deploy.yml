@@ -1,48 +1,53 @@
-name: Deploy to cPanel (FTP)
+name: Deploy to cPanel (SSH)
+
+# Deploy otomatis lewat SSH + rsync (menggantikan FTP).
+# Cadangan: workflow "Deploy to cPanel (FTP, cadangan manual)" di deploy-ftp.yml.
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+# Satu deploy dalam satu waktu; deploy yang menunggu tidak dibatalkan.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_DIR: ${{ secrets.SSH_APP_DIR }}
+      PUBLIC_DIR: ${{ secrets.SSH_PUBLIC_DIR }}
+      PHP_BIN: ${{ secrets.SSH_PHP_BIN || 'php' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Info koneksi (IP runner & server FTP)
-        continue-on-error: true
+      - name: Cek secret SSH lengkap
         env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
+          S_HOST: ${{ secrets.SSH_HOST }}
+          S_PORT: ${{ secrets.SSH_PORT }}
+          S_USER: ${{ secrets.SSH_USER }}
+          S_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          S_KNOWN: ${{ secrets.SSH_KNOWN_HOSTS }}
+          S_URL: ${{ secrets.APP_URL }}
         run: |
-          # Secret selalu disensor jadi *** di log. Supaya IP server tetap terbaca
-          # untuk perbandingan, titiknya diberi spasi (hanya alamat server, bukan password).
-          sp() { echo "$1" | sed 's/\./ . /g'; }
-
-          RUNNER_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "gagal")
-          RESOLVED=$(getent ahostsv4 "$FTP_HOST" | awk '{print $1}' | sort -u | tr '\n' ' ')
-          [ -z "$RESOLVED" ] && RESOLVED="DNS GAGAL (cek isi secret FTP_HOST)"
-
-          if timeout 8 bash -c "</dev/tcp/$FTP_HOST/21" 2>/dev/null; then
-            PORT21="terbuka"
-          else
-            PORT21="TIDAK merespons"
+          missing=""
+          [ -z "$S_HOST" ] && missing="$missing SSH_HOST"
+          [ -z "$S_PORT" ] && missing="$missing SSH_PORT"
+          [ -z "$S_USER" ] && missing="$missing SSH_USER"
+          [ -z "$S_KEY" ] && missing="$missing SSH_PRIVATE_KEY"
+          [ -z "$S_KNOWN" ] && missing="$missing SSH_KNOWN_HOSTS"
+          [ -z "$APP_DIR" ] && missing="$missing SSH_APP_DIR"
+          [ -z "$PUBLIC_DIR" ] && missing="$missing SSH_PUBLIC_DIR"
+          [ -z "$S_URL" ] && missing="$missing APP_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::Secret belum diisi:$missing"
+            exit 1
           fi
-
-          echo "IP runner (pengirim)  : $RUNNER_IP"
-          echo "FTP host (isi secret) : $(sp "$FTP_HOST")"
-          echo "IP penerima (resolve) : $(sp "$RESOLVED")"
-          echo "Port 21 dari runner   : $PORT21"
-
-          {
-            echo "### Info koneksi deploy"
-            echo "- IP runner (pengirim): \`$RUNNER_IP\`"
-            echo "- FTP host (isi secret): \`$(sp "$FTP_HOST")\`"
-            echo "- IP penerima (resolve): \`$(sp "$RESOLVED")\`"
-            echo "- Port 21 dari runner: **$PORT21**"
-          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -50,6 +55,8 @@ jobs:
           php-version: '8.3'
           tools: composer
 
+      # vendor dibangun di runner (tanpa paket dev) lalu dikirim ke server,
+      # jadi tidak perlu lagi upload vendor manual.
       - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
 
@@ -63,110 +70,80 @@ jobs:
           npm ci
           npm run build
 
-      - name: Upload kode aplikasi ke ~/wsm-office (percobaan 1)
-        id: upload-app-1
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          timeout: 120000
-          log-level: verbose
-          local-dir: ./
-          server-dir: ${{ secrets.FTP_APP_DIR }}/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/tests/**
-            **/storage/**
-            public/**
-            **/vendor/**
-            **/.env
-            **/.env.example
-            **/AGENTS.md
-            **/CLAUDE.md
-            **/README.md
-            **/phpunit.xml
-            **/package.json
-            **/package-lock.json
-            **/vite.config.js
-            **/.editorconfig
-            **/.npmrc
-
-      - name: Tunggu sebelum retry aplikasi
-        if: steps.upload-app-1.outcome == 'failure'
-        run: sleep 20
-
-      - name: Upload kode aplikasi ke ~/wsm-office (retry)
-        if: steps.upload-app-1.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          timeout: 120000
-          log-level: verbose
-          local-dir: ./
-          server-dir: ${{ secrets.FTP_APP_DIR }}/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/tests/**
-            **/storage/**
-            public/**
-            **/vendor/**
-            **/.env
-            **/.env.example
-            **/AGENTS.md
-            **/CLAUDE.md
-            **/README.md
-            **/phpunit.xml
-            **/package.json
-            **/package-lock.json
-            **/vite.config.js
-            **/.editorconfig
-            **/.npmrc
-
-      - name: Upload hasil build ke public_html (percobaan 1)
-        id: upload-build-1
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          timeout: 120000
-          log-level: verbose
-          local-dir: ./public/build/
-          server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
-
-      - name: Tunggu sebelum retry build
-        if: steps.upload-build-1.outcome == 'failure'
-        run: sleep 20
-
-      - name: Upload hasil build ke public_html (retry)
-        if: steps.upload-build-1.outcome == 'failure'
-        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          timeout: 120000
-          log-level: verbose
-          local-dir: ./public/build/
-          server-dir: ${{ secrets.FTP_PUBLIC_DIR }}/build/
-
-      - name: Trigger migrate & cache lewat deploy-hook
+      - name: Siapkan koneksi SSH
+        env:
+          S_HOST: ${{ secrets.SSH_HOST }}
+          S_PORT: ${{ secrets.SSH_PORT }}
+          S_USER: ${{ secrets.SSH_USER }}
+          S_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          S_KNOWN: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
-          curl -sf "https://${{ secrets.APP_URL }}/deploy-hook.php?token=${{ secrets.DEPLOY_TOKEN }}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$S_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$S_KNOWN" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONF
+          Host wsm
+            HostName $S_HOST
+            Port $S_PORT
+            User $S_USER
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            ConnectTimeout 20
+            ServerAliveInterval 15
+            ServerAliveCountMax 4
+          CONF
+          chmod 600 ~/.ssh/config
+
+      - name: Tes koneksi SSH (3x percobaan)
+        run: |
+          for i in 1 2 3; do
+            if ssh wsm "echo 'SSH OK di' \$(hostname); $PHP_BIN -v | head -1; test -d '$APP_DIR' && echo 'Folder aplikasi ada' || { echo 'Folder aplikasi TIDAK ADA: $APP_DIR'; exit 3; }"; then
+              exit 0
+            fi
+            echo "Percobaan $i gagal, tunggu 15 detik..."
+            sleep 15
+          done
+          echo "::error::Tidak bisa SSH ke server. Cek SSH_HOST, SSH_PORT, SSH_USER, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS, dan apakah key sudah Authorized di cPanel."
+          exit 1
+
+      # --checksum: runner membuat file baru tiap run (waktu berubah),
+      # jadi bandingkan isi supaya hanya file yang benar-benar berubah yang dikirim.
+      # --delete hanya untuk folder kode; .env, storage, dan bootstrap/cache tidak disentuh.
+      - name: Kirim kode aplikasi ke server
+        run: |
+          R="rsync -rlptzc --delete --human-readable --stats -e ssh"
+          for d in app config resources routes; do
+            $R "$d/" "wsm:$APP_DIR/$d/"
+          done
+          $R --exclude='*.sqlite' database/ "wsm:$APP_DIR/database/"
+          $R --exclude='/cache/' bootstrap/ "wsm:$APP_DIR/bootstrap/"
+          $R vendor/ "wsm:$APP_DIR/vendor/"
+          rsync -rlptzc -e ssh artisan composer.json composer.lock "wsm:$APP_DIR/"
+
+      - name: Kirim hasil build ke public_html
+        run: |
+          rsync -rlptzc --delete --human-readable -e ssh public/build/ "wsm:$PUBLIC_DIR/build/"
+
+      - name: Migrate & cache di server
+        run: |
+          ssh wsm "set -e
+            cd '$APP_DIR'
+            rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+            $PHP_BIN artisan package:discover --ansi
+            $PHP_BIN artisan migrate --force
+            $PHP_BIN artisan config:cache
+            $PHP_BIN artisan route:cache
+            $PHP_BIN artisan view:cache
+            echo 'DEPLOY SELESAI'"
+
+      - name: Cek situs hidup
+        env:
+          S_URL: ${{ secrets.APP_URL }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors --max-time 20 -o /dev/null "https://$S_URL/up"
+          echo "Situs merespons OK"

@@ -14,7 +14,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 
 **Fitur:** absensi (kantor, WFH, lapangan, gigs; geofence + selfie), pengajuan izin/cuti/lembur/koreksi presensi dengan approval, Work Tracker per project, Timeline Calendar, rapat (MoM), memo, KPI, kontrak, payroll, budget, royalti, legal, audit log, Monitor Login (siapa yang online), rekrutmen, serta pusat Export/Import. Ada 5 halaman publik (beranda, tentang, layanan, karir, kontak) dan form lamaran kerja.
 
-**Hosting:** shared cPanel (Rumahweb) **tanpa terminal**. Akibatnya: tidak ada cron (rekonsiliasi absensi ikut trafik web lewat `AttendanceReconciler`), tidak bisa `artisan` di server, dan migrasi dijalankan lewat deploy-hook. Detail di **Bab 5**.
+**Hosting:** shared cPanel (Rumahweb, paket L) dengan **akses SSH**. Tidak ada cron (rekonsiliasi absensi ikut trafik web lewat `AttendanceReconciler`). Deploy otomatis lewat SSH + rsync; migrasi dijalankan langsung di server oleh workflow. Detail di **Bab 5**.
 
 **Konvensi kode**
 
@@ -227,55 +227,62 @@ Semua hal tentang server production ada di bab ini. Isinya dicocokkan dengan `.g
 
 ```
 push ke main
-  → GitHub Actions (.github/workflows/deploy.yml, job "deploy", ±45–60 detik)
-      1. checkout
-      2. info koneksi (diagnostik: IP runner, IP server, port 21; tidak menggagalkan run)
-      3. PHP 8.3 + composer install --no-dev   (hanya validasi composer.json; vendor TIDAK diupload)
-      4. Node 20 + npm ci + npm run build
-      5. FTPS: kode aplikasi → ~/wsm-office                      (secret FTP_APP_DIR)
-      6. FTPS: public/build  → ~/public_html/<domain>/build      (secret FTP_PUBLIC_DIR)
-      7. curl https://<APP_URL>/deploy-hook.php?token=…          → migrate --force + config/route/view cache
+  → GitHub Actions (.github/workflows/deploy.yml, job "deploy", ±1–3 menit)
+      1. checkout + cek semua secret SSH terisi
+      2. PHP 8.3 + composer install --no-dev   (vendor dibangun di runner, ikut dikirim)
+      3. Node 20 + npm ci + npm run build
+      4. siapkan SSH (key + known_hosts dari secret) + tes koneksi (3x percobaan)
+      5. rsync kode aplikasi → ~/wsm-office                      (secret SSH_APP_DIR)
+      6. rsync public/build  → ~/public_html/<domain>/build      (secret SSH_PUBLIC_DIR)
+      7. via SSH di server: package:discover → migrate --force → config/route/view cache
+      8. curl https://<APP_URL>/up  → pastikan situs hidup
 ```
 
-- **Server:** shared cPanel Rumahweb, tanpa SSH. Domain `wos.whisnusantika.com`; document root `~/public_html/wos.whisnusantika.com`; project di `~/wsm-office` (di luar `public_html`).
-- **Upload:** `SamKirkland/FTP-Deploy-Action@v4.4.0`, `protocol: ftps`, timeout 120 detik. Sinkronisasi memakai `.ftp-deploy-sync-state.json` di folder tujuan **(server)**: hanya file yang berubah yang dikirim, dan file yang dihapus dari repo ikut terhapus di server. Jangan hapus file state itu; kalau hilang, semua file diupload ulang (lama).
-- **Retry otomatis:** dua step upload FTP masing-masing punya step retry (jeda 20 detik), karena `Error: Timeout (control socket)` adalah bug flaky yang dikenal di `FTP-Deploy-Action`.
-- **Exclude upload kode:** `.git*`, `node_modules`, `tests`, `storage`, `public`, `vendor`, `.env`, `.env.example`, `AGENTS.md`, `CLAUDE.md`, `README.md`, `phpunit.xml`, `package.json`, `package-lock.json`, `vite.config.js`, `.editorconfig`, `.npmrc`. Folder `docs/` ikut terupload.
+- **Server:** shared cPanel Rumahweb paket L, **ada SSH**. Domain `wos.whisnusantika.com`; document root `~/public_html/wos.whisnusantika.com`; project di `~/wsm-office` (di luar `public_html`).
+- **Sinkronisasi:** `rsync -rlptzc` (bandingkan isi file, bukan waktu, karena runner membuat file baru tiap run). `--delete` hanya untuk `app/`, `config/`, `resources/`, `routes/`, `database/` (kecuali `*.sqlite`), `bootstrap/` (kecuali `bootstrap/cache/`), `vendor/`, dan `public/build`. `.env`, `storage/`, `bootstrap/cache/`, dan isi `public_html` selain `build/` **tidak disentuh**. File root yang dikirim: `artisan`, `composer.json`, `composer.lock`.
+- **`vendor/` otomatis:** dibangun di runner dari `composer.lock` (tanpa paket dev) lalu dikirim lewat rsync, jadi tidak perlu upload manual lagi. Cache paket (`bootstrap/cache/packages.php`, `services.php`) dihapus dan dibuat ulang di server setiap deploy.
+- **Satu deploy sekali jalan:** `concurrency: deploy-production`; push berikutnya mengantre, tidak membatalkan yang sedang jalan.
+- **Binary PHP di server:** default `php`. Kalau `php -v` lewat SSH bukan 8.3, isi secret `SSH_PHP_BIN` (mis. `/opt/cpanel/ea-php83/root/usr/bin/php`).
+- **Cadangan FTP:** `.github/workflows/deploy-ftp.yml` (alur FTP lama, hanya bisa dijalankan manual lewat Actions → Run workflow). Memakai secret `FTP_*` dan `deploy-hook.php`.
 - ⚠️ **Tidak ada tes di pipeline.** Job hanya `deploy` tanpa `needs`, jadi push dengan tes merah **tetap ter-deploy**. Jalankan `php artisan test` sebelum push (5.9). Perbaikan yang disarankan: tambah job `test` dan pasang `needs: test` pada job `deploy` (butuh `composer install` dengan dependency dev).
 
 ### 5.2 Otomatis vs manual
 
-| Yang berubah                                                                                    | Ikut deploy? | Kalau perlu diubah                                                                                                                                |
-| ----------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Kode aplikasi (`app/`, `config/`, `routes/`, `resources/`, `database/`, `bootstrap/`, composer) | ✅           | Push ke `main`                                                                                                                                    |
-| Aset build (`public/build`)                                                                     | ✅           | Push (build otomatis)                                                                                                                             |
-| Migrasi baru, cache config/route/view                                                           | ✅ via hook  | Push                                                                                                                                              |
-| `vendor/`                                                                                       | ❌           | Upload manual (zip → File Manager → Extract) **setiap `composer.json`/`composer.lock` berubah**. Kalau lupa, kode yang butuh paket baru error 500 |
-| File `public/` selain `build/` (`index.php`, `.htaccess`, `robots.txt`, `favicon.ico`, statis)  | ❌           | Upload manual ke `~/public_html/<domain>/`. Setelah mengubah `index.php` server, perbarui juga `docs/server/index.php`                            |
-| `.env` dan `storage/`                                                                           | ❌           | Edit manual di server. Perubahan `.env` baru berlaku setelah hook jalan lagi (5.6)                                                                |
-| `deploy-hook.php`                                                                               | ❌           | Edit manual di File Manager (5.4)                                                                                                                 |
-| Data seeder                                                                                     | ❌           | Lihat 5.5                                                                                                                                         |
+| Yang berubah                                                                                    | Ikut deploy? | Kalau perlu diubah                                                                                                     |
+| ----------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Kode aplikasi (`app/`, `config/`, `routes/`, `resources/`, `database/`, `bootstrap/`, composer) | ✅           | Push ke `main`                                                                                                         |
+| Aset build (`public/build`)                                                                     | ✅           | Push (build otomatis)                                                                                                  |
+| Migrasi baru, cache config/route/view                                                           | ✅ via SSH   | Push                                                                                                                   |
+| `vendor/`                                                                                       | ✅           | Otomatis dari `composer.lock` tiap deploy (5.1). Tidak perlu upload manual lagi                                        |
+| File `public/` selain `build/` (`index.php`, `.htaccess`, `robots.txt`, `favicon.ico`, statis)  | ❌           | Upload manual ke `~/public_html/<domain>/`. Setelah mengubah `index.php` server, perbarui juga `docs/server/index.php` |
+| `.env` dan `storage/`                                                                           | ❌           | Edit manual di server. Perubahan `.env` baru berlaku setelah deploy berikutnya (`config:cache` jalan lagi, 5.6)        |
+| `deploy-hook.php`                                                                               | ❌           | Tidak dipakai deploy SSH. Hanya untuk cadangan FTP; hapus dari server kalau SSH sudah stabil (5.4)                     |
+| Data seeder                                                                                     | ❌           | Lihat 5.5                                                                                                              |
 
-`vendor/` di server harus selalu berasal dari `composer.lock` yang sama dengan `main`.
+`vendor/` di server selalu berasal dari `composer.lock` yang sama dengan `main` (dikirim otomatis tiap deploy).
 
 ### 5.3 GitHub Secrets
 
 Settings → Secrets and variables → Actions → Repository secrets. Jangan menulis nilai secret di repo, README, atau chat.
 
-| Secret                         | Isi                                           | Catatan                                                                                                          |
-| ------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `FTP_HOST`                     | **Alamat IPv4 server FTP** (bukan hostname)   | Sengaja IP untuk menghindari bug pemilihan IPv4/IPv6 Node. Kalau server pindah, ambil A record baru (`nslookup`) |
-| `FTP_USERNAME`, `FTP_PASSWORD` | Akun FTP cPanel khusus deploy                 | Berakar di home cPanel. Kalau password diganti, ganti di cPanel dulu, lalu di secret                             |
-| `FTP_APP_DIR`                  | Folder project di server (`wsm-office`)       | Tujuan upload kode aplikasi                                                                                      |
-| `FTP_PUBLIC_DIR`               | Document root domain (`public_html/<domain>`) | Tujuan upload `public/build` (subfolder `build/`)                                                                |
-| `APP_URL`                      | Domain saja, **tanpa** `https://`             | Workflow menyusun `https://${APP_URL}/deploy-hook.php`                                                           |
-| `DEPLOY_TOKEN`                 | Token acak panjang                            | Harus sama persis dengan `$expectedToken` di `deploy-hook.php` **(server)**                                      |
+| Secret                                                                                      | Isi                                                             | Catatan                                                                                                                                  |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `SSH_HOST`                                                                                  | Alamat server SSH (IP dari cPanel)                              | Kalau server pindah/paket diganti, IP bisa berubah. Cek ulang di cPanel                                                                  |
+| `SSH_PORT`                                                                                  | Port SSH                                                        | Ikuti yang berlaku di akun Rumahweb (cek dengan workflow "Cek akses runner")                                                             |
+| `SSH_USER`                                                                                  | User cPanel                                                     | Sama dengan nama folder home (`/home/<user>`)                                                                                            |
+| `SSH_PRIVATE_KEY`                                                                           | Isi file private key deploy (utuh, termasuk baris BEGIN/END)    | Public key-nya harus **Authorized** di cPanel → SSH Access. Key terpisah dari key situs lain                                             |
+| `SSH_KNOWN_HOSTS`                                                                           | Hasil `ssh-keyscan -p <port> <host>`                            | Mengunci identitas server; kalau server berganti, buat ulang                                                                             |
+| `SSH_APP_DIR`                                                                               | Path absolut project, `/home/<user>/wsm-office`                 | Tujuan rsync kode aplikasi                                                                                                               |
+| `SSH_PUBLIC_DIR`                                                                            | Path absolut document root, `/home/<user>/public_html/<domain>` | Tujuan rsync `public/build`                                                                                                              |
+| `SSH_PHP_BIN`                                                                               | (opsional) path PHP 8.3 di server                               | Kosong = `php`                                                                                                                           |
+| `APP_URL`                                                                                   | Domain saja, **tanpa** `https://`                               | Workflow memanggil `https://${APP_URL}/up` setelah deploy                                                                                |
+| `FTP_HOST`, `FTP_USERNAME`, `FTP_PASSWORD`, `FTP_APP_DIR`, `FTP_PUBLIC_DIR`, `DEPLOY_TOKEN` | Hanya untuk cadangan FTP (`deploy-ftp.yml`)                     | Boleh dihapus kalau cadangan FTP tidak dipakai lagi. `DEPLOY_TOKEN` harus sama dengan `$expectedToken` di `deploy-hook.php` **(server)** |
 
 ### 5.4 Deploy hook
 
-Ada dua mekanisme; hanya A yang dipakai.
+Sejak deploy lewat SSH, **tidak ada** hook yang dipanggil workflow utama: migrasi dan cache dijalankan langsung lewat `ssh`. Hook A di bawah hanya dipakai oleh cadangan FTP (`deploy-ftp.yml`). Hook B tidak dipakai.
 
-**A. `deploy-hook.php` mandiri (dipakai workflow).** Ada di `~/public_html/<domain>/deploy-hook.php` **(server)**, tidak ada di repo. Dipanggil `GET ?token=…`. Jika token cocok: memuat `vendor/autoload.php` + `bootstrap/app.php` dari `~/wsm-office`, lalu `migrate --force`, `config:cache`, `route:cache`, `view:cache`. Balasan `DEPLOY SELESAI`; exception → HTTP 500 `ERROR: …`; token salah → 403.
+**A. `deploy-hook.php` mandiri (hanya cadangan FTP).** Ada di `~/public_html/<domain>/deploy-hook.php` **(server)**, tidak ada di repo. Dipanggil `GET ?token=…`. Jika token cocok: memuat `vendor/autoload.php` + `bootstrap/app.php` dari `~/wsm-office`, lalu `migrate --force`, `config:cache`, `route:cache`, `view:cache`. Balasan `DEPLOY SELESAI`; exception → HTTP 500 `ERROR: …`; token salah → 403.
 
 <details>
 <summary>Isi file (token dikosongkan; simpan salinannya di luar server)</summary>
@@ -339,7 +346,7 @@ try {
 - ⚠️ **Jalankan sekali saja.** Kedua seeder memakai `updateOrCreate` dengan nilai tetap: menjalankan ulang `ProductionSeeder` mengembalikan password semua 11 akun ke password sementara dan menimpa nama, role, divisi, jabatan, dan atasan; menjalankan ulang `OfficeSettingSeeder` menimpa pengaturan kantor yang sudah diubah Owner.
 - ⚠️ **Password sementara tertulis di repo** (dan di riwayat git). Siapa pun yang punya akses repo bisa mengambil alih akun yang belum pernah login. Pastikan tidak ada akun yang masih `must_change_password = true` lebih lama dari perlu, dan jangan jalankan seeder lagi sebelum `TEMP_PASSWORD` diganti.
 - **Status di production: tidak bisa diverifikasi dari repo.** Cek manual: `[ ]` `OfficeSettingSeeder` sudah dijalankan · `[ ]` `ProductionSeeder` sudah dijalankan.
-- **Cara menjalankan tanpa SSH** (hanya pertama kali): (a) impor SQL — di lokal dengan database kosong `php artisan migrate:fresh --seed`, ekspor lewat phpMyAdmin, impor ke server yang masih kosong; atau (b) hook sekali pakai — tambahkan blok di bawah ke `deploy-hook.php` setelah blok `migrate`, buka sekali dengan `&seed=1`, lalu **hapus blok itu lagi**. Jangan pernah menaruh `seed=1` di workflow.
+- **Cara menjalankan** (hanya pertama kali): (0) lewat SSH: `cd ~/wsm-office && php artisan db:seed --class=<NamaSeeder> --force` (paling sederhana sekarang); (a) tanpa SSH: impor SQL — di lokal dengan database kosong `php artisan migrate:fresh --seed`, ekspor lewat phpMyAdmin, impor ke server yang masih kosong; atau (b) hook sekali pakai — tambahkan blok di bawah ke `deploy-hook.php` setelah blok `migrate`, buka sekali dengan `&seed=1`, lalu **hapus blok itu lagi**. Jangan pernah menaruh `seed=1` di workflow.
 
 ```php
 if (($_GET['seed'] ?? '') === '1') {
@@ -371,7 +378,7 @@ if (($_GET['seed'] ?? '') === '1') {
 
 ### 5.7 Aset Vite
 
-Browser tidak memakai CSS Tailwind dan JavaScript Alpine apa adanya; Vite merakitnya menjadi file jadi di `public/build/`. Server tanpa terminal tidak bisa menjalankan Vite, jadi rakitannya dibuat GitHub Actions (`npm run build`) lalu di-upload otomatis ke `public_html/<domain>/build`.
+Browser tidak memakai CSS Tailwind dan JavaScript Alpine apa adanya; Vite merakitnya menjadi file jadi di `public/build/`. Server tidak dipakai menjalankan Vite, jadi rakitannya dibuat GitHub Actions (`npm run build`) lalu dikirim otomatis ke `public_html/<domain>/build`.
 
 - `public/hot` (penanda dev-server Vite) **tidak boleh** ada di server: kalau ada, Laravel mencari CSS/JS ke localhost dan halaman tampil tanpa gaya. `public/hot` dan `public/fonts-manifest.dev.json` di-`.gitignore` dan tidak ikut pipeline.
 - `public/index.php` di server **wajib** memanggil `$app->usePublicPath(__DIR__)` agar `@vite` membaca manifest dari `public_html/<domain>/build`, bukan dari `~/wsm-office/public/build`. Salinan yang benar ada di `docs/server/index.php`.
@@ -392,10 +399,14 @@ Gejala dan tindakan lengkap ada di 5.9. Hal yang tidak tercakup di sana:
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Upload gagal `Timeout (control socket)` ±2 detik, run tetap hijau | Tidak perlu tindakan; step retry yang menyelamatkan                                                                                                                                                                                                            |
 | Upload gagal di percobaan 1 **dan** retry, run merah              | Pastikan `FTP_HOST` berisi IPv4. Re-run **run terbaru** sekali lagi. Kalau ±30 detik: tes dari lokal `Test-NetConnection <ip> -Port 21`, cek `nslookup` (IP berubah?); kalau lokal berhasil tapi runner gagal, hubungi Rumahweb                                |
-| Upload gagal `530 Login incorrect`                                | Cek `FTP_USERNAME`/`FTP_PASSWORD` dan password akun FTP di cPanel                                                                                                                                                                                              |
+| SSH gagal `Permission denied (publickey)`                         | Public key belum **Authorized** di cPanel → SSH Access → Manage, atau `SSH_PRIVATE_KEY` bukan pasangan public key itu                                                                                                                                          |
+| SSH gagal `Host key verification failed`                          | `SSH_KNOWN_HOSTS` tidak cocok (server/IP berubah). Jalankan ulang `ssh-keyscan -p <port> <host>` dan isi ulang secret                                                                                                                                          |
+| SSH gagal timeout / `Connection refused`                          | `SSH_HOST`/`SSH_PORT` salah, atau firewall hosting memblokir runner GitHub. Jalankan workflow "Cek akses runner" dan hubungi Rumahweb bila port SSH tidak terbuka                                                                                              |
+| Langkah migrate gagal `php: command not found` / versi PHP salah  | Isi secret `SSH_PHP_BIN` dengan path PHP 8.3 di server                                                                                                                                                                                                         |
+| (Cadangan FTP) Upload gagal `530 Login incorrect`                 | Cek `FTP_USERNAME`/`FTP_PASSWORD` dan password akun FTP di cPanel. Setelah upgrade paket, cek juga IP server di `FTP_HOST`                                                                                                                                     |
 | Hook gagal `curl` exit 22 (tanpa pesan)                           | Panggil manual `curl -i "https://<domain>/deploy-hook.php?token=…"`. 403 = token beda dengan `DEPLOY_TOKEN`; 500 = baca pesan `ERROR:` (migrasi gagal, `vendor/` tidak cocok)                                                                                  |
 | Hook gagal `curl` exit 60                                         | Sertifikat SSL tidak terverifikasi; cek AutoSSL                                                                                                                                                                                                                |
-| Situs 500 setelah deploy hijau                                    | Biasanya `vendor/` tidak cocok dengan `composer.lock`: upload ulang `vendor/` (5.2), cek `storage/logs/laravel.log` di server                                                                                                                                  |
+| Situs 500 setelah deploy hijau                                    | Biasanya `vendor/` tidak cocok dengan `composer.lock`: jalankan ulang deploy (Actions → Re-run) supaya `vendor/` dikirim ulang, cek `storage/logs/laravel.log` di server                                                                                       |
 | Deploy hijau tapi tampilan production beda dari lokal (CSS lama)  | Bandingkan (1) `<link>` CSS di page source (Ctrl+U), (2) `https://<domain>/build/manifest.json`, (3) isi file CSS. Kalau (1) ≠ (2): pastikan `index.php` server memanggil `usePublicPath(__DIR__)` dan tidak ada manifest lama di `~/wsm-office/public/build/` |
 
 **Aturan rutin**
