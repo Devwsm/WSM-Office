@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
@@ -29,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Pagination bertema WSM untuk semua halaman (resources/views/vendor/pagination/wsm.blade.php).
+        Paginator::defaultView('vendor.pagination.wsm');
+
         // Monitor Login (2026-10-08) — catat login/logout buat status online.
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User) {

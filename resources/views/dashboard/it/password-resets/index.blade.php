@@ -19,17 +19,7 @@
         </div>
     </div>
 
-    <div class="mb-5 flex gap-2">
-        <a href="{{ route('dashboard.it.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Audit Log</a>
-        <a href="{{ route('dashboard.it.changelog.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">System
-            Changelog</a>
-        <a href="{{ route('dashboard.it.presence.index') }}"
-            class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Monitor
-            Login</a>
-        <span class="rounded-2xl bg-ink px-3.5 py-2 text-[11px] font-extrabold text-white">Reset Password</span>
-    </div>
+    @include('dashboard.it._tabs', ['active' => 'password'])
 
     @if (session('reset_result'))
         @php $result = session('reset_result'); @endphp

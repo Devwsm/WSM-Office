@@ -2,6 +2,7 @@ name: Deploy to cPanel (SSH)
 
 # Deploy otomatis lewat SSH + arsip tar (server tidak punya rsync). Hanya SSH:
 # tidak ada lagi jalur FTP maupun deploy-hook lewat HTTP.
+# Urutan: job "Tes" (php artisan test) harus hijau dulu, baru job "Deploy ke hosting".
 
 on:
   push:
@@ -14,7 +15,52 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gerbang tes: seluruh `php artisan test` harus hijau sebelum deploy jalan.
+  # Tes memakai SQLite di memori (phpunit.xml) dan withoutVite() (tests/TestCase.php),
+  # jadi tidak butuh database MySQL maupun hasil build aset.
+  test:
+    name: Tes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, gd, zip, xml, curl, bcmath, fileinfo, pdo_sqlite, sqlite3
+          tools: composer
+          coverage: none
+
+      - name: Ambil cache Composer
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache paket Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      # Beda dengan job deploy: paket dev (phpunit dll) WAJIB ikut terpasang di sini.
+      - name: Install Composer dependencies (termasuk dev)
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Siapkan .env untuk tes
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Jalankan tes
+        run: php artisan test
+
   deploy:
+    name: Deploy ke hosting
+    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:

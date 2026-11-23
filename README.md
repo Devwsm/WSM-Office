@@ -4,7 +4,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 
 **Stack:** Laravel 13.32 · PHP 8.3 (batas cPanel Rumahweb; `composer.json` mengunci platform ke 8.3.0) · MySQL · Tailwind CSS v4 + Vite · Alpine.js · Leaflet (peta geofence) · SweetAlert2 · `maatwebsite/excel` 4.0 · `barryvdh/laravel-dompdf` 3.1.
 
-**Ukuran kode:** 30 model · 37 FormRequest · 58 migrasi · 5 seeder · 127 view Blade · 53 panduan halaman · 206 route (`php artisan route:list`) · **643 tes otomatis**.
+**Ukuran kode:** 30 model · 37 FormRequest · 58 migrasi · 5 seeder · 131 view Blade · 53 panduan halaman · 206 route (`php artisan route:list`) · **690 tes otomatis**.
 
 **Legenda status:** ✅ ada & sesuai · ⚠️ ada tapi lebih sederhana / beda dari prototype · ❌ belum ada · ➕ tambahan (tidak ada di prototype)
 
@@ -22,6 +22,7 @@ Sistem manajemen kantor internal Whisnu Santika Music (WSM). Hasil implementasi 
 - `/app` untuk semua akun internal; `/owner` untuk role `owner` dan `developer` (Dashboard Access khusus `owner`); `/manajer` untuk manajer/owner; `/dashboard` dijaga akses **modul**.
 - Akses modul (`dashboard_access`, level `view`/`manage`) mengatur menu dan hak ubah di `/dashboard`, rekap, approval, dan rekrutmen. Ada 10 modul (sumber kebenaran: `DashboardAccess::MODULES`).
 - `throttle` dipasang pada form kontak dan lamaran (5/menit), absen, pengajuan, lembur, koreksi presensi, foto profil, balasan memo, buka kunci dashboard, blast memo, Kirim Reminder, import, sinkron sheet, reset password, Weekly Rhythm, drag tanggal kalender, edit satuan Work Tracker, dan heartbeat Monitor Login (30/menit). **Login** dibatasi di `LoginController`: 5 salah password per menit untuk tiap kombinasi email + IP (login berhasil tidak dihitung dan menghapus hitungan), ditambah pelindung 60 request/menit per IP di `routes/auth.php`. Karyawan yang login bersamaan lewat WiFi kantor yang sama tidak saling memblokir.
+- **Tampilan HP dan komponen bersama:** pagination satu tampilan bertema di `resources/views/vendor/pagination/wsm.blade.php` (bawaan lewat `Paginator::defaultView`, ringkas di HP, bernomor di tablet ke atas); tab bar menu IT satu sumber di `dashboard/it/_tabs.blade.php` (pola sama dengan `dashboard/work/_tabs.blade.php`, bisa turun baris); modal pakai `dvh` bukan `vh`; kolom isian di layar sentuh 16px (aturan global di `resources/css/app.css`, jangan memaksa `text-xs!` pada input tanpa `text-base!` di HP). Dijaga oleh `tests/Feature/ResponsiveShellTest.php`.
 - **Audit Log mencatat semua aksi yang mengubah data**, dengan nilai lama → baru bila memungkinkan (mis. `Progress: Pending → Done`), pelaku, area (nama halaman), dan waktu (nilai waktu yang punya jam ditulis sampai menit, mis. `21 Sep 2026, 09:30`): karyawan, akses modul, approval, payroll, pengaturan kantor, Work Tracker (project, section, task, edit cepat progress/note/judul/PIC/link), Project Budgeting, KPI, kontrak, legal, royalty, MoM, memo, reminder, changelog, rekrutmen (lowongan, status pelamar, konversi akun), koreksi manual absensi, keputusan atasan atas izin/cuti/lembur/koreksi presensi (setujui, tolak, batalkan; koreksi presensi memuat tanggal, jam masuk, jam pulang, dan mode, izin/lembur memuat tanggalnya), ganti password, import, login gagal, dan sesi absen yang ditutup otomatis. **Cara kerjanya:** pencatatan khusus lewat `AuditLog::record()` dan pembantu `App\Support\Audit` (label kolom di `Audit::labels()`); middleware `AuditUncoveredChanges` mencatat aksi berhasil yang belum punya catatan khusus sebagai "Perubahan data (tidak terinci)"; `AuditCoverageTest` gagal bila ada route POST/PUT/PATCH/DELETE yang tidak mencatat dan belum didaftarkan di `config/audit.php`. **Sengaja tidak dicatat** (alasan di `config/audit.php`): absen masuk/pulang (catatannya sendiri sudah jejak), baca/sembunyikan memo dan balasan, foto profil dan warna tema, kunci dashboard, pratinjau import/sinkron, form publik, tanda baca pesan kontak, heartbeat, dan logout. Monitor Login read-only. Kolom sensitif (path file, isi password, isi memo) tidak ikut ditulis. **Aturan privasi (2026-10-11):** (1) **login berhasil tidak dicatat**, jam login terakhir sudah ada di Monitor Login (`users.last_login_at`); login gagal tetap dicatat, tapi untuk email yang tidak terdaftar teks yang diketik tidak disimpan; (2) **IP hanya untuk kejadian keamanan** (`AuditLog::IP_ACTIONS`: login gagal, password direset/diganti, akses dashboard diubah), pekerjaan harian tidak menyimpan IP; (3) **isi catatan task tidak ditulis**, hanya "Catatan: diubah" (`Audit::REDACTED_WORK_ITEM_COLUMNS`); (4) pengajuan izin/cuti/lembur/koreksi oleh karyawan sendiri (kirim dan batalkan) tidak diduplikasi karena sudah tersimpan di Riwayat Pengajuan (didaftarkan di `config/audit.php`); (5) **log lebih tua dari 12 bulan dihapus otomatis** (`audit.retention_months`) saat halaman Audit Log dibuka, maksimal sekali sehari, atau lewat `php artisan audit:prune` bila hosting punya cron. Migrasi `clean_audit_logs_for_privacy` (2026-10-11) membersihkan data lama sesuai aturan ini dan **tidak bisa dibatalkan**. Halaman Audit Log bisa difilter menurut kata kunci/IP, pelaku, area, dan tanggal.
 
 ### Peran & akses
@@ -125,7 +126,7 @@ php artisan test
 
 SQLite `:memory:`; `public/hot` dan `public/build` tidak perlu ada. `phpunit.xml` mengunci `WOS_PREVIEW_MODE=true` dan `WOS_ENTRY_POPUPS=false`, jadi isi `.env` lokal tidak memengaruhi hasil. Untuk MySQL, buat database kosong khusus tes lalu `DB_CONNECTION=mysql DB_DATABASE=wsm_test DB_USERNAME=... DB_PASSWORD=... php artisan test` (jangan arahkan ke database aplikasi, `RefreshDatabase` menghapus isinya).
 
-**Hasil terakhir:** 643 tes lulus (dijalankan lokal, 2026-10-11). **Pipeline deploy tidak menjalankan tes** (5.1), jadi `php artisan test` wajib dijalankan manual sebelum push.
+**Hasil terakhir:** 690 tes lulus (dijalankan lokal, 2026-11-23). Pipeline deploy menjalankan `php artisan test` di job "Tes" dan job deploy hanya jalan kalau semuanya hijau (5.1). Tetap jalankan lokal sebelum push supaya tidak menunggu Actions.
 
 | File tes (`tests/Feature`)                                                                    | Mencakup                                                                                                                                                                                                |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -211,7 +212,7 @@ routes/
 
 docs/server/index.php       # Salinan public/index.php versi server (sudah `usePublicPath`); ikut di-upload ke ~/wsm-office/docs
 .github/workflows/deploy.yml  # Auto-deploy GitHub Actions → SSH ke cPanel (Bab 5)
-tests/                      # 35 file tes Feature + 1 Unit (Bab 3)
+tests/                      # 40 file tes Feature + 1 Unit (Bab 3)
 ```
 
 ---
@@ -224,7 +225,12 @@ Semua hal tentang server production ada di bab ini. Isinya dicocokkan dengan `.g
 
 ```
 push ke main
-  → GitHub Actions (.github/workflows/deploy.yml, job "deploy", ±1–3 menit)
+  → GitHub Actions (.github/workflows/deploy.yml, ±2–4 menit)
+    JOB 1 "Tes" (harus hijau, kalau merah deploy TIDAK jalan)
+      1. checkout + PHP 8.3 + composer install (termasuk dev)
+      2. cp .env.example .env + key:generate
+      3. php artisan test   (SQLite di memori, tanpa build aset)
+    JOB 2 "Deploy ke hosting" (needs: test)
       1. checkout + cek semua secret SSH terisi
       2. PHP 8.3 + composer install --no-dev   (vendor dibangun di runner, ikut dikirim)
       3. Node 20 + npm ci + npm run build
@@ -240,7 +246,7 @@ push ke main
 - **`vendor/` otomatis:** dibangun di runner dari `composer.lock` (tanpa paket dev). Hanya dikirim kalau hash `composer.lock` berbeda dari penanda `~/wsm-office/.vendor-lock-hash` di server (atau `vendor/` belum ada); kalau sama, dilewati sehingga deploy biasa jauh lebih cepat. Cache paket (`bootstrap/cache/packages.php`, `services.php`) dihapus dan dibuat ulang di server setiap deploy. Kalau `vendor/` di server rusak, hapus `.vendor-lock-hash` lalu deploy ulang untuk memaksa kirim penuh.
 - **Satu deploy sekali jalan:** `concurrency: deploy-production`; push berikutnya mengantre, tidak membatalkan yang sedang jalan.
 - **Binary PHP di server:** default `php`. Kalau `php -v` lewat SSH bukan 8.3, isi secret `SSH_PHP_BIN` (mis. `/opt/cpanel/ea-php83/root/usr/bin/php`).
-- ⚠️ **Tidak ada tes di pipeline.** Job hanya `deploy` tanpa `needs`, jadi push dengan tes merah **tetap ter-deploy**. Jalankan `php artisan test` sebelum push (5.9). Perbaikan yang disarankan: tambah job `test` dan pasang `needs: test` pada job `deploy` (butuh `composer install` dengan dependency dev).
+- **Gerbang tes:** job "Tes" menjalankan `php artisan test` (SQLite di memori; `withoutVite()` di `tests/TestCase.php`, jadi tanpa MySQL dan tanpa build aset). Job "Deploy ke hosting" memakai `needs: test`, jadi push dengan tes merah **tidak ter-deploy** (production tetap di versi sebelumnya). Tambah tes baru di `tests/`: otomatis ikut. Tetap jalankan `php artisan test` lokal sebelum push supaya tidak menunggu Actions.
 
 ### 5.2 Otomatis vs manual
 
@@ -329,6 +335,7 @@ Gejala dan tindakan lengkap ada di 5.9. Hal yang tidak tercakup di sana:
 
 | Gejala di GitHub Actions                                         | Tindakan                                                                                                                                                                                                                                                       |
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Job "Tes" merah, job deploy tidak jalan                          | Buka log langkah "Jalankan tes", baca nama tes yang gagal dan perbaiki, lalu push commit baru. Production tidak berubah selama job "Tes" merah. Kalau gagal hanya di Actions tapi hijau di lokal, cek versi PHP (8.3) dan ekstensi di langkah "Setup PHP"      |
 | SSH gagal `Permission denied (publickey)`                        | Public key belum **Authorized** di cPanel → SSH Access → Manage, atau `SSH_PRIVATE_KEY` bukan pasangan public key itu                                                                                                                                          |
 | SSH gagal `Host key verification failed`                         | `SSH_KNOWN_HOSTS` tidak cocok (server/IP berubah). Jalankan ulang `ssh-keyscan -p <port> <host>` dan isi ulang secret                                                                                                                                          |
 | SSH gagal timeout / `Connection refused`                         | `SSH_HOST`/`SSH_PORT` salah, atau firewall hosting memblokir runner GitHub. Hubungi Rumahweb bila port SSH tidak terbuka dari luar                                                                                                                             |
@@ -339,7 +346,7 @@ Gejala dan tindakan lengkap ada di 5.9. Hal yang tidak tercakup di sana:
 
 **Aturan rutin**
 
-- **Tes hijau sebelum push:** `php artisan test` (pipeline tidak menjalankannya). Urutan lengkap ada di **5.12 Checklist rilis**.
+- **Tes hijau sebelum push:** `php artisan test` di lokal (pipeline juga menjalankannya dan menolak deploy kalau merah, tetapi lokal lebih cepat tahu). Urutan lengkap ada di **5.12 Checklist rilis**.
 - **Jangan re-run run lama.** Re-run memakai commit lama dan menyinkronkan server ke isi commit itu, sehingga bisa menimpa deploy yang lebih baru. Re-run hanya run **terbaru**, atau push commit baru. Run yang gagal di step pertama tidak mengubah apa pun di server.
 - **Cek run hijau** setelah tiap push: kirim kode, kirim build, migrate & cache, dan cek situs hidup. Untuk perubahan tampilan, cocokkan nama CSS di page source dengan `manifest.json`.
 - **Jangan** `migrate:fresh` di production, jangan menjalankan seeder ulang (5.5), jangan edit kode langsung di server.
@@ -386,7 +393,7 @@ Data di production adalah **data asli** (absensi, cuti, lembur, payroll, kontrak
 
 ### 5.12 Checklist rilis (sebelum push → auto deploy)
 
-Pipeline tidak menjalankan tes dan tidak bisa di-rollback otomatis (5.1, 5.9), jadi urutan ini dijalankan manual **sebelum** `git push` ke branch yang memicu deploy.
+Pipeline menolak deploy kalau tes merah, tetapi tidak bisa di-rollback otomatis (5.1, 5.9), jadi urutan ini dijalankan **sebelum** `git push` ke branch yang memicu deploy.
 
 **A. Di lokal**
 
@@ -430,7 +437,6 @@ Pipeline tidak menjalankan tes dan tidak bisa di-rollback otomatis (5.1, 5.9), j
 - Honeypot/captcha pada form kontak dan lamaran (sekarang hanya throttle per IP).
 - Security header (CSP, X-Frame-Options, HSTS) belum ada.
 - Audit Log: log lebih dari 12 bulan sekarang dihapus otomatis tanpa arsip. Bila butuh arsip, unduh Excel lewat Export & Import sebelum masa simpan lewat atau ubah `audit.retention_months`.
-- Gerbang tes di workflow (5.1).
 - Monitor Login: riwayat aktivitas per hari (sekarang hanya status terakhir) dan rotasi/penghapusan data lama bila nanti ditambahkan.
 
 **Konten**

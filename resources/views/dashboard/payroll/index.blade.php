@@ -18,7 +18,7 @@
             <p class="mt-1 text-[13px] text-muted">Payroll & take home pay — histori tersimpan per bulan, gak
                 dihitung ulang otomatis.</p>
         </div>
-        <form method="GET" class="flex items-center gap-2">
+        <form method="GET" class="flex flex-wrap items-center gap-2">
             <input type="month" name="period" value="{{ $period }}" onchange="this.form.submit()"
                 class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-bold text-ink">
         </form>

@@ -82,7 +82,7 @@
             @endphp
             <div
                 class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-wsm border border-line bg-white p-4">
-                <div class="flex min-w-0 items-center gap-3 sm:w-64">
+                <div class="flex w-full min-w-0 items-center gap-3 sm:w-64">
                     <div class="relative flex-none">
                         <x-avatar :user="$u" class="h-11 w-11 rounded-2xl text-sm" />
                         <span
@@ -94,7 +94,7 @@
                             class="block truncate text-[11px] text-muted">{{ $u->job_title ?? $u->roleLabel() }}</span>
                         @if ($u->must_change_password)
                             <span
-                                class="mt-1 inline-flex rounded-full bg-[#fff0bd] px-2 py-0.5 text-[9px] font-black text-[#6b4a00]">Belum
+                                class="mt-1 inline-flex rounded-full bg-[#fff0bd] px-2 py-0.5 text-[10px] font-black text-[#6b4a00]">Belum
                                 ganti password</span>
                         @endif
                     </div>
@@ -123,7 +123,8 @@
                     </p>
                 </div>
 
-                <div class="grid flex-none grid-cols-2 gap-x-6 gap-y-1 text-[11px] sm:w-80">
+                <div
+                    class="grid w-full flex-none grid-cols-2 gap-x-4 gap-y-1 border-t border-line pt-3 text-[11px] sm:w-80 sm:gap-x-6 sm:border-t-0 sm:pt-0">
                     <div>
                         <span class="block text-[10px] font-extrabold uppercase text-muted">Terakhir online</span>
                         @if ($u->last_seen_at)

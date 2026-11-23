@@ -16,7 +16,7 @@
                 {{ \Carbon\Carbon::parse($date)->translatedFormat('l, d F Y') }}
             </p>
         </div>
-        <form method="GET" class="flex items-center gap-2">
+        <form method="GET" class="flex flex-wrap items-center gap-2">
             <input type="date" name="tanggal" value="{{ $date }}" onchange="this.form.submit()"
                 class="input-wsm w-auto!">
             @unless ($isToday)
