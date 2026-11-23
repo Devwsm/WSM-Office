@@ -115,7 +115,7 @@
                     placeholder="Cari task, PIC, section, project, catatan…   (tekan / untuk mulai)"
                     class="w-full rounded-2xl border border-line bg-white py-2.5 pl-10 pr-10 text-[13px] font-bold text-ink">
                 <button type="button" id="wtSearchClear" hidden aria-label="Hapus pencarian"
-                    class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg bg-[#ece7dd] text-xs font-black">✕</button>
+                    class="absolute right-2 top-1/2 grid h-9 w-9 sm:h-7 sm:w-7 -translate-y-1/2 place-items-center rounded-lg bg-[#ece7dd] text-xs font-black">✕</button>
             </label>
             <p id="wtSearchInfo" class="text-[11px] font-extrabold text-muted" aria-live="polite"></p>
         </div>
@@ -139,14 +139,14 @@
             @endforeach
             @if ($selectedProjectIds || $selectedPics || $selectedProgress || $selectedFocus)
                 <a href="{{ route('dashboard.work.tracker.index') }}"
-                    class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold text-ink">Reset</a>
+                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[11px] font-extrabold sm:py-2 text-ink">Reset</a>
             @endif
             <span class="flex gap-2 sm:ml-auto">
                 <button type="button" onclick="wtToggleAll(true)"
-                    class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold">Expand
+                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[11px] font-extrabold sm:py-2">Expand
                     All</button>
                 <button type="button" onclick="wtToggleAll(false)"
-                    class="rounded-2xl border border-line bg-white px-3.5 py-2 text-[11px] font-extrabold">Collapse
+                    class="rounded-2xl border border-line bg-white px-3.5 py-2.5 text-[11px] font-extrabold sm:py-2">Collapse
                     All</button>
             </span>
         </form>
@@ -254,7 +254,7 @@
                                                 <button type="button" title="Ganti nama section"
                                                     aria-label="Ganti nama section {{ $section['name'] }}"
                                                     onclick="wtStartRename(event, {{ $sec->id }}, this)"
-                                                    class="wt-rename grid h-6 w-6 flex-none place-items-center rounded-lg bg-white/70 text-[11px] normal-case text-[#17130a]">✎</button>
+                                                    class="wt-rename grid h-8 w-8 sm:h-6 sm:w-6 flex-none place-items-center rounded-lg bg-white/70 text-[11px] normal-case text-[#17130a]">✎</button>
                                             @endif
                                         </span>
                                         <span
@@ -274,11 +274,11 @@
                                                     <button type="button"
                                                         title="Atur siapa yang bisa melihat section ini"
                                                         @click.prevent.stop="viewersModal = @js(['name' => $section['name'], 'action' => route('dashboard.work.tracker.sections.viewers', $sec), 'ids' => $section['viewer_ids'], 'pics' => $section['pic_ids'] ?? [], 'access' => empty($section['viewer_ids']) ? 'all' : 'selected']); viewersAccess = viewersModal.access"
-                                                        class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
+                                                        class="grid h-9 w-9 sm:h-7 sm:w-7 place-items-center rounded-lg bg-white/70 text-[13px]">👁</button>
                                                 @endif
                                                 {{-- Warna: simpan langsung (PATCH JSON), tanpa reload. --}}
                                                 <label title="Ubah warna section" onclick="event.stopPropagation()"
-                                                    class="relative grid h-7 w-7 cursor-pointer place-items-center rounded-lg bg-white/70">
+                                                    class="relative grid h-9 w-9 sm:h-7 sm:w-7 cursor-pointer place-items-center rounded-lg bg-white/70">
                                                     <span class="wt-swatch h-4 w-4 rounded-full border border-black/25"
                                                         style="background:{{ $secColor }}"></span>
                                                     <input type="color" value="{{ $secColor }}"
@@ -298,18 +298,18 @@
                                                                 value="{{ $dir }}">
                                                             <button type="submit" title="{{ $title }}"
                                                                 @disabled($disabled)
-                                                                class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
+                                                                class="grid h-9 w-9 sm:h-7 sm:w-7 place-items-center rounded-lg bg-white/70 text-sm font-black disabled:cursor-not-allowed disabled:opacity-35">{{ $arrow }}</button>
                                                         </form>
                                                     @endforeach
                                                     <button type="button" title="Hapus section"
                                                         @click.prevent.stop="typed = ''; sectionDelete = @js(['name' => $section['name'], 'count' => $section['rows']->count(), 'action' => route('dashboard.work.tracker.sections.destroy', $sec)])"
-                                                        class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black text-[#9b392f]">×</button>
+                                                        class="grid h-9 w-9 sm:h-7 sm:w-7 place-items-center rounded-lg bg-white/70 text-sm font-black text-[#9b392f]">×</button>
                                                 @endunless
                                             @endif
                                             @if ($canManage && $project && !$locked)
                                                 <button type="button" title="Tambah item di section ini"
                                                     onclick="event.preventDefault();event.stopPropagation();wtOpenAddTask('{{ $project?->id }}', @js($section['name'] === 'TANPA SECTION' ? '' : $section['name']))"
-                                                    class="grid h-7 w-7 place-items-center rounded-lg bg-white/70 text-sm font-black">+</button>
+                                                    class="grid h-9 w-9 sm:h-7 sm:w-7 place-items-center rounded-lg bg-white/70 text-sm font-black">+</button>
                                             @endif
                                             @unless ($locked)
                                                 <span
@@ -404,7 +404,7 @@
                                                             </td>
                                                             <td data-label="Focus" class="px-3 py-2.5">
                                                                 <span
-                                                                    class="inline-flex rounded-full px-2 py-0.5 text-[8px] font-black"
+                                                                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-black sm:text-[8px]"
                                                                     style="background:{{ $fbg }};color:{{ $ftx }}">{{ $focus }}</span>
                                                             </td>
                                                             <td data-label="PIC"
@@ -478,16 +478,16 @@
                                                                         title="{{ $item->link ? 'Ubah link' : 'Tambah link' }}"
                                                                         onclick="wtEditLink({{ $item->id }}, this)"
                                                                         data-link="{{ $item->link }}"
-                                                                        class="ml-1 rounded-md bg-[#ece7dd] px-1.5 py-0.5 text-[9px] font-extrabold">{{ $item->link ? '✎' : '+ Link' }}</button>
+                                                                        class="ml-1 rounded-md bg-[#ece7dd] px-2.5 py-1.5 text-[11px] sm:px-1.5 sm:py-0.5 sm:text-[9px] font-extrabold">{{ $item->link ? '✎' : '+ Link' }}</button>
                                                                 @endif
                                                             </td>
                                                             <td class="wt-actions px-3 py-2.5">
                                                                 @if ($canManage)
-                                                                    <div class="flex gap-1">
+                                                                    <div class="flex gap-2 sm:gap-1">
                                                                         <button type="button"
                                                                             data-item="{{ $item->toJson() }}"
                                                                             onclick="wtOpenEditTask(JSON.parse(this.dataset.item))"
-                                                                            class="rounded-lg bg-[#ece7dd] px-2 py-1 text-[9px] font-extrabold">Edit</button>
+                                                                            class="rounded-lg bg-[#ece7dd] px-3 py-2 text-[11px] sm:px-2 sm:py-1 sm:text-[9px] font-extrabold">Edit</button>
                                                                         <form method="POST"
                                                                             action="{{ route('dashboard.work.tracker.items.destroy', $item) }}"
                                                                             data-confirm="Hapus task &quot;{{ $item->title }}&quot;?"
@@ -496,7 +496,7 @@
                                                                             @csrf
                                                                             @method('DELETE')
                                                                             <button type="submit"
-                                                                                class="rounded-lg bg-[#ffded8] px-2 py-1 text-[9px] font-extrabold text-[#9b392f]">Hapus</button>
+                                                                                class="rounded-lg bg-[#ffded8] px-3 py-2 text-[11px] sm:px-2 sm:py-1 sm:text-[9px] font-extrabold text-[#9b392f]">Hapus</button>
                                                                         </form>
                                                                     </div>
                                                                 @endif
@@ -536,7 +536,7 @@
             <div x-show="taskModalOpen" x-cloak
                 class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                 <div @click.outside="taskModalOpen = false"
-                    class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                    class="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                     <div
                         class="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 flex items-center justify-between bg-cream px-5 pb-2 pt-5">
                         <h3 class="text-lg font-black" id="wtTaskFormTitle">Tambah Task</h3>
@@ -662,7 +662,8 @@
             {{-- Modal visibility section: pilih orang yang boleh melihat; kosong = semua. Hanya Owner & Developer. --}}
             @if ($canAssignVisibility)
                 <div x-show="viewersModal" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-                    <div @click.outside="viewersModal = null" class="w-full max-w-md rounded-4xl bg-cream p-5">
+                    <div @click.outside="viewersModal = null"
+                        class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-4xl bg-cream p-5">
                         <h3 class="text-lg font-black">Siapa yang bisa lihat?</h3>
                         <p class="mt-1 text-[12px] text-muted">Section <b
                                 x-text="viewersModal ? viewersModal.name : ''"></b>.
@@ -715,7 +716,8 @@
 
             {{-- Modal hapus section: section berisi item -> nama section harus diketik persis. --}}
             <div x-show="sectionDelete" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-                <div @click.outside="sectionDelete = null" class="w-full max-w-sm rounded-4xl bg-cream p-5">
+                <div @click.outside="sectionDelete = null"
+                    class="max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-4xl bg-cream p-5">
                     <h3 class="text-lg font-black">Hapus section?</h3>
                     <template x-if="sectionDelete && sectionDelete.count === 0">
                         <p class="mt-2 text-[13px] text-muted">Section <b x-text="sectionDelete.name"></b> masih kosong
@@ -762,8 +764,8 @@
         }
 
         /* Item di dalam section: responsif mengikuti LEBAR AREA KONTEN (container query), bukan
-                           lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
-                           tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
+                               lebar layar — sidebar dashboard makan ~260px. Tabel 9 kolom butuh ~1100px; di bawah itu
+                               tiap item jadi kartu 4 kolom, dan di bawah 640px jadi 2 kolom. */
         .wt-tablewrap {
             container-type: inline-size;
         }
@@ -802,6 +804,13 @@
         .wt-rename-input:focus {
             border-color: #cfc7b8;
             box-shadow: 0 0 0 3px rgba(23, 19, 10, .08);
+        }
+
+        /* Layar sentuh: 16px supaya iOS tidak memperbesar halaman saat nama section diganti. */
+        @media (pointer: coarse) {
+            .wt-rename-input {
+                font-size: 16px;
+            }
         }
 
         @container (max-width: 1100px)

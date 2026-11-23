@@ -108,8 +108,8 @@
                                 data-confirm-title="Batalkan pengajuan?" data-confirm-button="Ya, batalkan"
                                 data-confirm-danger="1">
                                 @csrf
-                                <textarea name="cancellation_reason" rows="2" placeholder="Alasan pembatalan..." class="input-wsm text-xs!"
-                                    required></textarea>
+                                <textarea name="cancellation_reason" rows="2" placeholder="Alasan pembatalan..."
+                                    class="input-wsm text-base! sm:text-xs!" required></textarea>
                                 <div class="flex gap-2">
                                     <button type="button" @click="showCancel = false"
                                         class="btn-wsm-white py-2! text-[11px]!">Batal</button>

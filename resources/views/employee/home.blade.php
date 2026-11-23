@@ -404,7 +404,7 @@
                 class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4"
                 style="display:none">
                 <div @click.outside="closeModal()"
-                    class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                    class="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                     <div class="mb-3 flex items-center justify-between">
                         <h3 class="text-lg font-black"
                             x-text="modalPurpose === 'test' ? 'Test Lokasi' : (modalPurpose === 'clockIn' ? 'Konfirmasi Absen Masuk' : 'Konfirmasi Absen Pulang')">

@@ -21,13 +21,13 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ $title ?? 'Error' }} — WSM Office System</title>
     @vite(['resources/css/app.css'])
 </head>
 
 <body class="bg-cream text-ink antialiased">
-    <div class="flex min-h-screen flex-col items-center justify-center px-4 py-16 text-center">
+    <div class="flex min-h-dvh flex-col items-center justify-center px-4 py-16 text-center">
         <div class="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-ink text-[11px] font-black text-white">
             WSM
         </div>

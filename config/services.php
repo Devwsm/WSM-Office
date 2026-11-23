@@ -35,11 +35,4 @@ return [
         ],
     ],
 
-    // Token untuk DeployHookController — dipanggil GitHub Actions setelah
-    // upload file selesai, untuk menjalankan migrate + refresh cache di
-    // server tanpa terminal/SSH. Isi manual di .env produksi, JANGAN commit.
-    'deploy_hook' => [
-        'token' => env('DEPLOY_HOOK_TOKEN'),
-    ],
-
 ];

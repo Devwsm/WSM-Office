@@ -49,7 +49,7 @@
 
         <button type="button" x-ref="trigger" @click="open = true" aria-haspopup="dialog" aria-controls="page-guide-dialog"
             :aria-expanded="open ? 'true' : 'false'"
-            class="fixed bottom-4 right-4 z-10 inline-flex items-center gap-2 rounded-full bg-ink py-2.5 pl-2.5 pr-4 text-xs font-extrabold text-white shadow-[0_14px_40px_rgba(16,16,16,0.25)] transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue lg:bottom-6 lg:right-6">
+            class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-10 inline-flex items-center gap-2 rounded-full bg-ink py-2.5 pl-2.5 pr-4 text-xs font-extrabold text-white shadow-[0_14px_40px_rgba(16,16,16,0.25)] transition hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue lg:bottom-6 lg:right-6">
             <span class="grid h-6 w-6 place-items-center rounded-full bg-white text-[13px] font-black text-ink"
                 aria-hidden="true">?</span>
             Panduan
@@ -58,7 +58,7 @@
         <div x-show="open" x-cloak x-transition.opacity.duration.150ms style="display:none" @click.self="close()"
             class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
             <div id="page-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="page-guide-title"
-                class="flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-4xl bg-cream sm:max-w-xl sm:rounded-4xl">
+                class="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-4xl bg-cream sm:max-w-xl sm:rounded-4xl">
 
                 <div class="flex shrink-0 items-start justify-between gap-3 border-b border-line px-5 pb-3.5 pt-5">
                     <div class="min-w-0">

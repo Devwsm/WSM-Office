@@ -123,7 +123,7 @@
         @apply block text-[11px] font-extrabold uppercase tracking-wide text-[#5e5952];
     }
     .input-wsm {
-        @apply w-full rounded-2xl border border-[#dcd6cd] bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink;
+        @apply w-full min-w-0 rounded-2xl border border-[#dcd6cd] bg-white px-4 py-3 text-sm text-ink outline-none focus:border-ink;
     }
 
     /* Bottom nav (layout Karyawan) */
@@ -131,7 +131,7 @@
         @apply fixed inset-x-0 bottom-3.5 z-20 mx-auto grid w-[min(640px,calc(100%-28px))] grid-cols-5 gap-1.5 rounded-[26px] border border-black/5 bg-white/95 p-2 shadow-[0_14px_40px_rgba(16,16,16,0.14)] backdrop-blur;
     }
     .bottom-nav-wsm-item {
-        @apply flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[9px] font-extrabold text-[#7d786f];
+        @apply flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[10px] font-extrabold text-[#7d786f];
     }
     .bottom-nav-wsm-item.active {
         @apply bg-ink text-white;
@@ -334,7 +334,7 @@
     .bottom-nav-wsm-item {
         min-height: 3rem;
         padding: 0.5rem 0.125rem;
-        font-size: 8px;
+        font-size: 9px;
     }
 
     .bottom-nav-wsm-item.center {
@@ -513,5 +513,68 @@
 
     .wsm-lift:hover {
         translate: none;
+    }
+}
+
+/*
+ * Responsif lintas halaman (HP) — 2026-11-23.
+ *
+ * 1. iOS Safari memperbesar (zoom) halaman otomatis saat kolom isian
+ *    berfont < 16px difokuskan, lalu halaman "tersangkut" membesar. Di
+ *    layar sentuh semua kolom isian dipaksa 16px. Aturan ini tanpa layer,
+ *    jadi menang atas utility Tailwind (text-xs, text-[11px], dst).
+ *    Utility berakhiran `!` (mis. text-xs!) tetap menang: tulis
+ *    `text-base! sm:text-xs!` kalau butuh kecil di desktop.
+ * 2. Kolom tanggal/jam di iOS punya lebar bawaan yang melebihi kolom grid
+ *    2-kolom (form cuti, koreksi absen, jam kerja); min-width:0 membuatnya
+ *    ikut menyusut.
+ * 3. Kunci scroll halaman di belakang modal/sidebar (kelas ditoggle oleh
+ *    resources/js/scroll-lock.js). Hanya di bawah 1024px; desktop tidak berubah.
+ * 4. Area aman (notch / gesture bar) saat layar landscape.
+ */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+}
+
+@media (pointer: coarse) {
+    :where(
+        input:not(
+            [type="checkbox"],
+            [type="radio"],
+            [type="range"],
+            [type="color"],
+            [type="file"],
+            [type="submit"],
+            [type="button"],
+            [type="reset"],
+            [type="image"],
+            [type="hidden"]
+        ),
+        select,
+        textarea
+    ) {
+        font-size: 16px;
+    }
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 1023px) {
+    html.wsm-scroll-locked,
+    html.wsm-scroll-locked body {
+        overflow: hidden;
     }
 }

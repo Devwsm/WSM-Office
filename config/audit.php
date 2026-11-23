@@ -49,10 +49,9 @@ return [
         'public.*',
         // Menandai pesan kontak sudah dibaca.
         'owner.contact-messages.markRead',
-        // Sistem: heartbeat, logout, deploy hook (token).
+        // Sistem: heartbeat dan logout.
         'presence.ping',
         'logout',
-        'system.deploy-hook',
     ],
 
     // Route tanpa nama. Login dicatat lewat event Login/Failed (AppServiceProvider).

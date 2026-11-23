@@ -75,7 +75,6 @@ use App\Http\Controllers\Employee\WorkTrackerController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Recruitment\JobApplicationController;
 use App\Http\Controllers\Recruitment\JobOpeningController;
-use App\Http\Controllers\System\DeployHookController;
 use Illuminate\Support\Facades\Route;
 
 // --- Publik (Fase 1) — tanpa login, siapa saja bisa akses ---
@@ -611,8 +610,3 @@ Route::middleware(['auth', 'role:karyawan,manajer,owner,hrd,developer', 'dashboa
 
     Route::get('/{module}', [ModuleDashboardController::class, 'show'])->name('show');
 });
-
-// Dipanggil GitHub Actions setelah upload file, lihat DeployHookController.
-Route::post('/system/deploy-hook', [DeployHookController::class, 'handle'])
-    ->middleware('throttle:5,1')
-    ->name('system.deploy-hook');

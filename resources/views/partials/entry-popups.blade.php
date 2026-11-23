@@ -50,7 +50,7 @@
                 class="fixed inset-0 z-60 grid place-items-end bg-black/45 p-0 sm:place-items-center sm:p-4">
 
                 <div role="dialog" aria-modal="true" :aria-labelledby="current.type + '-entry-popup-title'"
-                    class="relative flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-4xl bg-cream sm:max-w-md sm:rounded-4xl">
+                    class="relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-4xl bg-cream sm:max-w-md sm:rounded-4xl">
 
                     <button type="button" @click="close()" aria-label="Tutup"
                         class="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-2xl bg-white/90 text-sm font-black text-ink shadow-sm">✕</button>

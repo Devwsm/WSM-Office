@@ -1,7 +1,7 @@
 name: Deploy to cPanel (SSH)
 
-# Deploy otomatis lewat SSH + arsip tar (menggantikan FTP; server tidak punya rsync).
-# Cadangan: workflow "Deploy to cPanel (FTP, cadangan manual)" di deploy-ftp.yml.
+# Deploy otomatis lewat SSH + arsip tar (server tidak punya rsync). Hanya SSH:
+# tidak ada lagi jalur FTP maupun deploy-hook lewat HTTP.
 
 on:
   push:

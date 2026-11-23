@@ -22,7 +22,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     {{-- Audit ronde 6 (2026-09-09) — dibutuhkan Work Tracker board buat
         fetch() PATCH drag-drop (dashboard/work/tracker/index.blade.php).
         SEBELUMNYA gak ada meta csrf-token sama sekali di layout ini
@@ -52,9 +52,10 @@
         dashboard ini hanya data uji", tampil sekali per login. --}}
     @include('partials.entry-popups', ['door' => 'dashboard'])
 
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
+    <div x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false"
+        class="min-h-dvh lg:grid lg:grid-cols-[260px_1fr]">
         <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-            class="fixed inset-y-0 left-0 z-30 flex h-screen w-64 -translate-x-full flex-col border-r border-line bg-paper p-4 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0">
+            class="fixed inset-y-0 left-0 z-30 flex h-dvh w-64 -translate-x-full flex-col overscroll-contain border-r border-line bg-paper p-4 transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0">
             <div class="flex items-center gap-3 px-1 pb-6 pt-1">
                 <div class="grid h-11 w-11 place-items-center rounded-2xl bg-ink text-[11px] font-black text-white">
                     WSM
@@ -91,7 +92,7 @@
                 konten & sisa ruang numpuk di bawah, `items-start`
                 jaga-jaga item individual juga gak ikut melar. --}}
             <nav class="grid content-start items-start flex-1 min-h-0 gap-1.5 overflow-y-auto text-sm">
-                {{-- 2026-09-09 — dulu di-@if (isManajer/isHrd/isOwner), padahal
+                {{-- 2026-09-09 — dulu di-@if (isManajer / isHrd / isOwner), padahal
                     SIAPA PUN yang bisa nyampe layouts.app ini juga otomatis
                     anggota grup route 'employee.*' (base /app), jadi link ini
                     selalu valid buat siapa pun yang lihatnya — @if-nya dicabut,
@@ -272,7 +273,12 @@
                     Owner-only "HR / Geo / Color Settings" ("Karyawan & Access" pindah ke CEO DASHBOARD, 2026-10-03). Header-nya nongol
                     kalau MINIMAL SATU item di bawah kelihatan. --}}
                 @php
-                    $hrAdminVisible = $u->canViewModule('people') || $u->canViewModule('kpi') || $u->isOwnerOrDeveloper() || $u->canViewModule('contracts') || $u->canViewModule('payroll');
+                    $hrAdminVisible =
+                        $u->canViewModule('people') ||
+                        $u->canViewModule('kpi') ||
+                        $u->isOwnerOrDeveloper() ||
+                        $u->canViewModule('contracts') ||
+                        $u->canViewModule('payroll');
                 @endphp
                 @if ($hrAdminVisible)
                     @php $sectionNo++; @endphp
@@ -437,17 +443,22 @@
             </div>
         </aside>
 
-        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black/40 lg:hidden">
+        <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
+            class="fixed inset-0 z-20 bg-black/40 lg:hidden">
         </div>
 
         <div class="flex min-w-0 flex-col">
-            <header class="flex items-center justify-between gap-4 px-4 py-4 lg:hidden">
-                <button @click="sidebarOpen = !sidebarOpen"
-                    class="grid h-10 w-10 place-items-center rounded-2xl bg-[#ece7dd]">
+            {{-- 2026-11-23 — header HP dibuat sticky supaya tombol menu selalu terjangkau
+                saat halaman panjang di-scroll (Work Tracker, Absensi, dst). --}}
+            <header
+                class="sticky top-0 z-10 flex items-center justify-between gap-4 bg-cream/90 px-4 py-3 backdrop-blur lg:hidden">
+                <button type="button" @click="sidebarOpen = !sidebarOpen" aria-label="Buka menu"
+                    :aria-expanded="sidebarOpen ? 'true' : 'false'"
+                    class="grid h-11 w-11 place-items-center rounded-2xl bg-[#ece7dd]">
                     ☰
                 </button>
-                <h1 class="text-sm font-extrabold">{{ $title ?? 'Dashboard' }}</h1>
-                <div class="w-10"></div>
+                <h1 class="min-w-0 truncate text-sm font-extrabold">{{ $title ?? 'Dashboard' }}</h1>
+                <div class="w-11 flex-none"></div>
             </header>
 
             <main class="flex-1 px-4 pb-16 pt-2 lg:px-8 lg:pb-20 lg:pt-8">

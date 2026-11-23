@@ -11,7 +11,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     {{-- 2026-09-10 — dibutuhkan buat fetch() auto mark-read Inbox modal
         di bawah (pola sama kayak layouts/app.blade.php buat drag-drop
         Work Tracker board, lihat catatan di situ). --}}
@@ -57,7 +57,7 @@
         @include('partials.entry-popups', ['door' => 'app'])
     @endunless
 
-    <div class="employee-app-shell min-h-screen pb-32 sm:pb-28">
+    <div class="employee-app-shell min-h-dvh pb-32 sm:pb-28">
         <div class="employee-app-container mx-auto w-full max-w-3xl px-3 pb-10 pt-3 sm:px-5 sm:pt-5 lg:px-6">
             {{-- 2026-09-10 — `inboxOpened` (beda dari `inboxOpen`, yang itu
                 buka/tutup modal): flag one-way, begitu Inbox dibuka
@@ -148,7 +148,7 @@
                 <div x-show="inboxOpen" x-cloak
                     class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                     <div @click.outside="inboxOpen = false"
-                        class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                        class="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                         <div class="mb-3 flex items-start justify-between">
                             <div>
                                 <div class="text-[10px] font-extrabold uppercase text-muted">Employee Inbox</div>

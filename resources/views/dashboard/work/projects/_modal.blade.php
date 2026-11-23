@@ -15,7 +15,7 @@
     @keydown.escape.window="open = false" x-show="open" x-cloak
     class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
     <div @click.outside="open = false"
-        class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+        class="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
         <div class="mb-3 flex items-start justify-between gap-3">
             <div>
                 <p class="text-[10px] font-extrabold uppercase tracking-widest text-muted" id="wtProjectEyebrow">Add New

@@ -7,6 +7,7 @@ import "./alerts";
 import "./attendance";
 import "./entry-popups";
 import "./public-motion";
+import "./scroll-lock";
 
 window.Alpine = Alpine;
 Alpine.start();

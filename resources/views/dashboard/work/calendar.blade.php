@@ -313,7 +313,7 @@
                 {{-- Popup harian: ritme hari itu + semua item/penanda project di tanggal tersebut. --}}
                 <div x-show="popup" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
                     <div @click.outside="popup = null"
-                        class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-4xl bg-cream p-5">
+                        class="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-4xl bg-cream p-5">
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p class="text-[10px] font-black uppercase tracking-[0.14em] text-muted">Agenda Harian</p>
@@ -352,7 +352,7 @@
                 <div x-show="item" x-cloak
                     class="fixed inset-0 z-50 grid place-items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
                     <div @click.outside="closeItem(true)"
-                        class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                        class="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                         <div
                             class="sticky -top-5 z-10 -mx-5 -mt-5 mb-3 flex items-start justify-between gap-3 bg-cream px-5 pb-2 pt-5">
                             <div class="min-w-0">

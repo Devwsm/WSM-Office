@@ -31,12 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
             TrackPresence::class,
             AuditUncoveredChanges::class,
         ]);
-
-        // Dipanggil GitHub Actions lewat curl (tanpa sesi browser), jadi
-        // tidak mungkin bawa CSRF token. Lihat DeployHookController.
-        $middleware->validateCsrfTokens(except: [
-            'system/deploy-hook',
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -98,7 +98,7 @@
                 x-effect="if (noteOpen) $nextTick(() => $refs.note && $refs.note.focus())" role="dialog"
                 aria-modal="true" aria-labelledby="note-modal-title-{{ $item->id }}">
                 <div @click.outside="noteOpen = false"
-                    class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                    class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                     <div class="mb-4 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <div class="text-[10px] font-extrabold uppercase text-muted">Catatan task</div>

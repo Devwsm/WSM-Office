@@ -83,7 +83,7 @@
                 <div>
                     <label class="mb-1 block text-[11px] font-bold text-muted">Tanggal</label>
                     <input type="date" name="date" value="{{ old('date') }}" max="{{ now()->toDateString() }}"
-                        class="input-wsm text-xs!" required>
+                        class="input-wsm text-base! sm:text-xs!" required>
                     @error('date')
                         <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
                     @enderror
@@ -91,7 +91,7 @@
                 <div>
                     <label class="mb-1 block text-[11px] font-bold text-muted">Keterangan (wajib)</label>
                     <input type="text" name="note" value="{{ old('note') }}" maxlength="255"
-                        placeholder="Mis. tidak masuk tanpa kabar" class="input-wsm text-xs!" required>
+                        placeholder="Mis. tidak masuk tanpa kabar" class="input-wsm text-base! sm:text-xs!" required>
                     @error('note')
                         <p class="mt-1 text-xs font-semibold text-[#a83d35]">{{ $message }}</p>
                     @enderror
@@ -189,21 +189,24 @@
                                         <label class="mb-1 block text-[10px] font-extrabold text-muted">Jam
                                             Masuk</label>
                                         <input type="time" name="clock_in_time"
-                                            value="{{ $row->clock_in_at?->format('H:i') }}" class="input-wsm text-xs!">
+                                            value="{{ $row->clock_in_at?->format('H:i') }}"
+                                            class="input-wsm text-base! sm:text-xs!">
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-[10px] font-extrabold text-muted">Jam
                                             Pulang</label>
                                         <input type="time" name="clock_out_time"
-                                            value="{{ $row->clock_out_at?->format('H:i') }}" class="input-wsm text-xs!">
+                                            value="{{ $row->clock_out_at?->format('H:i') }}"
+                                            class="input-wsm text-base! sm:text-xs!">
                                     </div>
                                 </div>
                                 <textarea name="correction_note" rows="2" placeholder="Alasan koreksi (wajib, karyawan bisa lihat ini)..."
-                                    class="input-wsm text-xs!" required></textarea>
+                                    class="input-wsm text-base! sm:text-xs!" required></textarea>
                                 <div class="flex gap-2">
                                     <button type="button" @click="showCorrect = false"
                                         class="btn-wsm-white py-2! text-[11px]!">Batal</button>
-                                    <button type="submit" class="btn-wsm-black py-2! text-[11px]!">Simpan Koreksi</button>
+                                    <button type="submit" class="btn-wsm-black py-2! text-[11px]!">Simpan
+                                        Koreksi</button>
                                 </div>
                             </form>
                         </div>

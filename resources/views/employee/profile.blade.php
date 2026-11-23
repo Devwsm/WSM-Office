@@ -7,13 +7,13 @@
 
     2026-10-02 (selisih #10):
     - foto profil: tombol "Ganti Foto" (upload langsung ke disk private,
-      lihat ProfileController::updateAvatar);
+        lihat ProfileController::updateAvatar);
     - ganti password dipindah dari form di halaman ke MODAL yang dibuka
-      dari kartu Security. Modal otomatis terbuka lagi kalau validasinya
-      gagal (error tidak hilang) atau kalau password masih sementara
-      (must_change_password);
+        dari kartu Security. Modal otomatis terbuka lagi kalau validasinya
+        gagal (error tidak hilang) atau kalau password masih sementara
+        (must_change_password);
     - Personal Colors: 7 warna tampilan pribadi (hanya App Mode milik
-      user ini), pratinjau langsung sebelum disimpan.
+        user ini), pratinjau langsung sebelum disimpan.
     ---------------------------------------------------------------------
 --}}
 @extends('layouts.employee', ['title' => 'Profile', 'navActive' => 'profile'])
@@ -145,7 +145,7 @@
             x-effect="if (open) $nextTick(() => $refs.current && $refs.current.focus())" role="dialog" aria-modal="true"
             aria-labelledby="password-modal-title">
             <div @click.outside="open = false"
-                class="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
+                class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-4xl bg-cream p-5 sm:rounded-4xl">
                 <div class="mb-4 flex items-start justify-between gap-3">
                     <div>
                         <div class="text-[10px] font-extrabold uppercase text-muted">Security</div>

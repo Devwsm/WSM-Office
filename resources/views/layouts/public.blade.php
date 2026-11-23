@@ -13,7 +13,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ $title ?? 'WSM Office System' }} — Whisnu Santika Musik</title>
     {{-- Penanda JS: animasi masuk (data-reveal) cuma menyembunyikan elemen kalau JS jalan. --}}
     <script>

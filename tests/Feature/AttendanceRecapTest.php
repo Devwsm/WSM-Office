@@ -221,33 +221,45 @@ class AttendanceRecapTest extends TestCase
 
         // Kanaya: people = view, Aldora bawahannya -> halaman terbuka, tapi tanpa form koreksi
         // (POST-nya memang 403, jadi tombolnya tidak boleh dipajang).
-        $this->actingAs($this->p['manajer'])
+        $response = $this->actingAs($this->p['manajer'])
             ->get(route('attendance.recap.show', $this->p['aldora']))
             ->assertOk()
             ->assertSee('18 Sep')
-            // Bukan 'Koreksi jam absen': frasa itu juga ada di modal Panduan halaman.
-            ->assertDontSee('Simpan Koreksi')
             ->assertDontSee('Alasan koreksi (wajib')
             ->assertDontSee(route('attendance.recap.correct', $row), false);
+
+        // Bukan 'Koreksi jam absen': frasa itu juga ada di modal Panduan halaman.
+        $this->assertStringNotContainsString('Simpan Koreksi', $this->flat($response));
+    }
+
+    /**
+     * Isi halaman dengan spasi dan baris baru dilipat jadi satu spasi, seperti yang
+     * dilakukan browser. Pemformat Blade di editor kadang memecah teks tombol
+     * ("Simpan\n    Koreksi") dan itu tidak mengubah tampilan, jadi tes tidak boleh
+     * bergantung pada letak baris baru.
+     */
+    private function flat(\Illuminate\Testing\TestResponse $response): string
+    {
+        return preg_replace('/\s+/', ' ', $response->getContent());
     }
 
     public function test_correction_form_is_shown_for_manage_users(): void
     {
         $row = $this->attendance($this->p['aldora'], '2026-09-18', '11:00', '15:00');
 
-        $this->actingAs($this->p['hrd'])
+        $response = $this->actingAs($this->p['hrd'])
             ->get(route('attendance.recap.show', $this->p['aldora']))
             ->assertOk()
-            ->assertSee('Simpan Koreksi')
             ->assertSee(route('attendance.recap.correct', $row), false);
+        $this->assertStringContainsString('Simpan Koreksi', $this->flat($response));
 
         // Manajer yang dinaikkan ke Manage juga melihatnya.
         $this->grant($this->p['manajer'], 'people', 'manage');
 
-        $this->actingAs($this->p['manajer'])
+        $response = $this->actingAs($this->p['manajer'])
             ->get(route('attendance.recap.show', $this->p['aldora']))
-            ->assertOk()
-            ->assertSee('Simpan Koreksi');
+            ->assertOk();
+        $this->assertStringContainsString('Simpan Koreksi', $this->flat($response));
     }
 
     public function test_manager_with_manage_access_is_still_limited_to_her_team(): void

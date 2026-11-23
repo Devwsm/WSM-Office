@@ -10,12 +10,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Masuk — WSM Office System</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="flex min-h-screen items-center justify-center bg-cream p-4 antialiased">
+<body class="flex min-h-dvh items-center justify-center bg-cream p-4 antialiased">
     @include('partials.flash-data')
 
     <div class="w-full max-w-107.5 rounded-4xl border border-line bg-paper p-7 shadow-wsm">

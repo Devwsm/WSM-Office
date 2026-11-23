@@ -92,8 +92,8 @@
                             data-confirm-title="Tolak pengajuan ini?" data-confirm-button="Ya, tolak"
                             data-confirm-danger="1">
                             @csrf
-                            <textarea name="decision_note" rows="2" placeholder="Alasan penolakan (wajib)..." class="input-wsm text-xs!"
-                                required></textarea>
+                            <textarea name="decision_note" rows="2" placeholder="Alasan penolakan (wajib)..."
+                                class="input-wsm text-base! sm:text-xs!" required></textarea>
                             <div class="flex gap-2">
                                 <button type="button" @click="showReject = false"
                                     class="btn-wsm-white py-2! text-[11px]!">Batal</button>

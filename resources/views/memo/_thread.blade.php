@@ -38,7 +38,7 @@
     <form method="POST" action="{{ $replyRoute }}" class="mt-2.5 flex gap-2">
         @csrf
         <input type="text" name="message" placeholder="Reply memo ini..." required maxlength="2000"
-            class="input-wsm flex-1 py-2! text-xs!">
+            class="input-wsm flex-1 py-2! text-base! sm:text-xs!">
         <button type="submit" class="btn-wsm-black flex-none py-2! px-3.5! text-xs">Reply</button>
     </form>
 </div>
