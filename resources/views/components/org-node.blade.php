@@ -1,34 +1,47 @@
 {{--
     components/org-node.blade.php
     ---------------------------------------------------------------------
-    Satu node org-chart + rekursif ke bawahannya. Dipakai di
-    owner/organization/index.blade.php.
-    Props: $user (model User), $byManager (Collection groupBy manager_id)
+    Tampilan HP/tablet (di bawah lg): satu node + bawahannya sebagai daftar
+    bertingkat (rekursif). Baris-baris anak (termasuk baris terbelah) digabung
+    jadi satu daftar urut — bagan penuh hanya muat di layar desktop.
+    Props: $node
     ---------------------------------------------------------------------
 --}}
-@props(['user', 'byManager'])
+@props(['node'])
 
-@php $children = $byManager->get($user->id, collect()); @endphp
+@php
+    $children = collect($node['rows'])
+        ->flatMap(fn($row) => isset($row['split']) ? array_merge(...$row['split']) : $row)
+        ->all();
+@endphp
 
-<li class="relative">
-    <div class="card-wsm-white inline-flex min-w-52 flex-col gap-0.5 p-3.5!">
-        <div class="flex items-center gap-2">
-            <strong class="text-sm">{{ $user->name }}</strong>
-            <span
-                class="badge-wsm-{{ match ($user->role) {'owner', 'developer' => 'blue','manajer' => 'green','hrd' => 'yellow',default => 'gray'} }}">
-                {{ $user->roleLabel() }}
-            </span>
-        </div>
-        <span class="text-xs text-muted">
-            {{ $user->job_title ?? '—' }}{{ $user->division ? ' · ' . $user->division : '' }}
-        </span>
-    </div>
+<li class="min-w-0">
+    <x-org-card :node="$node" mode="list" />
 
-    @if ($children->isNotEmpty())
-        <ul class="ml-6 mt-3 flex flex-col gap-3 border-l border-line pl-6">
+    @if ($node['badge'])
+        <span
+            class="mt-1 inline-block rounded-full bg-ink px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">{{ $node['badge'] }}</span>
+    @endif
+
+    @if ($children !== [] || $node['crew'] !== [])
+        <ul class="ml-2 mt-2 grid gap-2 border-l-2 border-line pl-3">
             @foreach ($children as $child)
-                <x-org-node :user="$child" :by-manager="$byManager" />
+                <x-org-node :node="$child" />
             @endforeach
+
+            @if ($node['crew'] !== [])
+                <li class="min-w-0 rounded-2xl border border-dashed border-[#cfc7b9] bg-white/60 px-3.5 py-2.5">
+                    <p class="text-[10px] font-black uppercase tracking-wide text-muted">Crew show</p>
+                    <dl class="mt-1 grid gap-0.5 text-xs">
+                        @foreach ($node['crew'] as [$role, $names])
+                            <div class="flex flex-wrap gap-x-1.5">
+                                <dt class="font-extrabold">{{ $role }}</dt>
+                                <dd class="min-w-0 wrap-anywhere text-[#5e5951]">{{ $names }}</dd>
+                            </div>
+                        @endforeach
+                    </dl>
+                </li>
+            @endif
         </ul>
     @endif
 </li>

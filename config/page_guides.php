@@ -164,16 +164,18 @@ return [
 
         'organization' => [
             'title' => 'Struktur Organisasi',
-            'summary' => 'Bagan hierarki tim yang disusun otomatis dari data Atasan Langsung tiap karyawan aktif.',
+            'summary' => 'Bagan hierarki yang disusun otomatis dari data Atasan Langsung tiap karyawan aktif.',
             'access' => 'owner-developer',
             'sections' => [
                 'Yang bisa dilakukan' => [
-                    ['Lihat struktur', 'siapa melapor ke siapa, dari Owner sampai level paling bawah.'],
+                    ['Lihat struktur', 'dari Commissioner sampai level paling bawah; di HP tampil sebagai daftar bertingkat, di desktop sebagai bagan.'],
+                    ['Klik nama', 'membuka pop-up berisi akses sistem orang itu: role, modul dashboard (View / Manage), dan cakupan absensinya.'],
                     ['Kelola Karyawan', 'tombol di pojok atas untuk pindah ke daftar karyawan.'],
                 ],
                 'Perlu diketahui' => [
-                    'Halaman ini hanya untuk dilihat. Untuk mengubah bagan, ubah field "Atasan Langsung" lewat Karyawan, lalu Edit.',
+                    'Halaman ini hanya untuk dilihat. Untuk mengubah bagan, ubah field \'Atasan Langsung\' lewat Karyawan, lalu Edit.',
                     'Karyawan yang dinonaktifkan tidak ikut tampil di bagan.',
+                    'Akses di pop-up dibaca langsung dari akun, jadi selalu sama dengan yang dilihat orangnya sendiri. Ubah akses lewat Karyawan > Akses.',
                 ],
             ],
         ],

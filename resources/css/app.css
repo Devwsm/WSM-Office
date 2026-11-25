@@ -46,6 +46,20 @@
     body {
         @apply bg-cream text-ink antialiased;
     }
+
+    /*
+     * Anti "halaman bisa digeser ke samping" di HP (2026-11-25).
+     * `display: grid` tanpa grid-cols-* membuat satu kolom `auto` yang
+     * tidak boleh lebih sempit dari isi terpanjangnya, jadi satu URL / email /
+     * kalimat tanpa spasi di dalam kartu melebarkan SELURUH kolom (dan
+     * halaman) melewati layar. minmax(0, 1fr) menyuruh kolom itu mengikuti
+     * lebar induknya, sehingga teks panjang dipatahkan (wrap-anywhere) alih-alih
+     * mendorong layout. Utility grid-cols-* / sm:grid-cols-* tetap menang
+     * karena layer `utilities` berada di atas layer `base`.
+     */
+    .grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 /*
@@ -577,4 +591,197 @@ input[type="week"] {
     html.wsm-scroll-locked body {
         overflow: hidden;
     }
+}
+
+/*
+ * Struktur Organisasi — bagan desktop (lg ke atas), 2026-11-25.
+ * Pohon horizontal sesuai gambar "ORGANIZATION NEW": tiap node = .org-branch,
+ * sekelompok anak sejajar = .org-tier (garis induk + bus + penurun digambar
+ * lewat ::before/::after), anak yang ditumpuk ke bawah = .org-stack, baris
+ * yang dibelah celah tengah = .org-split. Posisi anak diberi class
+ * is-first / is-last / is-only oleh Blade (bukan :first-child) karena baris
+ * terbelah terdiri dari dua daftar yang busnya harus tersambung.
+ * Di HP bagan ini disembunyikan dan diganti daftar bertingkat.
+ * Ditulis CSS biasa (bukan @apply): Tailwind v4 tidak mengizinkan @apply
+ * ke class kustom lain.
+ */
+.org-chart {
+    --org-line: #b8b0a2;
+    --org-stub: 1.25rem;
+    --org-stub-s: 0.875rem;
+    --org-card-w: 5.75rem;
+    display: inline-block;
+    min-width: 100%;
+    padding: 0.25rem 0.25rem 0.5rem;
+    text-align: center;
+}
+
+.org-branch {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.org-tier,
+.org-half,
+.org-stack {
+    position: relative;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Baris anak sejajar: garis induk turun, bus horizontal, penurun ke tiap anak. */
+.org-tier {
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: var(--org-stub);
+}
+
+.org-tier.is-zones {
+    align-items: stretch;
+}
+
+.org-tier::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: var(--org-stub);
+    border-left: 2px solid var(--org-line);
+}
+
+.org-tier > .org-branch,
+.org-half > .org-branch {
+    padding: var(--org-stub) 0.1875rem 0;
+}
+
+.org-tier > .org-branch::before,
+.org-tier > .org-branch::after,
+.org-half > .org-branch::before,
+.org-half > .org-branch::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 50%;
+    width: 50%;
+    height: var(--org-stub);
+    border-top: 2px solid var(--org-line);
+}
+
+.org-tier > .org-branch::after,
+.org-half > .org-branch::after {
+    right: auto;
+    left: 50%;
+    border-left: 2px solid var(--org-line);
+}
+
+.org-branch.is-first::before,
+.org-branch.is-last::after {
+    border: 0 none;
+}
+
+.org-branch.is-last::before {
+    border-right: 2px solid var(--org-line);
+    border-radius: 0 6px 0 0;
+}
+
+.org-branch.is-first::after {
+    border-radius: 6px 0 0 0;
+}
+
+/* Anak tunggal: satu garis lurus saja, jarak tetap sama. */
+.org-branch.is-only::before {
+    display: none;
+}
+
+.org-branch.is-only::after {
+    border-top: 0;
+    border-radius: 0;
+}
+
+/* Baris terbelah: celah tengah dilewati garis induk (Sales/Marketing | Creative). */
+.org-split {
+    position: relative;
+    display: flex;
+    width: 100%;
+    padding-top: 0;
+}
+
+.org-half {
+    flex: 1 1 0;
+    align-items: flex-start;
+}
+
+.org-half.is-left {
+    justify-content: flex-end;
+}
+
+.org-half.is-right {
+    justify-content: flex-start;
+}
+
+.org-gap {
+    position: relative;
+    flex: 0 0 2.25rem;
+    margin-top: var(--org-stub);
+}
+
+.org-gap::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    border-top: 2px solid var(--org-line);
+}
+
+.org-gap::after {
+    content: "";
+    position: absolute;
+    top: calc(-1 * var(--org-stub));
+    bottom: 0;
+    left: 50%;
+    border-left: 2px solid var(--org-line);
+}
+
+/* Anak ditumpuk ke bawah (hemat lebar), putus-putus untuk koordinasi. */
+.org-stack {
+    flex-direction: column;
+    align-items: center;
+}
+
+.org-stack > .org-branch {
+    padding-top: var(--org-stub-s);
+}
+
+.org-stack > .org-branch::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    height: var(--org-stub-s);
+    border-left: 2px solid var(--org-line);
+}
+
+.org-stack > .org-branch.is-dotted::before {
+    border-left-style: dashed;
+}
+
+/* Bar External / Internal di dasar cabang CMO / COO (seperti gambar). */
+.org-zone {
+    align-self: stretch;
+    margin-top: auto;
+}
+
+.org-zone-bar {
+    margin-top: 1rem;
+    border-radius: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
